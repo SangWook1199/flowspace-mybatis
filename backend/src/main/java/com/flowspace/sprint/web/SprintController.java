@@ -1,12 +1,12 @@
-package com.flowspace.controller;
+package com.flowspace.sprint.web;
 
 import com.flowspace.dto.retrospective.RetrospectiveResponse;
-import com.flowspace.dto.sprint.SprintCreateRequest;
-import com.flowspace.dto.sprint.SprintResponse;
-import com.flowspace.dto.sprint.SprintStatusUpdateRequest;
-import com.flowspace.dto.sprint.SprintUpdateRequest;
+import com.flowspace.sprint.dto.request.SprintCreateRequest;
+import com.flowspace.sprint.dto.response.SprintResponse;
+import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
+import com.flowspace.sprint.dto.request.SprintUpdateRequest;
 import com.flowspace.service.RetrospectiveService;
-import com.flowspace.service.SprintService;
+import com.flowspace.sprint.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;

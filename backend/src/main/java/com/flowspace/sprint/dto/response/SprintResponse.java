@@ -1,4 +1,4 @@
-package com.flowspace.dto.sprint;
+package com.flowspace.sprint.dto.response;
 
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.enums.SprintStatus;

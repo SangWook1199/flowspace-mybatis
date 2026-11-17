@@ -1,4 +1,4 @@
-package com.flowspace.dto.sprint;
+package com.flowspace.sprint.dto.request;
 
 import com.flowspace.entity.enums.SprintStatus;
 import com.flowspace.entity.enums.WorkspaceColor;

@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.sprint.service.impl;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -7,10 +7,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 
-import com.flowspace.dto.sprint.SprintCreateRequest;
-import com.flowspace.dto.sprint.SprintResponse;
-import com.flowspace.dto.sprint.SprintStatusUpdateRequest;
-import com.flowspace.dto.sprint.SprintUpdateRequest;
+import com.flowspace.sprint.dto.request.SprintCreateRequest;
+import com.flowspace.sprint.dto.response.SprintResponse;
+import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
+import com.flowspace.sprint.dto.request.SprintUpdateRequest;
 import com.flowspace.entity.Block;
 import com.flowspace.entity.BlockDatabase;
 import com.flowspace.entity.BlockDatabaseColumn;
@@ -60,6 +60,9 @@ import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.repository.WorkspaceTaskStatusRepository;
+import com.flowspace.service.ActivityService;
+import com.flowspace.service.NotificationService;
+import com.flowspace.sprint.service.SprintService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -68,7 +71,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class SprintService {
+public class SprintServiceImpl implements SprintService {
 
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
@@ -94,6 +97,7 @@ public class SprintService {
     private final NotificationService notificationService;
 
     // 스프린트 생성
+    @Override
     public SprintResponse createSprint(Long workspaceId, SprintCreateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -129,6 +133,7 @@ public class SprintService {
 
     // 워크스페이스 스프린트 목록 조회
     @Transactional(readOnly = true)
+    @Override
     public List<SprintResponse> getSprints(Long workspaceId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -153,6 +158,7 @@ public class SprintService {
 
     // 스프린트 단건 조회
     @Transactional(readOnly = true)
+    @Override
     public SprintResponse getSprint(Long sprintId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -167,6 +173,7 @@ public class SprintService {
     }
 
     // 스프린트 수정
+    @Override
     public SprintResponse updateSprint(Long sprintId, SprintUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -185,6 +192,7 @@ public class SprintService {
     }
 
     // 스프린트 상태 변경
+    @Override
     public SprintResponse updateStatus(Long sprintId, SprintStatusUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -256,6 +264,7 @@ public class SprintService {
     }
 
     // 스프린트 삭제
+    @Override
     public void deleteSprint(Long sprintId, String email) {
 
         User user = userRepository.findByEmail(email)

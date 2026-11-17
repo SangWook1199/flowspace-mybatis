@@ -23,7 +23,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.flowspace.dto.sprint.SprintStatusUpdateRequest;
+import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
+import com.flowspace.sprint.service.impl.SprintServiceImpl;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.Retrospective;
 import com.flowspace.entity.Sprint;
@@ -104,7 +105,7 @@ class SprintServiceTest {
     private NotificationService notificationService;
 
     @InjectMocks
-    private SprintService sprintService;
+    private SprintServiceImpl sprintService;
 
     private User user;
     private Workspace workspace;

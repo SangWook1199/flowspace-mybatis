@@ -1,4 +1,4 @@
-package com.flowspace.dto.sprint;
+package com.flowspace.sprint.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
