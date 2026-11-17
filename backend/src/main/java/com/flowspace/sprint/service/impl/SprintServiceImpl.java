@@ -63,6 +63,7 @@ import com.flowspace.repository.WorkspaceTaskStatusRepository;
 import com.flowspace.service.ActivityService;
 import com.flowspace.service.NotificationService;
 import com.flowspace.sprint.service.SprintService;
+import com.flowspace.sprint.service.SprintVO;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -95,6 +96,9 @@ public class SprintServiceImpl implements SprintService {
 
     private final ActivityService activityService;
     private final NotificationService notificationService;
+
+    // 스프린트 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
+    private final SprintMapper sprintMapper;
 
     // 스프린트 생성
     @Override
@@ -150,8 +154,10 @@ public class SprintServiceImpl implements SprintService {
 
         result.add(SprintResponse.backlog(workspace.getWorkspaceId(), (int) backlogCount));
 
-        result.addAll(sprintRepository.findByWorkspaceOrderByStartDateDesc(workspace).stream()
-            .map(this::toSprintResponse).toList());
+        // 스프린트 목록은 MyBatis로 조회해요
+        for (SprintVO sprint : sprintMapper.selectSprintListByWorkspaceId(workspaceId)) {
+            result.add(toSprintResponse(sprint));
+        }
 
         return result;
     }
@@ -164,10 +170,18 @@ public class SprintServiceImpl implements SprintService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+        // MyBatis는 결과가 없으면 null을 돌려줘서 직접 확인해요
+        SprintVO sprint = sprintMapper.selectSprintById(sprintId);
 
-        validateMember(sprint.getWorkspace(), user);
+        if (sprint == null) {
+            throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
+        }
+
+        // VO에는 워크스페이스 번호만 있어서, 멤버 확인에 쓸 워크스페이스를 따로 조회해요
+        Workspace workspace = workspaceRepository.findById(sprint.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        validateMember(workspace, user);
 
         return toSprintResponse(sprint);
     }
@@ -310,6 +324,18 @@ public class SprintServiceImpl implements SprintService {
         int taskCount = (int) taskRepository.countBySprint(sprint);
 
         int completedTaskCount = (int) taskRepository.countBySprintAndStatus_Category(sprint, TaskStatusCategory.DONE);
+
+        int progress = taskCount == 0 ? 0 : (completedTaskCount * 100) / taskCount;
+
+        return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
+    }
+
+    // 스프린트 진행률 계산 (MyBatis 조회 결과용)
+    private SprintResponse toSprintResponse(SprintVO sprint) {
+
+        int taskCount = sprintMapper.selectTaskCountBySprintId(sprint.getSprintId());
+
+        int completedTaskCount = sprintMapper.selectDoneTaskCountBySprintId(sprint.getSprintId());
 
         int progress = taskCount == 0 ? 0 : (completedTaskCount * 100) / taskCount;
 

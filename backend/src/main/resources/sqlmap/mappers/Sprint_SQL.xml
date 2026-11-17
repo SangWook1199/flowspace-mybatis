@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.sprint.service.impl.SprintMapper">
+
+    <!-- 스프린트 조회에 공통으로 쓰는 컬럼 목록 -->
+    <sql id="sprintColumns">
+        sprint_id, workspace_id, created_by, name, goal, description,
+        color, start_date, end_date, status, created_at
+    </sql>
+
+    <!-- 스프린트 한 건 -->
+    <select id="selectSprintById" resultType="com.flowspace.sprint.service.SprintVO">
+        SELECT <include refid="sprintColumns"/>
+        FROM sprints
+        WHERE sprint_id = #{sprintId}
+    </select>
+
+    <!-- 워크스페이스의 스프린트 목록 (시작일이 늦은 순) -->
+    <select id="selectSprintListByWorkspaceId" resultType="com.flowspace.sprint.service.SprintVO">
+        SELECT <include refid="sprintColumns"/>
+        FROM sprints
+        WHERE workspace_id = #{workspaceId}
+        ORDER BY start_date DESC
+    </select>
+
+    <!-- 스프린트에 속한 작업 수 -->
+    <select id="selectTaskCountBySprintId" resultType="int">
+        SELECT COUNT(*)
+        FROM tasks
+        WHERE sprint_id = #{sprintId}
+    </select>
+
+    <!-- 스프린트에 속한 작업 중 완료(DONE) 상태인 작업 수. 3단계에서 진행률 프로시저로 합칠 예정이에요. -->
+    <select id="selectDoneTaskCountBySprintId" resultType="int">
+        SELECT COUNT(*)
+        FROM tasks t
+        JOIN task_statuses s ON s.status_id = t.status_id
+        WHERE t.sprint_id = #{sprintId}
+          AND s.category = 'DONE'
+    </select>
+
+</mapper>

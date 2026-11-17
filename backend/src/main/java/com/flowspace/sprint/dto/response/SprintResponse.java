@@ -3,6 +3,7 @@ package com.flowspace.sprint.dto.response;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.enums.SprintStatus;
 import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.sprint.service.SprintVO;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -54,6 +55,32 @@ public record SprintResponse(
             sprint.getSprintId(),
             sprint.getWorkspace().getWorkspaceId(),
             sprint.getCreatedBy().getUserId(),
+            sprint.getName(),
+            sprint.getGoal(),
+            sprint.getDescription(),
+            sprint.getColor(),
+            sprint.getStartDate(),
+            sprint.getEndDate(),
+            sprint.getStatus(),
+            progress,
+            taskCount,
+            completedTaskCount,
+            sprint.getCreatedAt(),
+            false
+        );
+    }
+
+    // MyBatis 조회 결과(SprintVO)로 응답을 만들어요
+    public static SprintResponse from(
+            SprintVO sprint,
+            Integer progress,
+            Integer taskCount,
+            Integer completedTaskCount) {
+
+        return new SprintResponse(
+            sprint.getSprintId(),
+            sprint.getWorkspaceId(),
+            sprint.getCreatedBy(),
             sprint.getName(),
             sprint.getGoal(),
             sprint.getDescription(),
