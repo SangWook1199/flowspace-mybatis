@@ -68,3 +68,8 @@ flowspace:
     max-queued-jobs: 3
     # 완성된 초안을 서버 메모리에 보관하는 시간(분)
     draft-ttl-minutes: 30
+
+mybatis:
+  mapper-locations: classpath:/sqlmap/mappers/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
