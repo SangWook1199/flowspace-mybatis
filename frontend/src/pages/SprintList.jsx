@@ -1,0 +1,144 @@
+import { useMemo, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
+
+import SprintCard from "../components/sprint/SprintCard";
+import SprintFilterBar from "../components/sprint/SprintFilterBar";
+import SprintHero from "../components/sprint/SprintHero";
+import BacklogCard from "../components/sprint/BacklogCard";
+import useAiStatus from "../hooks/useAiStatus";
+
+
+// 상단 요약 카드의 구성(라벨/색)이에요. 숫자는 여기 없고 sprints 데이터에서 상태별로 세서 채워요.
+const SUMMARY_ITEMS = [
+  { label: "진행 중", status: "ACTIVE", tone: "indigo" },
+  { label: "계획됨", status: "PLANNING", tone: "sky" },
+  { label: "완료", status: "COMPLETED", tone: "green" },
+];
+
+// 스프린트 목록을 묶는 순서예요.
+const GROUPS = [
+  { status: "ACTIVE", label: "진행 중" },
+  { status: "PLANNING", label: "계획됨" },
+  { status: "COMPLETED", label: "완료", newestFirst: true },
+];
+
+export default function SprintList() {
+  const navigate = useNavigate();
+  // 스프린트·백로그는 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
+  const { sprints, backlog, sprintDataLoading, sprintDataError, reloadSprintData, canManageWorkspace } = useOutletContext();
+  // "AI로 구성" 버튼은 관리자이고 서버에서 AI 기능을 켜 둔 때만 보여줘요.
+  const { status: aiStatus } = useAiStatus();
+  const [filter, setFilter] = useState("ALL");
+  const [query, setQuery] = useState("");
+
+  const summary = useMemo(
+    () =>
+      SUMMARY_ITEMS.map(({ status, ...item }) => ({
+        ...item,
+        value: sprints.filter((sprint) => sprint.status === status).length,
+      })),
+    [sprints],
+  );
+
+  const keyword = query.trim().toLowerCase();
+
+  const visible = useMemo(
+    () =>
+      sprints.filter(
+        (sprint) =>
+          (filter === "ALL" || sprint.status === filter) &&
+          sprint.name.toLowerCase().includes(keyword),
+      ),
+    [sprints, filter, keyword],
+  );
+
+  // 진행 중 → 계획됨 → 완료 순으로 묶어요. 진행 중·계획됨은 먼저 시작하는 순, 완료는 최근에 끝난 순이에요.
+  const groups = useMemo(
+    () =>
+      GROUPS.map(({ status, label, newestFirst }) => ({
+        status,
+        label,
+        items: visible
+          .filter((sprint) => sprint.status === status)
+          .sort((a, b) => (newestFirst ? -1 : 1) * String(a.startDate).localeCompare(String(b.startDate))),
+      })).filter((group) => group.items.length > 0),
+    [visible],
+  );
+
+  // 백로그는 스프린트 상태가 없어서 "전체"일 때만 보이고, 검색어는 이름/설명에 맞아야 해요(스프린트 카드와
+  // 같은 규칙). 작업 개수는 코드에 박지 않고 백로그 작업 목록의 길이로 세요.
+  const showBacklog =
+    filter === "ALL" &&
+    `${backlog.name} ${backlog.description ?? ""}`.toLowerCase().includes(keyword);
+
+  if (sprintDataLoading) {
+    return (
+      <div className="sprintListPage">
+        <p className="emptySprints" role="status">스프린트를 불러오는 중이에요…</p>
+      </div>
+    );
+  }
+
+  if (sprintDataError) {
+    return (
+      <div className="sprintListPage">
+        <div className="emptySprints" role="alert">
+          <p>{sprintDataError}</p>
+          <button type="button" className="sprintDetail" onClick={reloadSprintData}>
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sprintListPage">
+      <SprintHero
+        summary={summary}
+        onCreate={() => navigate("/sprints/new")}
+        onCreateWithAi={canManageWorkspace && aiStatus?.enabled ? () => navigate("/sprints/ai") : undefined}
+      />
+
+      <SprintFilterBar
+        value={filter}
+        query={query}
+        onFilter={setFilter}
+        onQuery={setQuery}
+      />
+
+      <section className="sprintCards">
+        {/* 백로그 */}
+        {showBacklog && (
+          <BacklogCard
+            backlog={backlog}
+            onClick={() => navigate("/sprints/backlog")}
+          />
+        )}
+
+        {/* 일반 스프린트 — 상태별로 묶어서 보여줘요 */}
+        {groups.map((group) => (
+          <div className="sprintGroup" key={group.status}>
+            {/* "전체" 탭일 때만 묶음 제목을 보여줘요(상태 탭을 고르면 이미 한 종류만 보여요). */}
+            {filter === "ALL" && (
+              <h2 className="sprintGroupTitle">
+                {group.label}
+                <span>{group.items.length}</span>
+              </h2>
+            )}
+            {group.items.map((sprint) => (
+              <SprintCard key={sprint.id} sprint={sprint} onNavigate={(id) => navigate(`/sprints/${id}`)} />
+            ))}
+          </div>
+        ))}
+
+        {/* 백로그 카드만 보이고 스프린트는 하나도 없을 때도 안내해요(그때 백로그 카드 때문에 빈 화면으로 보이지 않아요). */}
+        {!visible.length && (
+          <p className="emptySprints">
+            {sprints.length === 0 ? "아직 스프린트가 없어요. 새 스프린트를 만들어보세요." : "조건에 맞는 스프린트가 없어요."}
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}

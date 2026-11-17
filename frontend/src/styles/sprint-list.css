@@ -1,0 +1,643 @@
+.sprintListPage {
+  /* .main이 flex(column) 컨테이너라, margin:0 auto(좌우 auto 마진)를 쓰면
+     기본 stretch 동작이 무시되고 대신 내용물 크기에 맞춰 줄어드는
+     shrink-to-fit 폭으로 계산돼요. 그래서 width:100%가 없으면 max-width를
+     아무리 늘려도(1400→1800) 실제로는 한 번도 안 걸리고 계속 콘텐츠
+     자체 폭(그리드가 필요로 하는 폭)에서 멈춰 있었어요.
+     width:100%로 일단 .main 폭까지 꽉 채우고, max-width로 그 위쪽
+     상한선만 잡아서 아주 넓은 화면에서만 가운데로 모이게 해요.
+     칸반은 컬럼 개수에 맞춰 자연스럽게 늘어나는 구조라 그대로 둬요. */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 26px 30px 40px;
+  box-sizing: border-box;
+}
+.sprintListHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.sprintListHeading h1 {
+  margin: 0 0 8px;
+  font-size: 29px;
+  letter-spacing: -1.6px;
+}
+.sprintListHeading p {
+  margin: 0;
+  color: #65758e;
+  font-size: 14px;
+}
+.sprintListHeading > button {
+  height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: #4f5cf6;
+  color: #fff;
+  padding: 0 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  box-shadow: 0 5px 13px #4f5cf640;
+}
+.sprintSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 21px;
+}
+.sprintSummary article {
+  height: 92px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+  position: relative;
+}
+.sprintSummary span {
+  position: absolute;
+  left: 18px;
+  top: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.sprintSummary p {
+  margin: 0 0 9px 20px;
+  color: #6e7d93;
+  font-size: 12px;
+}
+.sprintSummary strong {
+  margin-left: 20px;
+  font-size: 24px;
+}
+.sprintSummary .indigo,
+.currentSprint i.indigo {
+  background: #4f5cf6;
+}
+.sprintSummary .sky,
+.currentSprint i.sky {
+  background: #27a5df;
+}
+.sprintSummary .green,
+.currentSprint i.green {
+  background: #34ba79;
+}
+.sprintFilter {
+  height: 58px;
+  border-top: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.sprintFilter > div {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+.sprintFilter > div button {
+  height: 31px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #66758e;
+  font-size: 13px;
+}
+.sprintFilter > div button.active {
+  background: #edf0ff;
+  color: #4e5cf4;
+  font-weight: 700;
+}
+.sprintFilter label {
+  margin-left: auto;
+  height: 36px;
+  /* 좁아지면 검색창이 조금씩 줄어들어요(탭 아래로 갑자기 내려가지 않아요). */
+  flex: 0 1 250px;
+  min-width: 130px;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  color: #65758e;
+}
+.sprintFilter input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  font: 13px inherit;
+}
+.filterButton {
+  height: 36px;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.sprintListBody {
+  display: grid;
+  grid-template-columns: 205px minmax(0, 1fr);
+  gap: 18px;
+}
+.currentSprint {
+  height: max-content;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+}
+.currentSprint h2 {
+  font-size: 14px;
+  margin: 0 0 13px;
+}
+.currentSprint button {
+  width: 100%;
+  height: 37px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.currentSprint i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.currentSprint span {
+  font-size: 13px;
+  flex: 1;
+}
+.currentSprint b {
+  font-size: 11px;
+  color: #65758e;
+  background: #f2f4f8;
+  border-radius: 10px;
+  padding: 3px 6px;
+}
+.sprintCards {
+  display: grid;
+  gap: 10px;
+  /* 카드 안의 칸 배치는 화면이 아니라 이 목록의 폭으로 정해요(사이드바가 열려 있으면 화면보다 훨씬 좁아요). */
+  container: cards / inline-size;
+}
+.sprintCard {
+  min-height: 122px;
+  border: 1px solid #e5e7eb;
+  border-left: 5px solid;
+  border-radius: 13px;
+  background: #fff;
+  display: grid;
+  grid-template-columns:
+    minmax(285px, 1.45fr) minmax(155px, 0.75fr) minmax(260px, 1fr)
+    76px;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 17px;
+}
+.sprintCard {
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+.sprintCard:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+}
+.sprintCard:focus-visible {
+  outline: 2px solid #4f5cf6;
+  outline-offset: 2px;
+}
+.sprintCard.indigo {
+  border-left-color: #4f5cf6;
+}
+.sprintCard.sky {
+  border-left-color: #22a7e4;
+}
+.sprintCard.green {
+  border-left-color: #34ba79;
+}
+.sprintCard.amber {
+  border-left-color: #f4a623;
+}
+.sprintIdentity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+}
+.sprintIcon {
+  width: 62px;
+  height: 62px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+}
+.indigo .sprintIcon {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+.sky .sprintIcon {
+  background: #e7f7ff;
+  color: #199bdb;
+}
+.green .sprintIcon {
+  background: #e7f8ef;
+  color: #31b878;
+}
+.amber .sprintIcon {
+  background: #fff5e3;
+  color: #f2a321;
+}
+/* 이름·목표·날짜는 항상 한 줄이에요. 길면 "…"으로 줄여서 카드 높이가 들쭉날쭉해지지 않게 해요. */
+.sprintIdentity h2 {
+  font-size: 18px;
+  margin: 0 0 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* 이름이 길면 이름만 "…"으로 줄이고, 상태 배지는 항상 보여요. */
+.sprintIdentity h2 .sprintName {
+  min-width: 0;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sprintIdentity h2 span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4f5cf6;
+  background: #eeedff;
+  border-radius: 9px;
+  padding: 4px 8px;
+  flex: none;
+  white-space: nowrap; /* "진행 중" 배지가 글자 중간에서 줄바꿈되지 않게 */
+}
+.sprintIdentity > div:last-child {
+  min-width: 0;
+}
+.sprintIdentity p {
+  margin: 0 0 9px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sprintIdentity small {
+  display: block;
+  color: #62728a;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sprintIdentity small svg {
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+/* 상태별로 묶은 스프린트 목록(진행 중 / 계획됨 / 완료) */
+.sprintGroup {
+  display: grid;
+  gap: 10px;
+}
+.sprintGroup + .sprintGroup,
+.backlogCard + .sprintGroup {
+  margin-top: 14px;
+}
+.sprintGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 2px 0;
+  color: #44536b;
+  font-size: 14px;
+  font-weight: 700;
+}
+.sprintGroupTitle span {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef1f7;
+  color: #5d6d85;
+  font-size: 11px;
+  text-align: center;
+}
+.sprintProgress span,
+.sprintNumbers span {
+  font-size: 11px;
+  color: #6c7b91;
+  white-space: nowrap;
+}
+.sprintProgress strong {
+  display: block;
+  margin: 4px 0 7px;
+  font-size: 21px;
+}
+.sprintProgress strong.indigo {
+  color: #4f5cf6;
+}
+.sprintProgress strong.green {
+  color: #30b875;
+}
+.sprintProgress div {
+  height: 7px;
+  background: #e6eaf0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sprintProgress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #9aa7b8;
+}
+.sprintProgress i.indigo {
+  background: #4f5cf6;
+}
+.sprintProgress i.green {
+  background: #34ba79;
+}
+.sprintNumbers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  text-align: center;
+}
+.sprintNumbers b {
+  display: block;
+  font-size: 18px;
+  margin-top: 8px;
+}
+.sprintNumbers span:nth-child(2) b {
+  color: #27ae70;
+}
+.sprintNumbers span:nth-child(3) b {
+  color: #2268e7;
+}
+.sprintDetail {
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.emptySprints {
+  padding: 50px;
+  text-align: center;
+  color: #718099;
+}
+/* =====================================================
+   Backlog Card
+===================================================== */
+
+.backlogCard {
+  border: 1px solid #d8ddff;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.backlogCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(79, 92, 246, 0.12);
+}
+
+.backlogTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.backlogIcon {
+  width: 42px;
+  height: 44px;
+  border-radius: 12px;
+  background: #4f5cf6;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backlogCount {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #4f5cf6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.backlogCard h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.backlogCard p {
+  margin: 6px 0 12px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.backlogBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 카드 폭 기준: 880px 이하면 "상세보기" 버튼을 빼고 3칸, 620px 이하면 한 칸씩 쌓아요. */
+@container cards (max-width: 880px) {
+  .sprintCard {
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.6fr) minmax(0, 1fr);
+    gap: 14px;
+  }
+  .sprintCard .sprintIcon {
+    width: 52px;
+    height: 52px;
+  }
+  .sprintCard .sprintIdentity {
+    gap: 12px;
+  }
+  .sprintCard .sprintDetail {
+    display: none;
+  }
+}
+@container cards (max-width: 620px) {
+  /* 카드가 뚱뚱해지지 않게: 위에 이름·목표·날짜, 아래에 진행률과 숫자 4개를 한 줄로 놓아요. */
+  .sprintCard {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+    gap: 12px 18px;
+    min-height: 0;
+    padding: 14px 16px;
+  }
+  .sprintCard .sprintIdentity {
+    grid-column: 1 / -1;
+    gap: 12px;
+  }
+  .sprintCard .sprintIcon {
+    width: 46px;
+    height: 46px;
+    border-radius: 11px;
+  }
+  .sprintCard .sprintIcon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .sprintCard .sprintIdentity h2 {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  .sprintCard .sprintIdentity p {
+    margin-bottom: 4px;
+  }
+  .sprintCard .sprintProgress strong {
+    font-size: 18px;
+    margin: 2px 0 6px;
+  }
+  .sprintCard .sprintNumbers {
+    gap: 6px;
+  }
+  .sprintCard .sprintNumbers b {
+    margin-top: 4px;
+    font-size: 16px;
+  }
+}
+/* 아주 좁으면 진행률과 숫자를 위아래로 놓고, 진행률은 "진행률 0%"를 한 줄에 둬요. */
+@container cards (max-width: 440px) {
+  .sprintCard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sprintCard .sprintProgress {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
+  .sprintCard .sprintProgress strong {
+    margin: 0 0 6px;
+  }
+  .sprintCard .sprintProgress div {
+    flex: 1 0 100%;
+  }
+}
+@media (max-width: 860px) {
+  .sprintListPage {
+    padding: 22px 18px;
+  }
+  .sprintListBody {
+    grid-template-columns: 1fr;
+  }
+  .currentSprint {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .currentSprint h2 {
+    margin: 0;
+  }
+  .currentSprint button {
+    width: auto;
+    flex: 1;
+  }
+}
+@media (max-width: 640px) {
+  .sprintListPage {
+    padding: 18px 14px 32px;
+  }
+  /* 제목 줄 아래로 버튼이 한 줄로 내려와요(글자가 세로로 꺾이지 않게). */
+  .sprintListHeading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .sprintListHeading > div:first-child {
+    flex: 1 1 100%;
+  }
+  .sprintListHeading h1 {
+    margin-bottom: 6px;
+    font-size: 24px;
+    letter-spacing: -1px;
+  }
+  .sprintHeadingActions {
+    width: 100%;
+  }
+  .sprintHeadingActions > button {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  /* 요약 카드 3장은 폰에서도 한 줄로 작게 놓아요(세로로 쌓으면 화면 절반을 차지해요). */
+  .sprintSummary {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .sprintSummary article {
+    height: auto;
+    padding: 12px;
+  }
+  .sprintSummary span {
+    left: 12px;
+    top: 15px;
+  }
+  .sprintSummary p {
+    margin: 0 0 6px 16px;
+    font-size: 11px;
+  }
+  .sprintSummary strong {
+    margin-left: 16px;
+    font-size: 20px;
+  }
+  /* 폰에서만 검색창이 탭 아래 한 줄로 내려와요. */
+  .sprintFilter {
+    height: auto;
+    padding: 10px 0;
+    flex-wrap: wrap;
+  }
+  .sprintFilter label {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .sprintFilter > div {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .sprintFilter > div button {
+    flex: none;
+    height: 36px;
+    padding: 0 14px;
+  }
+  .sprintFilter label {
+    height: 40px;
+  }
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .sprintFilter input {
+      font-size: 16px;
+    }
+  }
+}

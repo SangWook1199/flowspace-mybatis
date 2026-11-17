@@ -1,0 +1,1785 @@
+/* =========================================================
+   Kanban Board
+========================================================= */
+
+.kanbanPage {
+  /* 좌우 여백은 넓은 화면에서 100px이고, 화면이 줄면 조금씩 같이 줄어요(좁은 화면에서 보드가 찌그러지지 않게). */
+  padding: 28px clamp(12px, 7vw, 100px);
+  background: #f8fafc;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ================= Header ================= */
+
+.kanbanHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+}
+
+.kanbanHeader h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 32px);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.kanbanHeader p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.kanbanHeader__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kanbanHeader__actions button {
+  white-space: nowrap; /* 버튼 글자가 세로로 꺾이지 않게 */
+}
+
+.completeSprintBtn {
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #fff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.completeSprintBtn:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
+.completeSprintBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.addStatusBtn {
+  height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.addStatusBtn:hover {
+  background: #4338ca;
+}
+
+/* 보드 머리의 스프린트 요약(기간 · 남은 일수 · 진행률 · 상세 링크) */
+
+.kanbanSummary {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.kanbanSummary__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.kanbanSummary__progress i {
+  width: 96px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.kanbanSummary__progress b {
+  display: block;
+  height: 100%;
+  background: #4f46e5;
+  border-radius: inherit;
+}
+
+.kanbanSummary a {
+  color: #4338ca;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kanbanSummary a:hover {
+  text-decoration: underline;
+}
+
+/* ================= Filter bar ================= */
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterSearch {
+  flex: 0 1 280px; /* 좁아지면 조금씩 줄어요 */
+  min-width: 160px;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dfe6ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #64748b;
+}
+
+.filterSearch:focus-within {
+  border-color: #6366f1;
+}
+
+.filterSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #111827;
+}
+
+.filterSearch button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+}
+
+.filterMenu {
+  position: relative;
+}
+
+.filterBtn {
+  height: 36px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dfe6ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filterBtn:hover {
+  background: #f8fafc;
+}
+
+.filterBtn.is-active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.filterBtn b,
+.filterPanel__fields li b {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* 지라처럼 왼쪽에서 항목을 고르면 오른쪽에 그 항목의 값이 나오는 필터 패널 */
+.filterPanel {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  z-index: 60;
+  width: 540px;
+  max-width: calc(100vw - 48px);
+  height: 340px;
+  display: flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+}
+
+.filterPanel__fields {
+  position: relative;
+  width: 190px;
+  flex: none;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.filterPanel__fields ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filterPanel__fields > ul {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.filterPanel__fields li button {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.filterPanel__fields li button:hover {
+  background: #f8fafc;
+}
+
+.filterPanel__fields li button.is-current {
+  border-left-color: #4f46e5;
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+.filterPanel__clearAll,
+.filterPanel__foot button {
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #4338ca;
+  cursor: pointer;
+}
+
+.filterPanel__clearAll:hover:not(:disabled),
+.filterPanel__foot button:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
+.filterPanel__clearAll {
+  justify-content: flex-start;
+  color: #334155;
+}
+
+.filterPanel__clearAll:disabled,
+.filterPanel__foot button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.filterPanel__values {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterPanel__values .filterSearch {
+  width: auto;
+}
+
+.filterPanel__options {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.filterPanel__options label {
+  height: 34px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.filterPanel__options label:hover {
+  background: #f8fafc;
+}
+
+.filterPanel__options input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #4f46e5;
+}
+
+.filterPanel__empty {
+  padding: 10px 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.filterPanel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.filterBar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filterBar__count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 비어 있는 컬럼 안내 */
+.columnEmpty {
+  margin: 0;
+  padding: 18px 8px 6px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+/* ================= Board ================= */
+
+.kanbanBoard {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  align-items: flex-start;
+  padding-bottom: 8px;
+}
+
+/* ================= Column ================= */
+
+.kanbanColumn {
+  /* 아주 좁은 화면에선 컬럼이 화면보다 넓지 않게(다음 컬럼이 살짝 보여서 옆으로 밀어볼 수 있어요). */
+  min-width: min(320px, 86vw);
+  max-width: min(320px, 86vw);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  max-height: max(420px, calc(100vh - 190px));
+  transition: opacity 0.15s;
+}
+
+/* 드래그 중인 컬럼 — 원래 자리에 반투명하게 남겨서 어떤 걸 옮기는 중인지
+   보이게 해요. */
+.kanbanColumn.dragging {
+  opacity: 0.45;
+}
+
+.columnHeader {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: grab;
+}
+
+.columnHeader:active {
+  cursor: grabbing;
+}
+
+.columnTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.columnGrip {
+  color: #c3cad8;
+  flex-shrink: 0;
+}
+
+.columnTitle h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.columnTitle span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.columnTitle .columnCount.is-over {
+  color: #dc2626;
+}
+
+.kanbanColumn.is-overWip {
+  border-color: #fca5a5;
+}
+
+/* 접힌 컬럼: 이름과 개수만 세로로 보여주는 좁은 띠 */
+.kanbanColumn.is-collapsed {
+  min-width: 52px;
+  max-width: 52px;
+  cursor: pointer;
+}
+
+.columnCollapsedBtn {
+  width: 100%;
+  min-height: 160px;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  font-family: inherit;
+  color: #334155;
+  cursor: pointer;
+}
+
+.columnCollapsedBtn:hover {
+  background: #f8fafc;
+}
+
+.columnCollapsedName {
+  writing-mode: vertical-rl;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.columnCollapsedBtn b {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.columnCollapsedName.is-over,
+.columnCollapsedBtn b.is-over {
+  color: #dc2626;
+}
+
+.columnFoldBtn {
+  height: 34px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.columnFoldBtn:hover {
+  border-color: #6366f1;
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+.columnDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.columnDot.gray {
+  background: #64748b;
+}
+
+.columnDot.blue {
+  background: #3b82f6;
+}
+
+.columnDot.purple {
+  background: #9333ea;
+}
+
+.columnDot.green {
+  background: #22c55e;
+}
+
+.columnDot.red {
+  background: #ef4444;
+}
+
+.columnDot.orange {
+  background: #f59e0b;
+}
+
+.columnDot.pink {
+  background: #ec4899;
+}
+
+/* 흰색 상태는 점이 안 보여서 얇은 회색 테두리를 줘요. */
+.columnDot.white {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #94a3b8;
+}
+
+.columnMenuWrap {
+  position: relative;
+}
+
+.columnMenu {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.columnMenu:hover {
+  background: #f3f4f6;
+}
+
+.columnDropdown {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  width: 190px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.columnDropdown button {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  padding: 0 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.columnDropdown button:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.columnDropdown button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.columnDropdown .danger {
+  color: #dc2626;
+}
+
+.columnBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.columnAddTask {
+  margin: 12px;
+  height: 40px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.columnAddTask:hover {
+  border-color: #6366f1;
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+/* 새 작업 이름 입력 */
+.columnAddForm {
+  margin: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.columnAddForm input {
+  height: 40px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+  background: #fff;
+}
+
+.columnAddForm input:focus {
+  border-color: #6366f1;
+}
+
+.columnAddForm__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.columnAddForm__actions button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.columnAddForm__actions button[type="submit"] {
+  border-color: #4f46e5;
+  background: #4f46e5;
+  color: #fff;
+}
+
+.columnAddForm__actions button[type="submit"]:disabled {
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+  color: #a3aec0;
+  cursor: default;
+}
+
+/* ================= Card ================= */
+
+.kanbanCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: 0.2s;
+  cursor: grab;
+}
+
+.kanbanCard:active {
+  cursor: grabbing;
+}
+
+.kanbanCard:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
+}
+
+/* 드래그 중인 카드 — 컬럼 드래그와 같은 방식으로 반투명 처리 */
+.kanbanCard.dragging {
+  opacity: 0.45;
+}
+
+/* 카드를 놓을 위치를 보여주는 줄(지라 스타일 drop indicator) */
+.dropIndicator {
+  height: 3px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* 컬럼(status)을 놓을 위치를 보여주는 세로줄 — 카드용과 같은 색이에요.
+   kanbanBoard가 가로 flex라, align-self: stretch로 그 줄의 제일 큰
+   컬럼 높이만큼 늘어나요. */
+.dropIndicatorVertical {
+  width: 3px;
+  align-self: stretch;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* 마지막 컬럼 오른쪽의 "여기 놓으면 맨 끝으로" 전용 드롭 영역. 눈에는
+   안 보이지만(배경 없음) flex: 1로 남는 공간을 다 차지해서, 컬럼 사이
+   좁은 gap과 달리 확실하게 손에 잡히는 크기의 드롭 타겟이 돼요. */
+.boardEndZone {
+  flex: 1;
+  min-width: 60px;
+  align-self: stretch;
+}
+
+/* 컬럼 안, 마지막 카드 아래의 "여기 놓으면 이 컬럼 맨 끝으로" 전용
+   드롭 영역 — boardEndZone과 같은 역할이에요. flex: 1이라 카드가
+   없을 땐(빈 컬럼) 컬럼 전체를 채워요. */
+.columnEndZone {
+  flex: 1;
+  min-height: 24px;
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardTop small {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+.cardMenu {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.cardMenu:hover {
+  background: #f3f4f6;
+}
+
+.kanbanCard h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: #111827;
+}
+
+/* 카드 첫 줄: 제목 + 오른쪽 끝 이름 수정(연필) */
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kanbanCard .cardHead h4 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardEditBtn {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.cardEditBtn:hover,
+.cardEditBtn:focus-visible,
+.cardEditBtn.is-open {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.cardTitleInput {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #6366f1;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #111827;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* 카드 둘째 줄: 우선순위 · D-day, 오른쪽 끝 담당자 */
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cardMeta .priority {
+  flex: none;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.dueBadge {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dueBadge.soon {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.dueBadge.late {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* 누르면 카드에서 바로 바꿀 수 있는 배지(우선순위·D-day) */
+.badgeBtn {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.badgeBtn:hover,
+.badgeBtn:focus-visible {
+  filter: brightness(0.95);
+  outline: 2px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 1px;
+}
+
+/* ================= 카드 팝업(... 메뉴, 우선순위, 마감일) ================= */
+
+.floatingPanel {
+  position: fixed;
+  z-index: 10000;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.cardMenuList {
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardMenuList button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardMenuList button > svg:last-child:not(:first-child) {
+  margin-left: auto;
+}
+
+.cardMenuList button:hover:not(:disabled),
+.cardMenuList button[aria-expanded="true"] {
+  background: #f1f5f9;
+}
+
+.cardMenuList button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.cardMenuEntry {
+  position: relative;
+}
+
+.cardSubMenu {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 4px);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.cardSubMenu.is-left {
+  left: auto;
+  right: calc(100% + 4px);
+}
+
+.cardSubMenu button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardSubMenu button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.cardSubMenu button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.cardSubMenu button svg {
+  margin-left: auto;
+}
+
+.cardSubMenu button:disabled .columnDot {
+  opacity: 0.45;
+}
+
+.cardQuickBody {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardQuickBody label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cardQuickBody input {
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.cardQuickBody button {
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: #4f46e5;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cardQuickBody button:disabled {
+  background: #c7d2fe;
+  cursor: default;
+}
+
+.cardQuickError {
+  font-size: 11.5px;
+  color: #dc2626;
+}
+
+.cardAssignees {
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cardAssignees:hover,
+.cardAssignees.is-open {
+  background: #eef2ff;
+}
+
+.cardAssignees .cardAvatarItem {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.cardAssignees > .cardAvatarItem + .cardAvatarItem {
+  margin-left: -7px;
+}
+
+.cardAssigneeMore {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.avatars {
+  display: flex;
+}
+
+.avatars span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  margin-left: -8px;
+}
+
+.avatars span:first-child {
+  margin-left: 0;
+}
+
+.priority {
+  font-style: normal;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.priority.high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority.medium {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.priority.low {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+/* 날짜 */
+
+.cardDate {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 진행률 */
+
+.cardProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardProgress div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.progressBar {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: inherit;
+}
+
+/* ================= Subtask ================= */
+
+/* 하위 작업 줄: 펼침 버튼 + 오른쪽 "+" (카드 크기는 하위 작업이 0개여도 같아요) */
+.subtaskBar {
+  height: 34px;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+}
+
+.subtaskBar:hover {
+  background: #eef2ff;
+}
+
+.subtaskToggle {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.subtaskBar:hover .subtaskToggle {
+  color: #4338ca;
+}
+
+/* 하위 작업이 없으면 펼칠 수 없어서 눌러도 반응하지 않는 모양이에요. */
+.subtaskToggle[aria-disabled="true"],
+.subtaskBar:hover .subtaskToggle[aria-disabled="true"] {
+  color: #475569;
+  cursor: default;
+}
+
+.subtaskAddBtn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.subtaskAddBtn:hover,
+.subtaskAddBtn:focus-visible {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.subtaskAdd input {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.subtaskAdd input:focus {
+  border-style: solid;
+  border-color: #6366f1;
+}
+
+.subtaskList {
+  border-top: 1px solid #eef2f7;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subtaskItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.subtaskItem input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex: none;
+  cursor: pointer;
+}
+
+.subtaskItem input:disabled {
+  cursor: default;
+}
+
+.subtaskItem .done {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+/* ================= Status Modal ================= */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.statusModal {
+  width: min(430px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.2);
+}
+
+.statusModalHeader {
+  padding: 22px;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.statusModalHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.statusModalHeader p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.closeBtn {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: #e5e7eb;
+}
+
+.statusModalBody {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.field input {
+  height: 42px;
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.field input:focus {
+  border-color: #6366f1;
+}
+
+/* 컬럼 색상 선택: 워크스페이스 생성의 색 선택(.color-chip)과 같은 모양이에요.
+   (.colorPicker/.colorCircle는 스프린트·캘린더 쪽 스타일과 이름이 겹쳐서 상태 모달 전용 이름을 써요.) */
+.statusColorPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.statusColorCircle {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+
+.statusColorCircle.active {
+  border-color: #111827;
+}
+
+.statusColorCircle.gray {
+  background: #64748b;
+}
+
+.statusColorCircle.blue {
+  background: #3b82f6;
+}
+
+.statusColorCircle.green {
+  background: #22c55e;
+}
+
+.statusColorCircle.purple {
+  background: #9333ea;
+}
+
+.statusColorCircle.red {
+  background: #ef4444;
+}
+
+.statusColorCircle.orange {
+  background: #f59e0b;
+}
+
+.statusColorCircle.pink {
+  background: #ec4899;
+}
+
+/* 흰색은 배경과 안 보여서 얇은 회색 테두리를 줘요. */
+.statusColorCircle.white {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #94a3b8;
+}
+
+.statusModalFooter {
+  padding: 18px 22px;
+  border-top: 1px solid #eef2f7;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancelBtn {
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background: #e5e7eb;
+}
+
+.saveBtn {
+  height: 40px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover {
+  background: #4338ca;
+}
+
+/* ===== Category Select ===== */
+
+.field select {
+  height: 42px;
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+}
+
+.field select:focus {
+  border-color: #6366f1;
+}
+
+.field small {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* ===== Delete Status Modal ===== */
+
+.deleteAlert {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.deleteAlert svg {
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.deleteAlert strong {
+  display: block;
+  color: #991b1b;
+  margin-bottom: 4px;
+}
+
+.deleteAlert p {
+  margin: 0;
+  font-size: 13px;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.field select {
+  height: 42px;
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.field select:focus {
+  border-color: #6366f1;
+}
+
+/* ===== Delete Status Modal ===== */
+
+.deleteNotice {
+  padding: 14px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.deleteNotice h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #991b1b;
+}
+
+.deleteNotice p {
+  margin: 0;
+  font-size: 13px;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.field select {
+  height: 42px;
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.field select:focus {
+  border-color: #6366f1;
+}
+
+.deleteBtn {
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.deleteBtn:hover {
+  background: #b91c1c;
+}
+
+/* ================= Scroll ================= */
+
+.columnBody::-webkit-scrollbar,
+.kanbanBoard::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.columnBody::-webkit-scrollbar-thumb,
+.kanbanBoard::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.columnBody::-webkit-scrollbar-track,
+.kanbanBoard::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ================= 담당자 간편 배정 팝업 ================= */
+
+.assigneePop {
+  position: fixed;
+  z-index: 1000;
+  padding: 8px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+}
+
+.assigneePop__search {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+  box-sizing: border-box;
+}
+
+.assigneePop__search:focus {
+  border-color: #6366f1;
+}
+
+.assigneePop__list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.assigneePop__list button {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assigneePop__list button:hover {
+  background: #f1f4fb;
+}
+
+.assigneePop__list button > svg {
+  flex: none;
+  color: #4f5cf6;
+}
+
+.assigneePop__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.assigneePop__text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2a3d;
+}
+
+.assigneePop__text b small {
+  font-size: 11px;
+  font-weight: 400;
+  color: #7a899f;
+}
+
+.assigneePop__text em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-style: normal;
+  color: #7a899f;
+}
+
+.assigneePop__empty {
+  padding: 12px 8px;
+  font-size: 12px;
+  color: #7a899f;
+}
+
+/* ================= 작업 편집 모달 ================= */
+
+.taskModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900; /* 멤버 프로필 카드(1100)·확인 창(10000)보다 아래예요 */
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.taskModal {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+}
+
+/* 작업 페이지 오른쪽 패널을 그대로 쓰니까, 패널 쪽의 옆 테두리·세로 높이만 모달에 맞게 풀어요. */
+.taskModal > aside {
+  border-left: 0;
+  min-height: 0;
+  padding: 24px 22px 26px;
+  background: transparent;
+}
+
+/* ================= 좁은 화면 ================= */
+
+@media (max-width: 640px) {
+  .kanbanPage {
+    padding-top: 18px;
+    gap: 16px;
+  }
+  /* 머리의 두 버튼은 이름 아래 한 줄로 꽉 차게 놓아요. */
+  .kanbanHeader__actions {
+    width: 100%;
+  }
+  .kanbanHeader__actions > button {
+    flex: 1;
+    justify-content: center;
+  }
+  .filterSearch {
+    flex: 1 1 100%;
+  }
+  .filterBar__right {
+    margin-left: 0;
+  }
+  /* 필터 패널은 화면 아래에서 올라오는 시트 모양으로 바꿔요(옆으로 540px이 안 들어가요). */
+  .filterPanel {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    max-width: none;
+    height: min(420px, 70dvh);
+  }
+  .filterPanel__fields {
+    width: 132px;
+  }
+  .taskModalOverlay {
+    padding: 12px;
+  }
+  .taskModal {
+    max-height: calc(100dvh - 24px);
+  }
+  .taskModal > aside {
+    padding: 18px 16px 22px;
+  }
+  .statusModalHeader {
+    padding: 18px;
+  }
+}

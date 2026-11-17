@@ -1,0 +1,881 @@
+.sprintDetailPage {
+  /* .main이 flex(column)라 margin:0 auto만 쓰면 stretch가 안 먹혀서
+     max-width가 한 번도 안 걸리는 문제가 있었어요(스프린트 목록에서
+     겪은 것과 동일). width:100%를 같이 줘서 .main 폭까지는 꽉 채우고,
+     아주 넓은 화면에서만 1800px에서 멈추게 해요. */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 24px 30px 102px;
+  box-sizing: border-box;
+}
+.detailHero {
+  min-height: 158px;
+  margin: 14px 0 20px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 99px 1fr minmax(320px, 0.7fr);
+  align-items: center;
+  gap: 20px;
+  padding: 26px 20px;
+}
+.detailIcon {
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+  background: #f0efff;
+  color: #4f5cf6;
+  display: grid;
+  place-items: center;
+}
+.detailTitle h1 {
+  font-size: 28px;
+  letter-spacing: -1.3px;
+  margin: 0 0 12px;
+}
+.detailTitle h1 span {
+  font-size: 12px;
+  color: #2769ed;
+  background: #eaf2ff;
+  border-radius: 10px;
+  padding: 5px 9px;
+  margin-left: 9px;
+  vertical-align: 5px;
+}
+.detailTitle p {
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.detailTitle small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #5d6d86;
+}
+.detailProgress {
+  position: relative;
+}
+.detailProgress .sprintProgress {
+  width: 100%;
+}
+.detailProgress .sprintProgress strong {
+  font-size: 21px;
+}
+.detailProgress > b {
+  position: absolute;
+  right: 0;
+  bottom: 22px;
+  color: #56667f;
+  font-size: 12px;
+}
+.detailMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.detailMetrics article {
+  height: 99px;
+  border: 1px solid #e3e8f0;
+  border-radius: 11px;
+  background: #fff;
+  padding: 20px;
+  position: relative;
+}
+.detailMetrics article > span {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.detailMetrics .gray {
+  color: #95a2b5;
+  background: #eef1f5;
+}
+.detailMetrics .orange {
+  color: #ff971d;
+  background: #fff0d9;
+}
+.detailMetrics .green {
+  color: #24b974;
+  background: #e4f8ed;
+}
+.detailMetrics .indigo {
+  color: #4f5cf6;
+  background: #eeecff;
+}
+.detailMetrics p {
+  margin: 1px 0 11px 48px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.detailMetrics strong {
+  margin-left: 48px;
+  font-size: 28px;
+}
+.detailMetrics strong small {
+  font-size: 15px;
+  color: #596980;
+}
+.detailTasks {
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.detailTasks > header {
+  height: 87px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-bottom: 1px solid #e7ebf2;
+}
+.detailTasks h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.detailTasks header p {
+  margin: 0;
+  color: #62728b;
+  font-size: 12px;
+}
+.detailTasks header > div:last-child {
+  display: flex;
+  gap: 10px;
+}
+.detailTasks header button {
+  height: 38px;
+  padding: 0 13px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.detailTasks header button:last-child {
+  border-color: #4f5cf6;
+  background: #4f5cf6;
+  color: #fff;
+}
+.taskHead,
+.taskRow {
+  display: grid;
+  grid-template-columns:
+    44px 76px minmax(150px, 1.25fr)
+    minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
+    minmax(140px, 1.1fr) minmax(90px, 0.8fr);
+  align-items: center;
+}
+.taskHead {
+  height: 42px;
+  padding: 0 22px;
+  background: #fbfcfe;
+  color: #617089;
+  font-size: 12px;
+}
+.taskHead span {
+  text-align: center;
+}
+.taskRow {
+  min-height: 45px;
+  padding: 0 22px;
+  border-top: 1px solid #eef1f5;
+  position: relative;
+}
+.taskRow > button {
+  position: absolute;
+  left: 17px;
+  width: 22px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+.taskRow > .taskDot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-left: 35px;
+}
+.taskDot.red {
+  background: #ef4d55;
+}
+.taskDot.orange {
+  background: #ff9e1f;
+}
+.taskDot.green {
+  background: #36b979;
+}
+.taskRow > b {
+  margin-left: -98px;
+  padding-left: 53px;
+  font-size: 13px;
+}
+.assignee {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.assignee i {
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #e6ebf2;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 10px;
+}
+.taskRow em {
+  justify-self: center;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-style: normal;
+}
+/* 우선순위: 색 알약 + 깃발 아이콘(높음 빨강 / 보통 주황 / 낮음 초록) — 작업 페이지와 같아요 */
+.taskRow em {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.taskRow em.high {
+  color: #e65353;
+  background: #feeaea;
+}
+.taskRow em.medium {
+  color: #d8820c;
+  background: #fff2df;
+}
+.taskRow em.low {
+  color: #199866;
+  background: #e4f8ee;
+}
+.taskRow .taskCode {
+  justify-self: center;
+  color: #7a899f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.taskRow .assigneeStack {
+  justify-self: center;
+}
+.taskRow time,
+.subtask time {
+  justify-self: center;
+  font-size: 12px;
+}
+.subtaskProgress {
+  justify-self: center;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.subtaskProgress i {
+  width: 80px;
+  height: 6px;
+  border-radius: 8px;
+  background: #e6eaf0;
+}
+.subtaskProgress b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #34ba79;
+}
+.taskRow mark,
+.subtask mark {
+  justify-self: center;
+  background: #eaf2ff;
+  color: #286ee7;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.taskActions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.taskActions button {
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+.subtask {
+  min-height: 39px;
+  display: grid;
+  grid-template-columns:
+    44px 76px minmax(150px, 1.25fr)
+    minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
+    minmax(140px, 1.1fr) minmax(90px, 0.8fr);
+  align-items: center;
+  padding: 0 22px 0 66px;
+  border-top: 1px solid #f0f2f6;
+  font-size: 13px;
+}
+.subtaskEmpty {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+.subtaskCheck {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #28ba74;
+  color: #28ba74;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  margin-right: 11px;
+}
+.detailBottomActions {
+  position: fixed;
+  left: var(--sidebar-w, 278px);
+  transition: left 0.22s ease;
+  right: 0;
+  bottom: 0;
+  height: 76px;
+  border-top: 1px solid #e5eaf2;
+  background: #fff;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 20px;
+  padding: 0 30px;
+  z-index: 2;
+}
+.detailBottomActions button {
+  height: 50px;
+  border: 1px solid #dfe5ee;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 22px;
+  font-weight: 700;
+}
+.detailBottomActions button.dangerAction {
+  color: #e95154;
+}
+.detailBottomActions .actionLabel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.detailBottomActions button:last-child {
+  min-width: 290px;
+  background: #4f5cf6;
+  border-color: #4f5cf6;
+  color: #fff;
+  text-align: left;
+  font-size: 15px;
+}
+.detailBottomActions button:last-child small {
+  display: block;
+  margin-left: 24px;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.backlogSummary small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.backlogSummary h2 {
+  margin: 2px 0 8px;
+  color: #4f5cf6;
+  font-size: 32px;
+}
+
+.backlogBar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.backlogBar div {
+  width: 100%;
+  height: 100%;
+  background: #8b5cf6;
+}
+
+.assigneeStack {
+  display: flex;
+  align-items: center;
+}
+
+.assigneeAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  margin-left: -6px;
+}
+
+.assigneeAvatar:first-child {
+  margin-left: 0;
+}
+.assigneeAvatar {
+  overflow: hidden;
+}
+/* 이니셜 색은 user_id로 정해요(utils/avatarColor.js) — 헤더·오늘의 작업과 같은 색이에요. */
+.assigneeAvatar.blue {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+.assigneeAvatar.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+.assigneeAvatar.purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+.assigneeAvatar.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+.assigneeAvatar.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+.assigneeAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 담당자 없음: 점선 동그라미 + 사람 아이콘 */
+.assigneeAvatar.assigneeEmpty {
+  background: #fff;
+  color: #9aa6b8;
+  border: 1px dashed #c3ccd9;
+}
+
+/* ===== 작업 가져오기 모달 ===== */
+/* kanban.css의 .statusModal(430px)보다 우선하도록 클래스를 겹쳐 써요. */
+.statusModal.importModal {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+.importModal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 22px 16px;
+}
+.importModal__empty {
+  margin: 32px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+.importModal__group {
+  margin-top: 14px;
+}
+.importModal__group > header label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.importModal__group > header span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.importModal__group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #eef1f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.importModal__group li + li {
+  border-top: 1px solid #eef1f5;
+}
+.importModal__group li label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.importModal__group li label:hover {
+  background: #f8fafc;
+}
+.importModal__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 400;
+}
+.importModal__assignees {
+  display: flex;
+}
+.importModal__assignees i {
+  width: 22px;
+  height: 22px;
+  margin-left: -4px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #e8eaff;
+  color: #4f5cf6;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+.importModal__status {
+  min-width: 52px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-style: normal;
+  text-align: center;
+}
+.importModal__status.in_progress {
+  background: #eaf2ff;
+  color: #2769ed;
+}
+.importModal__status.done {
+  background: #ddf8ea;
+  color: #15803d;
+}
+.importModal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid #eef2f7;
+}
+.importModal__footer button {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.importModal__footer button.primary {
+  border-color: #4f5cf6;
+  background: #4f5cf6;
+  color: #fff;
+}
+.importModal__footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== 작업 목록: 높이 고정 + 빈 상태 ===== */
+.taskListBody {
+  height: 480px;
+  overflow-y: auto;
+}
+.taskListEmpty {
+  margin: 0;
+  padding: 80px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* 열 제목은 스크롤해도 위에 붙어 있어요. */
+.taskListBody .taskHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* ===== 스프린트 상단 카드: 크기가 변하지 않게 고정 + 설명 팝오버 ===== */
+.detailHero {
+  position: relative;
+  min-height: 200px;
+}
+/* 이름은 한 줄, 목표는 두 줄까지만 보여줘서 글이 길어도 카드가 커지지 않아요. */
+.detailTitle {
+  min-width: 0;
+}
+.detailTitle h1 {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.detailTitle h1 em {
+  font-style: normal;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detailTitle h1 span {
+  flex: none;
+  vertical-align: baseline;
+}
+.detailTitle p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 22px;
+}
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.heroDescWrap {
+  position: relative;
+}
+.heroAction {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.heroAction:hover,
+.heroAction.on {
+  border-color: #4f5cf6;
+  color: #4f5cf6;
+}
+.heroAction .flip {
+  transform: rotate(180deg);
+}
+/* 카드를 밀어내지 않고 위에 떠요. */
+.heroDescPopover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(560px, 80vw);
+  max-height: 260px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.heroDescPopover ul,
+.heroDescPopover ol {
+  margin: 2px 0;
+  padding-left: 20px;
+}
+.heroDescPopover a {
+  color: #4f5cf6;
+}
+.heroDescPopover section + section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e3e8f0;
+}
+.heroDescPopover h3 {
+  margin: 0 0 4px;
+  color: #1e293b;
+  font-size: 12px;
+}
+.heroDescPopover p {
+  margin: 0;
+  min-height: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  font-weight: 400;
+}
+
+/* ===== 반응형: 상단 카드·지표·작업 표가 "한 번에" 좁은 화면 모양으로 바뀌어요 =====
+   기준은 화면이 아니라 본문(.detailBody) 폭이에요. 사이드바가 열려 있어도 알맞게 따라가요.
+   (표가 모든 열을 담을 수 있는 가장 좁은 폭이 880px이라, 그보다 좁아지면 한꺼번에 바뀌어요.) */
+.detailBody {
+  container: detailbody / inline-size;
+}
+@container detailbody (max-width: 880px) {
+  .detailHero {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 0;
+    margin: 10px 0 14px;
+    padding: 16px;
+  }
+  .detailIcon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+  }
+  .detailIcon svg {
+    width: 28px;
+    height: 28px;
+  }
+  .detailTitle h1 {
+    font-size: 22px;
+    letter-spacing: -0.8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+  .detailTitle h1 em {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .detailTitle h1 span {
+    margin-left: 0;
+    vertical-align: baseline;
+  }
+  .detailTitle p {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .detailTitle small {
+    flex-wrap: wrap;
+  }
+  /* 진행률은 이름 아래로 내려오되 "진행률 0%  ·  0 / 9 완료"를 한 줄에 합쳐서 낮게 둬요. */
+  .detailProgress {
+    grid-column: 1 / -1;
+  }
+  .detailProgress .sprintProgress {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
+  .detailProgress .sprintProgress strong {
+    margin: 0 0 6px;
+  }
+  .detailProgress .sprintProgress div {
+    flex: 1 0 100%;
+  }
+  .detailProgress > b {
+    top: 4px;
+    bottom: auto;
+  }
+  .detailMetrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .detailMetrics article {
+    height: auto;
+    min-height: 84px;
+    padding: 14px;
+  }
+  .detailMetrics p {
+    margin: 1px 0 8px 40px;
+    font-size: 12px;
+  }
+  .detailMetrics strong {
+    margin-left: 40px;
+    font-size: 22px;
+  }
+}
+@container detailbody (max-width: 340px) {
+  .detailMetrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 페이지 바깥 여백: 사이드바가 오버레이로 바뀌는 900px에서 한 번만 줄어요. */
+@media (max-width: 900px) {
+  .sprintDetailPage {
+    padding: 14px 12px 96px;
+  }
+}
+/* 아래 고정 버튼 줄: 이 줄의 폭은 사이드바가 정해서, 사이드바가 열렸을 땐 1200px / 접혔을 땐 900px 이하에서 한 번에 낮고 꽉 차게 바뀌어요. */
+@media (max-width: 1200px) {
+  :root:not([data-sidebar="collapsed"]) .detailBottomActions {
+    height: auto;
+    min-height: 64px;
+    gap: 8px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  :root:not([data-sidebar="collapsed"]) .detailBottomActions button {
+    height: 46px;
+    padding: 0 14px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  :root:not([data-sidebar="collapsed"]) .detailBottomActions button:last-child {
+    flex: 1;
+    min-width: 0;
+  }
+  :root:not([data-sidebar="collapsed"]) .detailBottomActions button:last-child small {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  :root[data-sidebar="collapsed"] .detailBottomActions {
+    height: auto;
+    min-height: 64px;
+    gap: 8px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  :root[data-sidebar="collapsed"] .detailBottomActions button {
+    height: 46px;
+    padding: 0 14px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  :root[data-sidebar="collapsed"] .detailBottomActions button:last-child {
+    flex: 1;
+    min-width: 0;
+  }
+  :root[data-sidebar="collapsed"] .detailBottomActions button:last-child small {
+    display: none;
+  }
+}

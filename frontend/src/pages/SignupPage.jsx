@@ -1,0 +1,69 @@
+import { useState } from "react";
+
+import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
+import SignupForm from "../components/auth/SignupForm";
+import PreviewCarousel from "../components/auth/PreviewCarousel";
+import useMediaQuery from "../hooks/useMediaQuery";
+import "../styles/auth.css";
+
+import dashboard from "../assets/login/dashboard-summary.webp";
+import kanban from "../assets/login/kanban-summary.webp";
+import calendar from "../assets/login/calendar-summary.webp";
+import document from "../assets/login/document-summary.webp";
+
+// 로그인 폼 아래로 소개 카드가 내려가는 폭(auth.css의 1080px)과 같아야 해요.
+const HIDE_PREVIEW_QUERY = "(max-width: 1080px)";
+
+export default function SignupPage() {
+  const [current, setCurrent] = useState(0);
+  // 한 줄로 쌓이는 폭에서는 소개 카드를 그리지 않아요(숨겨도 이미지를 계속 내려받으니까요).
+  const hidePreview = useMediaQuery(HIDE_PREVIEW_QUERY);
+
+  const previews = [
+    {
+      image: dashboard,
+      title: "함께 일하는 공간",
+      description: "스프린트 진행률과 오늘의 작업을 한눈에 관리하세요.",
+    },
+    {
+      image: kanban,
+      title: "칸반으로 업무 관리",
+      description: "진행 중 · 검토 · 완료 상태를 직관적으로 확인하세요.",
+    },
+    {
+      image: calendar,
+      title: "일정을 놓치지 마세요",
+      description: "팀 일정과 마감일을 월간 캘린더로 관리합니다.",
+    },
+    {
+      image: document,
+      title: "문서를 함께 작성하세요",
+      description:
+        "기획서, 회의록 등의 문서를 작성하고 하나의 워크스페이스에서 관리하세요.",
+    },
+  ];
+
+  return (
+    <main className="login-page">
+      <div className="login-container">
+        {/* 왼쪽 회원가입 */}
+        <section className="login-card">
+          <FlowSpaceLogo />
+
+          <SignupForm />
+        </section>
+
+        {/* 오른쪽 소개 */}
+        {!hidePreview && (
+          <section className="preview-card">
+            <PreviewCarousel
+              items={previews}
+              current={current}
+              onChange={setCurrent}
+            />
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}

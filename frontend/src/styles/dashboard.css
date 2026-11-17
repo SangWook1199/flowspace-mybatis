@@ -1,0 +1,1303 @@
+/* =========================================================
+   FlowSpace Dashboard
+========================================================= */
+
+.content {
+  /* 다른 페이지들과 같은 이유로 width:100%를 같이 줘요(.main이
+     flex-column이라 margin:0 auto만으로는 max-width가 안 걸려요). */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  background: #f7f9fc;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* ================= Welcome ================= */
+
+.welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.welcome h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: #111827;
+}
+
+.welcome p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.welcomeInfo {
+  text-align: right;
+}
+
+.welcomeInfo time {
+  display: block;
+  font-weight: 600;
+  color: #334155;
+}
+
+.welcomeInfo span {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* =====================================================
+   Sprint Banner
+===================================================== */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 22px 28px 20px;
+  background: linear-gradient(135deg, #eef4ff 0%, #dce8ff 100%);
+  border: 1px solid #e5ecff;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      145deg,
+      transparent 42%,
+      rgba(255, 255, 255, 0.45) 42.5%,
+      transparent 62%
+    ),
+    linear-gradient(
+      30deg,
+      transparent 70%,
+      rgba(91, 109, 255, 0.08) 70.5%,
+      transparent 86%
+    );
+}
+
+/* 스프린트가 없을 때 배너 자리에 보여주는 안내 문구 */
+.heroEmpty {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 18px 0;
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 2;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 36px;
+
+  min-height: 150px;
+}
+
+.heroLeft {
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.heroLeft > small,
+.heroGoal > small {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.heroTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 10px;
+}
+
+.heroTitle h2 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: #111827;
+}
+
+.heroTitle span {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #ddf8ea;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.heroDate {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.heroDate svg {
+  flex-shrink: 0;
+}
+
+.heroDate b {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* ========================================
+   왼쪽 영역 안에서만 존재하는 Progress
+======================================== */
+
+.heroProgress {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.heroProgressRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.heroBar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #dbe5ff;
+}
+
+.heroBar div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #5b6dff, #4f46e5);
+}
+
+.heroProgressRow strong {
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.heroPercent {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 7px;
+}
+
+.heroPercent span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* ========================================
+   Right Goal
+======================================== */
+
+.heroGoal {
+  min-width: 0;
+  padding-left: 28px;
+  border-left: 1px solid rgba(99, 102, 241, 0.16);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.goalTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 11px 0 9px;
+}
+
+.goalTitle svg {
+  flex-shrink: 0;
+  color: #111827;
+}
+
+.goalTitle h4 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #111827;
+}
+
+.heroGoal p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ===== KPI 4개 가로 배치 ===== */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 22px;
+}
+
+.metricCard {
+  background: #fff;
+  border: 1px solid #e8edf6;
+  border-radius: 18px;
+  padding: 14px 16px;
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.metricHeader {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.metricIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metricIcon.blue {
+  background: #e8eeff;
+  color: #4f6cff;
+}
+
+.metricIcon.purple {
+  background: #f3e8ff;
+  color: #8b5cf6;
+}
+
+.metricIcon.green {
+  background: #e8f8ee;
+  color: #16a34a;
+}
+
+.metricBody h3 {
+  margin: 6px 0 2px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.metricBody span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.metricCard p {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.metricCard strong {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.metricCard small {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.memberStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* ================= 3 Column Layout ================= */
+
+.dashboardMain {
+  display: grid;
+  grid-template-columns: 2.1fr 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.workSection,
+.scheduleSection,
+.activitySection {
+  min-width: 0;
+}
+
+/* 오늘의 작업 카드는 자기 폭을 재요(좁으면 담당자 칸을 접는 규칙이 아래 @container work에 있어요). */
+.workSection {
+  container: work / inline-size;
+}
+
+/* ================= Panel ================= */
+
+.panel {
+  background: #fff;
+  border: 1px solid #e8edf6;
+  border-radius: 18px;
+  padding: 18px;
+  height: 100%;
+}
+
+/* 대시보드 3열 카드는 내용이 늘거나 줄어도 높이가 변하지 않게 고정하고, 넘치는 부분은 카드 안에서 스크롤해요. */
+.dashboardMain .panel {
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboardMain .panelHeader,
+.dashboardMain .taskFilter,
+.dashboardMain .calendarDate {
+  flex-shrink: 0;
+}
+
+/* 내용이 없을 때 보여주는 안내 문구예요. */
+.emptyText {
+  margin: auto;
+  padding: 24px 0;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
+
+.panelScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 표 머리글은 스크롤해도 위에 남아 있어요. */
+.panelScroll .taskTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.more {
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+/* ================= Task ================= */
+
+.taskFilter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* 탭(상태 필터)과 검색칸을 한 줄에 놓아요. */
+.taskToolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.taskSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 190px;
+  height: 31px;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.taskSearch:focus-within {
+  background: #eef2ff;
+  box-shadow: 0 0 0 1.5px #c7d2fe;
+}
+
+.taskSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: #334155;
+}
+
+.taskSearch input::placeholder {
+  color: #94a3b8;
+}
+
+.taskFilter button {
+  border: none;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.taskFilter .active {
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+/* ===== Table ===== */
+
+.taskTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.taskTable th {
+  text-align: left;
+  padding: 8px 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 정렬할 수 있는 머리글은 글자와 화살표가 한 덩어리 버튼이에요. */
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortBtn svg {
+  opacity: 0.6;
+}
+
+.sortBtn:hover,
+.sortBtn.sortActive {
+  color: #475569;
+}
+
+.sortBtn.sortActive svg {
+  opacity: 1;
+  color: #4f46e5;
+}
+
+.taskTable td {
+  padding: 9px 8px;
+  border-top: 1px solid #eef2f7;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+/* ===== Column Width ===== */
+/* 1=우선순위 2=작업 제목 3=상태 4=담당 5=마감 6=(빈 칸) */
+
+/* 제목 칸(2번)은 너비를 따로 주지 않아요. 나머지 칸이 필요한 만큼만 쓰고 남는 자리를 전부 제목이 가져가요. */
+
+.taskTable th:nth-child(1),
+.taskTable td:nth-child(1) {
+  width: 72px;
+}
+
+.taskTable th:nth-child(3),
+.taskTable td:nth-child(3) {
+  width: 96px;
+  text-align: center;
+}
+
+.taskTable th:nth-child(4),
+.taskTable td:nth-child(4) {
+  width: 108px;
+  text-align: center;
+}
+
+.taskTable th:nth-child(5),
+.taskTable td:nth-child(5) {
+  width: 104px;
+}
+
+.taskTable th:last-child,
+.taskTable td:last-child {
+  width: 12px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.taskTable th {
+  white-space: nowrap;
+}
+
+/* ===== Title ===== */
+
+/* 제목은 자르지 않고 줄바꿈해서 끝까지 보여줘요(칸이 좁으면 두 줄이 돼요). */
+.taskTitle {
+  font-weight: 400;
+  color: #111827;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* 작업 줄을 누르면 그 작업으로 이동해요(TodayWorkCard의 openTask). 눌러진다는 걸 보여주려고 호버 때
+   줄에 옅은 배경과 제목 색을 줘요. */
+.taskRowLink {
+  cursor: pointer;
+}
+
+.taskRowLink:hover td {
+  background: #f7f8ff;
+}
+
+.taskRowLink:hover .taskTitle {
+  color: #4f46e5;
+}
+
+.taskRowLink:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: -2px;
+}
+
+/* ===== Priority ===== */
+
+.priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.priority.high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority.medium {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.priority.low {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.priority.done {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* ===== Status ===== */
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.statusTodo {
+  background: #f3f4f6;
+  color: #475569;
+}
+
+.statusProgress {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.statusDone {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* ===== Assignee ===== */
+
+.assigneeGroup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 아이콘끼리 살짝 겹치고, 흰 테두리로 서로 구분해요. */
+.assigneeGroup > span + span {
+  margin-left: -8px;
+}
+
+.assignee {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.assignee img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.assigneeMore {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.assignee.blue {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.assignee.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.assignee.purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.assignee.gray {
+  background: #e5e7eb;
+  color: #475569;
+}
+
+.assignee.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+
+.assignee.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+/* ===== More ===== */
+
+.moreIcon {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* ================= Calendar ================= */
+
+.calendarDate {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.calendarDate button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.calendarDate button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.calendarDate span {
+  min-width: 118px;
+  text-align: center;
+}
+
+/* 헤더 오른쪽: "오늘"(다른 날을 보고 있을 때만) + "전체 보기" */
+.calendarHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendarToday {
+  height: 26px;
+  margin: -4px 0; /* 버튼이 생겨도 헤더 높이가 변하지 않게(아래 날짜가 안 움직여요) */
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calendarToday:hover {
+  background: #e0e7ff;
+}
+
+/* 터치 화면에서는 누르기 쉽게 버튼을 키워요. */
+@media (hover: none) and (pointer: coarse) {
+  .calendarDate button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .calendarToday {
+    height: 30px;
+    margin: -6px 0;
+  }
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 42px 4px 1fr;
+  gap: 10px;
+}
+
+.timelineRow time {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.timelineBar {
+  border-radius: 999px;
+}
+
+.timelineBar.purple {
+  background: #8b5cf6;
+}
+
+.timelineBar.blue {
+  background: #2563eb;
+}
+
+.timelineBar.green {
+  background: #22c55e;
+}
+
+.timelineBar.orange {
+  background: #f59e0b;
+}
+
+.timelineCard {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.timelineCard h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.timelineCard p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* ================= Activity ================= */
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.activityItem {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.activityItem:last-child {
+  border-bottom: none;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.avatar.blue {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.avatar.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.avatar.purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.avatar.gray {
+  background: #e5e7eb;
+  color: #475569;
+}
+
+.avatar.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+
+.avatar.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+/* 프로필 사진이 있으면 동그라미 안을 꽉 채워요(AvatarFace). */
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.activityContent p {
+  margin: 0 0 4px;
+  line-height: 1.35;
+  font-size: 13px;
+}
+
+.activityContent span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* 필터 탭은 줄이 모자라면 줄바꿈되게 줄어들 수 있어야 해요(위의 flex-shrink: 0은 카드 직속 칸용이에요). */
+.dashboardMain .taskToolbar .taskFilter {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* 긴 이름·제목이 카드 밖으로 밀고 나가지 않게 해요. */
+.activityContent,
+.timelineCard {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ================= Responsive =================
+   1280px 이하: 3열 → 한 열, KPI 2열
+    900px 이하: 여백 조정(이때부터 사이드바가 오버레이라 본문이 넓어져요)
+    768px 이하: 배너·카드 높이 자동
+    640px 이하: 작업 표 → 카드 목록, 폰에 맞는 여백·글자 크기
+    360px 이하: KPI 1열
+   그리고 3열일 때 작업 카드가 좁아지면(@container work) 담당자 칸을 접어서 제목에 자리를 줘요. */
+
+@media (max-width: 1280px) {
+  .dashboardMain {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 3열 배치(1281px 이상)에서 오늘의 작업 카드가 600px보다 좁아지면 담당자 칸을 숨겨요(제목이 잘리지 않게).
+   한 열일 때와 폰 폭(카드 목록이 담당자를 보여줘요)은 건드리지 않아요. */
+@media (min-width: 1281px) {
+  @container work (max-width: 600px) {
+    .taskTable th:nth-child(4),
+    .taskTable td:nth-child(4) {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .content {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 18px 16px;
+  }
+
+  .welcome {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .welcome h1 {
+    font-size: 26px;
+    letter-spacing: -0.6px;
+  }
+
+  .welcome p {
+    margin-top: 6px;
+    font-size: 14px;
+  }
+
+  .welcomeInfo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    text-align: left;
+  }
+
+  .welcomeInfo span {
+    margin-top: 0;
+  }
+
+  /* 배너: 목표가 진행률 아래로 내려가요. */
+  .hero {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .heroContent {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    min-height: 0;
+  }
+
+  .heroLeft {
+    padding-right: 0;
+  }
+
+  .heroTitle {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .heroTitle h2 {
+    font-size: 26px;
+  }
+
+  .heroDate {
+    flex-wrap: wrap;
+  }
+
+  .heroGoal {
+    padding: 14px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(99, 102, 241, 0.16);
+  }
+
+  .goalTitle {
+    margin: 8px 0;
+  }
+
+  .goalTitle h4 {
+    font-size: 16px;
+  }
+
+  .kpis {
+    gap: 12px;
+    margin: 14px 0 18px;
+  }
+
+  /* 한 열이 되면 카드를 고정 높이로 두지 않고, 길면 카드 안에서만 스크롤해요. */
+  .dashboardMain {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .dashboardMain .panel {
+    height: auto;
+    min-height: 180px;
+    max-height: 520px;
+  }
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 14px 12px;
+  }
+
+  .welcome h1 {
+    font-size: 22px;
+  }
+
+  .hero {
+    padding: 16px;
+  }
+
+  .heroTitle h2 {
+    font-size: 22px;
+  }
+
+  .metricCard {
+    min-height: 0;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .metricHeader {
+    margin-bottom: 6px;
+  }
+
+  .metricIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .metricBody h3 {
+    font-size: 22px;
+  }
+
+  .memberStack {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .memberStack .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .panelHeader {
+    margin-bottom: 12px;
+  }
+
+  .more {
+    padding: 8px 0 8px 8px;
+  }
+
+  /* 필터 탭 아래에 검색칸이 한 줄로 와요. 16px 미만이면 iOS가 입력창을 눌렀을 때 화면을 확대해요. */
+  .taskFilter {
+    margin-bottom: 8px;
+  }
+
+  .taskFilter button {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .taskSearch {
+    flex: 1 1 100%;
+    width: 100%;
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .taskSearch input {
+      font-size: 16px;
+    }
+  }
+}
+
+/* 폰 폭에서는 표 대신 카드 목록으로 바꿔요(위 줄: 우선순위·제목, 아래 줄: 상태·담당자·마감). */
+@media (max-width: 640px) {
+  /* 작업 표 → 카드 목록: 위 줄(우선순위·제목), 아래 줄(상태·담당자·마감). 머리글(정렬)은 숨겨요. */
+  .taskTable,
+  .taskTable tbody {
+    display: block;
+  }
+
+  .taskTable thead {
+    display: none;
+  }
+
+  .taskTable tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pri title title"
+      "status assg due";
+    align-items: center;
+    gap: 8px 10px;
+    padding: 12px 2px;
+    border-top: 1px solid #eef2f7;
+  }
+
+  .taskTable tr:first-child {
+    border-top: 0;
+  }
+
+  .taskTable td {
+    padding: 0;
+    border-top: 0;
+  }
+
+  /* 위쪽 표용 열 너비·가운데 정렬을 되돌려요(같은 우선순위라 뒤에 있는 쪽이 이겨요). */
+  .taskTable td:nth-child(n) {
+    width: auto;
+    text-align: left;
+  }
+
+  .taskTable td:nth-child(1) {
+    grid-area: pri;
+  }
+
+  .taskTable td:nth-child(2) {
+    grid-area: title;
+    /* 좁은 화면에서는 제목을 한 줄로 자르지 않고 줄바꿈해서 다 보여줘요. */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+  }
+
+  .taskTable td:nth-child(3) {
+    grid-area: status;
+  }
+
+  .taskTable td:nth-child(4) {
+    grid-area: assg;
+  }
+
+  .taskTable td:nth-child(5) {
+    grid-area: due;
+    color: #64748b;
+    font-size: 12px;
+    text-align: right;
+  }
+
+  .taskTable td:nth-child(6) {
+    display: none;
+  }
+
+  .taskTable td:nth-child(4) .assigneeGroup {
+    justify-content: flex-start;
+  }
+
+  /* 비어 있을 때 안내 문구 한 칸은 줄 전체를 써요. */
+  .taskTable td[colspan] {
+    display: block;
+    grid-area: auto;
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

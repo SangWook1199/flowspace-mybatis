@@ -1,0 +1,722 @@
+/* ==========================
+   Workspace Create
+========================== */
+
+.workspace-create-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 32px 30px;
+  box-sizing: border-box;
+}
+
+/* ---------- Header ---------- */
+
+.workspace-create-header {
+  width: 100%;
+  max-width: 1080px;
+  height: 48px;
+  margin: 0 auto 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workspace-brand strong {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.5px;
+}
+
+.workspace-close-btn {
+  border: none;
+  background: transparent;
+  padding: 4px;
+  color: #64748b;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-close-btn:hover {
+  color: #111827;
+}
+
+.workspace-close-btn:hover {
+  background: #f8fafc;
+}
+
+/* ---------- Card ---------- */
+
+.workspace-create-card {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+
+  background: #fff;
+  border: 1px solid #e5ebf3;
+  border-radius: 18px;
+  padding: 44px 48px;
+
+  box-sizing: border-box;
+}
+
+/* ---------- Progress ---------- */
+
+.workspace-progress {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+}
+
+.progress-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.progress-circle.active {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.progress-title {
+  margin: 0 18px 0 10px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.progress-title.active {
+  color: #111827;
+  font-weight: 600;
+}
+
+.progress-line {
+  width: 72px;
+  flex: none;
+  height: 2px;
+  background: #e5e7eb;
+  margin-right: 18px;
+}
+
+.progress-line.active {
+  background: #4f46e5;
+}
+
+/* ---------- Common ---------- */
+
+.step-label {
+  display: inline-block;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.workspace-step h1 {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: -1px;
+  color: #111827;
+}
+
+.step-description {
+  margin: 14px 0 34px;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.workspace-field {
+  margin-bottom: 24px;
+}
+
+.workspace-field label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.workspace-input,
+.workspace-email-input {
+  height: 52px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 16px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.workspace-email-input:focus-within {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px #e4e8ff;
+}
+
+.workspace-email-input > svg {
+  flex-shrink: 0;
+  color: #96a2b8;
+}
+
+/* 이메일 추가(+) 버튼: 입력이 있을 때만 진하게 눌러볼 수 있게 보여요 */
+.workspace-email-input button {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.workspace-email-input button:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.workspace-email-input button:disabled {
+  background: #eef0f6;
+  color: #b4bccb;
+  cursor: default;
+}
+
+.workspace-input input,
+.workspace-email-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+}
+
+/* "9/50", "최대 2글자" 같은 보조 글자는 줄바꿈 없이 입력칸 안 오른쪽에 둬요(입력칸이 줄어도 밀려나지 않게). */
+.workspace-input > small {
+  flex: none;
+  white-space: nowrap;
+  color: #94a3b8;
+}
+
+/* 워크스페이스 아이콘(이모지) 선택: 버튼 아래에 EmojiPicker가 떠요(absolute 기준이 이 래퍼). */
+/* 미리보기의 아이콘 버튼: 누르면 EmojiPicker가 아래에 떠요(absolute 기준이 이 래퍼). */
+.workspace-preview-icon {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 14px;
+}
+
+.workspace-preview-btn {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.workspace-preview-btn .workspace-preview-avatar {
+  margin: 0;
+}
+
+/* 눌러서 바꿀 수 있다는 표시(오른쪽 아래 작은 배지) */
+.workspace-preview-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 이모지 아이콘은 이니셜(글자)보다 크게 보여야 해서 따로 키워요. */
+.workspace-preview-avatar.workspace-icon--emoji {
+  font-size: 58px;
+  line-height: 1;
+  box-sizing: border-box;
+  padding-bottom: 0.12em;
+}
+
+/* 이름과 안내 문구는 각각 한 줄씩 */
+.workspace-appearance-preview > strong,
+.workspace-appearance-preview > span {
+  display: block;
+}
+
+.workspace-appearance-preview > strong {
+  margin-bottom: 4px;
+}
+
+.workspace-appearance-preview > span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.workspace-preview-tip {
+  display: block;
+  margin-top: 10px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.workspace-icon-clear {
+  margin-top: 10px;
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* EmojiPicker는 미리보기 가운데 아래로 띄워요. */
+.workspace-preview-icon .page-detail__icon-picker {
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: left;
+}
+
+.workspace-tip {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #eef2ff;
+  border-radius: 14px;
+  margin-bottom: 30px;
+}
+
+.workspace-tip strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #3730a3;
+}
+
+.workspace-tip span {
+  color: #6366f1;
+  font-size: 13px;
+}
+
+/* ---------- Preview ---------- */
+
+/* 이름 짓는 단계의 안내 이미지: 화면을 다 채우지 않게 폭을 줄여 가운데에 둬요. */
+.workspace-preview-image {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto 28px;
+}
+
+.workspace-preview-image img {
+  width: 100%;
+  display: block;
+  border-radius: 18px;
+}
+
+.preview-window {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.preview-top {
+  height: 34px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.preview-top span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+}
+
+.preview-body {
+  display: flex;
+}
+
+.preview-sidebar {
+  width: 70px;
+  background: #f3f4f6;
+}
+
+.preview-content {
+  flex: 1;
+  padding: 20px;
+}
+
+.preview-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.preview-line {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+
+.preview-line.long {
+  width: 170px;
+  margin-bottom: 8px;
+}
+
+.preview-line.short {
+  width: 110px;
+}
+
+/* ---------- Appearance ---------- */
+
+.workspace-appearance-preview {
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 28px;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.workspace-preview-avatar {
+  width: 82px;
+  height: 82px;
+  border-radius: 24px;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+/* 색 동그라미를 칸(1fr)에 늘어놓지 않고 가까이 붙여서 줄바꿈해요. */
+.workspace-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-chip {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+
+.color-chip.selected {
+  border-color: #111827;
+}
+
+/* 흰색 칩은 배경과 안 보여서 얇은 테두리를 줘요. */
+.color-chip.light {
+  box-shadow: inset 0 0 0 1px #94a3b8;
+}
+
+/* ---------- Members ---------- */
+
+.workspace-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.workspace-member-chip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #e5ebf3;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.member-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #4f46e5;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* 초대 목록에서 빼는(X) 버튼: 평소엔 조용하게, 올리면 회색 배경이 살짝 생겨요 */
+.workspace-member-chip > button {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #9aa4b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.workspace-member-chip > button:hover {
+  background: #eef1f6;
+  color: #5c6b85;
+}
+
+.member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-info strong {
+  display: block;
+}
+
+.member-info span {
+  color: #64748b;
+  font-size: 13px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Buttons ---------- */
+
+.workspace-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workspace-actions.between {
+  justify-content: space-between;
+}
+
+.workspace-action-group {
+  display: flex;
+  gap: 10px;
+}
+
+.workspace-prev,
+.workspace-next,
+.workspace-create,
+.workspace-skip {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* lucide 아이콘 정렬 */
+.workspace-next svg,
+.workspace-prev svg,
+.workspace-create svg,
+.workspace-skip svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.workspace-prev,
+.workspace-skip {
+  background: #fff;
+  border: 1px solid #d1d5db;
+}
+
+.workspace-next,
+.workspace-create {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+}
+
+.workspace-next:disabled {
+  background: #c7d2fe;
+}
+
+@media (max-width: 768px) {
+  .workspace-create-page {
+    padding: 20px;
+  }
+
+  .workspace-create-card {
+    padding: 28px;
+  }
+
+  .workspace-actions.between {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .workspace-action-group {
+    width: 100%;
+  }
+
+  .workspace-prev,
+  .workspace-next,
+  .workspace-create,
+  .workspace-skip {
+    width: 100%;
+  }
+}
+
+/* 폰: 단계 표시줄은 지금 단계의 이름만 보여주고 선을 늘려서 한 줄에 맞춰요(예전엔 화면 밖으로 삐져나갔어요). */
+@media (max-width: 560px) {
+  .workspace-create-page {
+    padding: 14px;
+  }
+
+  .workspace-create-header {
+    margin-bottom: 16px;
+  }
+
+  .workspace-create-card {
+    padding: 22px 18px;
+    border-radius: 16px;
+  }
+
+  .workspace-progress {
+    width: 100%;
+    margin-bottom: 26px;
+  }
+
+  .progress-item:not(:last-child) {
+    flex: 1;
+  }
+
+  .progress-circle {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+  }
+
+  .progress-title {
+    display: none;
+    margin: 0 8px 0 8px;
+    white-space: nowrap;
+  }
+
+  .progress-title.active {
+    display: inline;
+  }
+
+  .progress-line {
+    flex: 1;
+    width: auto;
+    min-width: 12px;
+    margin-right: 8px;
+  }
+
+  .progress-title.active + .progress-line,
+  .progress-title + .progress-line {
+    margin-left: 0;
+  }
+
+  .workspace-step h1 {
+    font-size: 27px;
+    letter-spacing: -0.6px;
+  }
+
+  /* 한글은 어절 단위로 줄바꿈해요(글자 중간에서 꺾이지 않게). */
+  .workspace-step h1,
+  .step-description,
+  .workspace-tip {
+    word-break: keep-all;
+  }
+
+  .step-description {
+    margin: 12px 0 24px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .workspace-preview-image {
+    max-width: 360px;
+    margin-bottom: 20px;
+  }
+
+  .workspace-appearance-preview {
+    padding: 20px 14px;
+    margin-bottom: 22px;
+  }
+
+  .workspace-field {
+    margin-bottom: 20px;
+  }
+
+  .workspace-input,
+  .workspace-email-input {
+    height: 48px;
+  }
+
+  /* 생성/건너뛰기 버튼은 글자가 두 줄로 꺾이지 않게, 좁으면 아래로 내려가요. */
+  .workspace-action-group {
+    flex-wrap: wrap;
+  }
+
+  .workspace-action-group > button {
+    flex: 1 1 130px;
+    width: auto;
+    white-space: nowrap;
+  }
+}
+
+/* iOS는 16px 미만 입력칸에 포커스하면 화면이 확대돼요. 터치 기기에서만 키워요(PC에서 창만 좁힐 땐 그대로예요). */
+@media (hover: none) and (pointer: coarse) {
+  .workspace-input input,
+  .workspace-email-input input {
+    font-size: 16px;
+  }
+}

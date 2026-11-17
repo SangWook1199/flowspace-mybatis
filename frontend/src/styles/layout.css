@@ -1,0 +1,1120 @@
+/* 사이드바가 차지하는 폭이에요. 접으면(<html data-sidebar="collapsed">) 0이 돼서, 본문(.main)과
+   화면 아래에 붙는 버튼 줄이 이 값만 따라 움직여요. */
+:root {
+  --sidebar-w: 278px;
+}
+:root[data-sidebar="collapsed"] {
+  --sidebar-w: 0px;
+}
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 278px;
+  transition: transform 0.22s ease;
+  height: 100vh;
+  height: 100dvh;
+  background: #fbfcff;
+  border-right: 1px solid #e8edf5;
+  /* 항목이 금방 차서 위·아래·좌우 여백과 항목 크기를 전체적으로 줄였어요. */
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+/* 예전엔 여기서 .logo/.logoMark를 CSS로 직접 그렸는데(사이드바
+   브랜드 아이콘용), FlowSpaceLogo 컴포넌트가 이제 실제 아이콘
+   에셋(flowspace-icon.png)을 쓰도록 바뀌면서 이 규칙들은 더 이상
+   안 쓰여요. 특히 .logo는 common.css에도 같은 이름의 규칙이 따로
+   있었는데(font-size:0), 이 파일이 나중에 로드되면서 서로 덮어써
+   글자가 보였다 안 보였다 하는 원인이었어요 — 지금은 common.css의
+   .flowspace-brand__name 하나로 정리했어요. */
+.workspace {
+  width: 100%;
+  height: 58px;
+  border: 1px solid #e6ebf4;
+  border-radius: 11px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  text-align: left;
+  /* 아래 .workspaceSwitcher의 margin-bottom(24px)과 더해져서 "홈"까지의 간격이 됐는데
+     너무 벌어져서 이쪽을 14px에서 4px로 줄였어요. */
+  margin-bottom: 4px;
+}
+.workspaceIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff; /* 핵심 */
+  flex-shrink: 0;
+}
+.workspace span:nth-child(2) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.workspace b {
+  font-size: 13px;
+  font-weight: 600;
+  /* 이름이 길면 한 줄로 줄이고 …으로 생략해요(두 줄로 넘어가지 않게). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace small,
+.pageArea > p {
+  font-size: 11.5px;
+  color: #758198;
+}
+.navItem {
+  height: 38px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+}
+.navItem svg {
+  color: #2a3951;
+}
+/* 홈·스프린트·칸반·캘린더·회고 사이에 살짝 간격을 둬요. */
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* 메뉴·페이지 줄의 아이콘 크기(예전엔 24px 기본값이라 줄이 커 보였어요). 줄 오른쪽의
+   별·휴지통 같은 작은 아이콘(자손 svg)은 건드리지 않게 바로 아래 자식만 골라요. */
+.navItem > svg,
+.pageNavRow__link > svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+.selected {
+  background: #ebefff;
+  color: #4e6dff;
+}
+.selected svg,
+.newPage svg {
+  color: #4e6dff;
+}
+.pageArea {
+  margin-top: 10px;
+  /* 페이지가 많아져도 사이드바 아래(설정·휴지통)가 밀려나지 않게 이 영역만 스크롤해요. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.divider {
+  height: 1px;
+  background: #e7ebf2;
+  /* 구분선과 바로 아래 "즐겨찾기" 사이를 조금 더 띄워요(8px -> 15px). */
+  margin: 0 11px 15px;
+}
+.pageArea > p {
+  margin: 0 11px 8px;
+}
+.newPage {
+  color: #4e6dff;
+  margin-top: 2px;
+}
+.pageNavRow {
+  position: relative;
+  padding: 0 6px 0 12px;
+  gap: 0;
+}
+/* 드래그 핸들 — 행 자체에 이미 있던 왼쪽 18px 패딩 자리에 얹어서
+   (block-drag-handle을 만들 때처럼 폭을 늘리거나 별도 공간을
+   만들 필요 없이) 평소엔 숨어있다가 이 줄에 호버할 때만 보여요.
+   패딩 안쪽에 얹는 거라 마우스를 아이콘 쪽으로 옮겨도 이 줄의
+   hover 판정이 끊기지 않아요. */
+.pageNavRow__grip {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: #a1abbd;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.12s ease;
+}
+.pageNavRow:hover .pageNavRow__grip {
+  opacity: 1;
+}
+.pageNavRow__grip:active {
+  cursor: grabbing;
+}
+.pageNavRow.dragging {
+  opacity: 0.45;
+}
+/* 순서 변경 중 놓일 위치를 보여주는 줄 — 블록 에디터의
+   .block-drop-indicator와 같은 색·두께로 통일했어요. */
+.page-drop-indicator {
+  height: 3px;
+  margin: 2px 11px;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.pageNavRow__link {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font-weight: 500;
+  color: inherit;
+  font-size: inherit;
+}
+.pageNavRow__link span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pageNavRow__delete {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #96a2b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.pageNavRow:hover .pageNavRow__delete {
+  opacity: 1;
+}
+.pageNavRow__delete:hover {
+  background: #fde8e8;
+  color: #e65353;
+}
+/* 즐겨찾기 별 — 평소엔 숨어 있다가 줄에 호버하면 보이고, 즐겨찾기한 페이지는 항상 노란 별로 보여요. */
+.pageNavRow__pin {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #96a2b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.pageNavRow:hover .pageNavRow__pin,
+.pageNavRow__pin:focus-visible,
+.pageNavRow__pin.on {
+  opacity: 1;
+}
+.pageNavRow__pin:hover {
+  background: #fff6dd;
+  color: #d99a06;
+}
+.pageNavRow__pin.on {
+  color: #e8a90a;
+}
+.pageNavRow__pin.on svg {
+  fill: currentColor;
+}
+/* "페이지" 구역 제목 줄 — 누르면 목록을 접고 펼쳐요. */
+.pageArea > p.pageSectionHead {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+/* 페이지·스프린트 목록이 비었을 때 보여주는 짧은 안내 */
+.pageArea > p.sidebarEmpty,
+.sidebarSprints > p.sidebarEmpty {
+  margin: 0 11px 10px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.pageSectionHead button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pageSectionHead button:hover {
+  background: #eef1f7;
+}
+.pageSectionHead svg {
+  transition: transform 0.15s;
+}
+.pageSectionHead svg.closed {
+  transform: rotate(-90deg);
+}
+.pageSectionHead small {
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #eef1f7;
+  font-size: 11px;
+  font-weight: 600;
+}
+/* "N개 더 보기" / "모든 페이지 보기" — 스프린트 쪽 "모든 스프린트 보기"와 같은 톤이에요. */
+.pageMoreBtn,
+.pageAllLink {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: #758198;
+  text-align: left;
+  cursor: pointer;
+}
+.pageMoreBtn:hover,
+.pageAllLink:hover {
+  background: #f1f4fa;
+}
+.pageAllLink {
+  color: #273851;
+  font-weight: 600;
+}
+.pageAllLink svg {
+  color: #4e6dff;
+}
+.pageAllLink.selected {
+  background: #ebefff;
+  color: #4e6dff;
+}
+/* 휴지통 — 사이드바 맨 아래 설정 버튼 옆에 아이콘만 두고, 누르면 위로 팝업이 열려요.
+   삭제 관련 UI라 회색 계열로 톤을 낮췄어요. */
+.sidebarFooter {
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.trashPopover {
+  position: relative;
+  flex-shrink: 0;
+}
+.trashPopover__btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e7ebf2;
+  border-radius: 11px;
+  background: transparent;
+  color: #7c879c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trashPopover__btn:hover,
+.trashPopover__btn[aria-expanded="true"] {
+  background: #f4f6fa;
+}
+.trashPopover__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #64748b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.trashPopover__panel {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  max-height: 420px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e7ebf2;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+  z-index: 20;
+}
+.trashPopover__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #96a2b8;
+}
+.trashPopover__search:focus-within {
+  border-color: #b9c6ff;
+  background: #fff;
+}
+.trashPopover__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  color: #2a3951;
+}
+.trashPopover__empty {
+  margin: 0;
+  padding: 24px 8px 26px;
+  text-align: center;
+  font-size: 13px;
+  color: #9aa4b8;
+}
+.trashPopover__list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-right: -4px;
+  padding-right: 4px;
+}
+.trashPopover__foot {
+  border-top: 1px solid #eef1f6;
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trashPopover__foot small {
+  flex: 1;
+  padding-left: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9aa4b8;
+}
+.trashPopover__foot .trashSection__empty {
+  flex-shrink: 0;
+}
+.trashRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 8px;
+}
+.trashRow:hover {
+  background: #f4f6fa;
+}
+.trashRow__icon {
+  flex-shrink: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  color: #7c879c;
+}
+.trashRow__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trashRow__text strong,
+.trashRow__text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trashRow__text strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2a3951;
+}
+.trashRow__text small {
+  font-size: 11px;
+  color: #9aa4b8;
+}
+.trashRow__action {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #96a2b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trashRow__action:hover {
+  background: #e8edf8;
+  color: #4e6dff;
+}
+.trashRow__action--danger:hover {
+  background: #fde8e8;
+  color: #e65353;
+}
+.trashSection__empty {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #b3364a;
+}
+.trashSection__empty:hover {
+  background: #fde8e8;
+}
+.workspaceSettingsBtn {
+  /* 사이드바 맨 아래(.sidebarFooter 안). 워크스페이스 설정으로 들어가는 진입점이고,
+     오른쪽 휴지통 버튼과 높이를 맞췄어요. */
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid #e7ebf2;
+  border-radius: 11px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2a3951;
+}
+.workspaceSettingsBtn__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 워크스페이스 선택의 아이콘(40px에 글자 16px)과 같은 비율(0.4)로 맞춰요. */
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.workspaceSettingsBtn__icon.workspace-icon--emoji {
+  font-size: 17px;
+  line-height: 1;
+  box-sizing: border-box;
+  padding-bottom: 0.12em;
+}
+.workspaceSettingsBtn__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspaceSettingsBtn__suffix {
+  margin-left: -6px; /* 이름과 "설정" 사이를 gap(10px)보다 좁게 붙여요 */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.workspaceSettingsBtn__badge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #fdf1d8;
+  color: #a16207;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.workspaceSettingsBtn:hover {
+  background: #f8fafc;
+}
+.workspaceSettingsBtn svg {
+  color: #2a3951;
+}
+.headerMembers em,
+.onlineDot,
+.offlineDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #3fc487;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.avatar {
+  height: 39px;
+  width: 39px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font-weight: 600;
+  color: #385ceb;
+  background: #e0e7ff;
+  border: 2px solid #fff;
+}
+.headerMembers .avatar {
+  margin-left: -8px;
+}
+.headerMembers .avatar:first-child {
+  margin-left: 0;
+}
+/* 팀원 아이콘에 마우스를 올리면 바로 뜨는 안내(이름 + 온라인 / 마지막 접속 n시간 전) */
+.headerMembers .avatar[data-tip] {
+  position: relative;
+  cursor: pointer;
+}
+.headerMembers .avatar[data-tip]:hover {
+  z-index: 5;
+}
+.headerMembers .avatar[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1f2a44;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  white-space: pre;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.headerMembers .avatar[data-tip]:hover::after {
+  opacity: 1;
+}
+/* 헤더로 옮긴 온라인 팀원 — 검색창과 벨/프로필 사이에 비던 여백을
+   채워요. 세로로 쌓던 사이드바 버전과 달리 가로 한 줄로 배치해요. */
+.headerMembers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.headerMembers small {
+  display: flex;
+  align-items: center;
+  color: #708098;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.headerMembers > div {
+  display: flex;
+}
+/* 프로필 사진이 있는 팀원은 사진으로 보여요 */
+.headerMembers .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+/* 5명이 넘으면 나머지를 묶은 "+N명" — 올리면 그 멤버들이 목록으로 보여요 */
+.headerMembersMore {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+.headerMembersMore__btn {
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: #708098;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.headerMembersMore__btn:hover,
+.headerMembersMore:focus-within .headerMembersMore__btn {
+  color: #2a3951;
+}
+/* 버튼과 목록 사이 틈(padding)까지 호버 영역이라, 마우스를 내려도 목록이 사라지지 않아요 */
+.headerMembersMore__pop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 8px;
+  z-index: 20;
+}
+.headerMembersMore:hover .headerMembersMore__pop,
+.headerMembersMore:focus-within .headerMembersMore__pop {
+  display: block;
+}
+.headerMembersMore__box {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  width: 230px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+}
+.headerMembersMore__box button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.headerMembersMore__box button:hover {
+  background: #f1f5f9;
+}
+.headerMembers .headerMembersMore__box .avatar {
+  width: 30px;
+  height: 30px;
+  margin-left: 0;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.headerMembersMore__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: #1e293b;
+}
+.headerMembersMore__box small {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+/* 아바타 배경색은 이제 유저마다 값을 직접 넣는 게 아니라
+   utils/avatarColor.js의 getAvatarTone(userId)가 고정 팔레트(6가지)
+   중 하나를 user_id로 결정론적으로 골라줘요 — DB(users 테이블)엔
+   색 컬럼이 없고, mock 데이터에서 손으로 넣던 tone 값들이 CSS에
+   실제로 없는 이름(예: "green")이라 조용히 기본색으로 빠지는 문제가
+   있었어요. .purple/.gray처럼 이름만 있던 규칙은 이 전역 CSS 안에서
+   다른 곳과 겹칠 수 있어서 .avatar와 묶은 선택자로 범위를 좁혔어요. */
+.avatar.blue {
+  background: #e0e7ff;
+  color: #385ceb;
+}
+.avatar.green {
+  background: #d9f5e9;
+  color: #118365;
+}
+.avatar.purple {
+  background: #eee4fb;
+  color: #7c4ec4;
+}
+.avatar.gray {
+  background: #e9edf3;
+  color: #60708a;
+}
+/* 오프라인인 팀원 — 회색은 이 용도로만 써요(getAvatarTone은 회색을 고르지 않아요). */
+.avatar.offline {
+  background: #e9edf3;
+  color: #8a96ab;
+}
+.avatar.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+.avatar.pink {
+  background: #fbe3f0;
+  color: #c1408a;
+}
+/* 접힌 사이드바: 왼쪽으로 밀려 나가고, 끝난 뒤에는 숨겨서 키보드로도 들어가지 않게 해요(inert와 같이). */
+.sidebarCollapsed {
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+/* 사이드바 맨 위는 "로고 + 접기 버튼(로고 오른쪽 끝)"이에요. */
+.sidebarCollapseBtn {
+  position: absolute;
+  top: 19px;
+  right: 11px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #7c879c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebarCollapseBtn:hover {
+  background: #eef1f8;
+  color: #2a3951;
+}
+.sidebar .flowspace-brand {
+  margin-top: -3px;
+  margin-bottom: 18px;
+}
+/* 로고는 누르는 버튼이 아니라서 눌러지는 것처럼 보이지 않게 해요. */
+.sidebar div.flowspace-brand {
+  cursor: default;
+}
+.sidebar div.flowspace-brand:hover {
+  opacity: 1;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+/* 접었을 때 헤더 왼쪽 끝의 펼치기 버튼. 사이드바 로고 아이콘이 있던 자리(왼쪽 24~64px)에 놓여요. */
+.sidebarOpenBtn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid #e6ebf4;
+  border-radius: 10px;
+  background: #fff;
+  color: #5b6a85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebarOpenBtn:hover {
+  background: #f4f6fa;
+  color: #2a3951;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebarCollapsed,
+  .main {
+    transition: none;
+  }
+}
+.main {
+  margin-left: var(--sidebar-w, 278px);
+  width: calc(100% - var(--sidebar-w, 278px));
+  transition:
+    margin-left 0.22s ease,
+    width 0.22s ease;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+.header {
+  height: 85px;
+  border-bottom: 1px solid #e8edf5;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+}
+.search {
+  width: 430px;
+  height: 44px;
+  border: 1px solid #e6ebf4;
+  border-radius: 10px;
+  background: #f8f9fc;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  color: #96a2b8;
+  font-size: 14px;
+}
+.search svg {
+  color: #96a2b8;
+  flex-shrink: 0;
+}
+.headerRight,
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.bell {
+  border: 0;
+  background: transparent;
+  position: relative;
+  padding: 4px;
+}
+.bell i {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f25055;
+}
+.profile {
+  gap: 10px;
+  font-size: 14px;
+}
+/* 프로필 원은 예전엔 회색-남색 그라데이션을 고정으로 박아뒀는데,
+   이제 온라인 팀원 아바타랑 똑같이 .avatar + getAvatarTone() 색을
+   그대로 써서 헤더 안 아바타들끼리 톤이 통일되게 했어요. */
+/* =====================================================
+   Workspace Dropdown
+===================================================== */
+
+.workspaceSwitcher {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.workspaceDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e6ebf4;
+  border-radius: 14px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+  padding: 10px;
+  z-index: 999;
+}
+
+.workspaceDropdown p {
+  margin: 2px 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.workspaceItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  cursor: pointer;
+}
+
+.workspaceItem:hover {
+  background: #f8fafc;
+}
+
+.workspaceAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* 이모지 아이콘은 이니셜(16px 글자)보다 크게 */
+.workspaceIcon.workspace-icon--emoji,
+.workspaceAvatar.workspace-icon--emoji {
+  font-size: 28px;
+  line-height: 1;
+  /* 이모지 글자가 상자 중앙보다 살짝 아래에 앉아서, 아래 여백을 조금 줘서 위로 올려요. */
+  box-sizing: border-box;
+  padding-bottom: 0.12em;
+}
+
+/* 흰색 대표 색은 흰 배경과 구분되도록 얇은 테두리를 줘요. */
+.workspace-icon--light {
+  box-shadow: inset 0 0 0 1px #94a3b8;
+}
+
+.workspaceName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.workspaceCheck {
+  color: #4f46e5;
+}
+
+.workspaceDivider {
+  height: 1px;
+  background: #eef2f7;
+  margin: 8px 0;
+}
+
+.workspaceCreate {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  color: #4f46e5;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspaceCreate:hover {
+  background: #eef2ff;
+}
+
+.rotate {
+  transform: rotate(180deg);
+  transition: transform 0.2s;
+}
+
+/* =====================================================
+   Header Profile Menu (로그아웃 드롭다운)
+   - 드롭다운 모양은 .workspaceDropdown/.workspaceItem을 그대로 재사용하고,
+     아래는 오른쪽 정렬 + 프로필 버튼 기본 모양 지우기 + 프로필 사진 채우기만
+     따로 덧붙인 규칙이에요.
+===================================================== */
+
+.profileWrap {
+  position: relative;
+}
+
+.profileTrigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.profile .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profileMenu {
+  left: auto;
+  right: 0;
+  width: 220px;
+}
+
+.profileMenu strong {
+  display: block;
+  margin: 2px 8px 0;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.profileMenu p {
+  word-break: break-all;
+}
+
+.profileMenu .workspaceItem {
+  font-size: 13px;
+  color: #475569;
+}
+
+/* 좁은 화면(폰·좁은 창): 사이드바는 본문을 밀지 않고 위에 겹쳐서 열려요(MainLayout의 NARROW_QUERY와 같은 폭). */
+@media (max-width: 900px) {
+  :root,
+  :root[data-sidebar="collapsed"] {
+    --sidebar-w: 0px;
+  }
+  .sidebar {
+    z-index: 40;
+    box-shadow: 0 0 40px rgba(15, 23, 42, 0.2);
+  }
+  .sidebarBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(15, 23, 42, 0.35);
+  }
+  .header {
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .headerLeft {
+    flex: 1 1 auto;
+  }
+  .search {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .headerMembers {
+    display: none;
+  }
+}

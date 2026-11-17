@@ -1,0 +1,540 @@
+/* ===========================
+   Retrospective Detail
+=========================== */
+
+.retro-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 18px;
+  background: #f8fafc;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* ---------- Header ---------- */
+
+.retro-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2px;
+}
+
+.retro-detail-header > div {
+  min-width: 0;
+}
+
+/* 제목은 한 줄, 넘치면 ...으로 줄여요. */
+.retro-detail-header h1 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retro-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.retro-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.retro-more-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.retro-more-button:hover {
+  background: #f8fafc;
+}
+
+/* 회고를 못 찾았을 때 나오는 버튼이에요(목록 css가 안 불러와져도 모양이 나오게 여기에도 둬요). */
+.retro-detail-page .detail-btn {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---------- Common ---------- */
+
+.retro-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  min-width: 0;
+
+  /* 요약·칸반이 "화면 너비" 대신 이 카드의 너비를 보고 배치를 바꿔요(사이드바 열림 여부와 무관).
+     이 카드 안에는 fixed로 뜨는 요소가 없어서 컨테이너로 잡아도 안전해요. */
+  container: retsec / inline-size;
+}
+
+.retro-section__header {
+  margin-bottom: 10px;
+}
+
+.retro-section__header h2 {
+  margin: 0;
+  font-size: 15px;
+  color: #111827;
+}
+
+.retro-section__header p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* ===========================
+   Summary
+=========================== */
+
+.retro-detail-page .retro-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.retro-detail-page .summary-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.retro-detail-page .summary-rate {
+  background: #f8faff;
+}
+
+.retro-detail-page .summary-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 4px solid #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.retro-detail-page .summary-circle strong {
+  font-size: 15px;
+  color: #111827;
+}
+
+.retro-detail-page .summary-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.retro-detail-page .summary-content span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.retro-detail-page .summary-content span,
+.retro-detail-page .summary-content p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retro-detail-page .summary-content h3 {
+  margin: 3px 0;
+  font-size: 22px;
+  color: #111827;
+}
+
+.retro-detail-page .summary-content p {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.retro-detail-page .summary-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.retro-detail-page .summary-icon.green {
+  background: #ecfdf5;
+  color: #16a34a;
+}
+
+.retro-detail-page .summary-icon.red {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.retro-detail-page .summary-icon.orange {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.retro-detail-page .summary-members {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.retro-detail-page .summary-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retro-detail-page .summary-avatar.blue {
+  background: #3b82f6;
+}
+
+.retro-detail-page .summary-avatar.green {
+  background: #22c55e;
+}
+
+.retro-detail-page .summary-avatar.orange {
+  background: #f59e0b;
+}
+
+.retro-detail-page .summary-avatar.purple {
+  background: #8b5cf6;
+}
+
+.retro-detail-page .summary-avatar.gray {
+  background: #94a3b8;
+}
+
+.retro-detail-page .summary-avatar.pink {
+  background: #ec4899;
+}
+
+/* ===========================
+   Kanban Snapshot
+=========================== */
+
+.retro-kanban {
+  display: grid;
+  /* 열 개수는 KanbanSnapshot이 --cols로 넘겨줘요(인라인 스타일은 CSS 반응형 규칙을 덮어써서 변수로 바꿨어요). */
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 14px;
+}
+
+.retro-column {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.retro-column__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 16px;
+}
+
+.retro-column.todo .retro-column__header {
+  background: #f3f4f6;
+}
+
+.retro-column.doing .retro-column__header {
+  background: #eef2ff;
+}
+
+.retro-column.done .retro-column__header {
+  background: #ecfdf5;
+}
+
+.retro-column__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.retro-column__title h3 {
+  margin: 0;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.column-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.column-dot.todo {
+  background: #6b7280;
+}
+
+.column-dot.doing {
+  background: #4f46e5;
+}
+
+.column-dot.done {
+  background: #16a34a;
+}
+
+.retro-column__count {
+  flex: none;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.retro-column__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  min-height: 80px;
+  background: #f8fafc;
+}
+
+.retro-column__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+
+/* ===========================
+   Task Card
+=========================== */
+
+.retro-task-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.retro-task-card h4 {
+  margin: 0;
+  font-weight: 400;
+  font-size: 13.5px;
+  color: #111827;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+
+  /* 제목은 두 줄까지만 보여줘요(전체는 마우스를 올리면 title로 보여요). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.retro-task-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.retro-assignee {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.retro-assignee span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retro-avatar {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retro-avatar.blue {
+  background: #3b82f6;
+}
+
+.retro-avatar.green {
+  background: #22c55e;
+}
+
+.retro-avatar.orange {
+  background: #f59e0b;
+}
+
+.retro-avatar.purple {
+  background: #8b5cf6;
+}
+
+.retro-assignee span {
+  font-size: 12.5px;
+  color: #475569;
+}
+
+.priority {
+  flex: none;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.priority.high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.priority.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.priority.low {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* ===========================
+   Page Blocks (Notion-style editor)
+   ---------------------------
+   회고 노트의 블록 에디터(Keep/Problem/Try 표 포함)는 이제 페이지
+   상세(PageDetailPage)가 쓰는 BlockEditor 컴포넌트를 그대로 재사용해요.
+   그 컴포넌트가 그리는 .block-row/.block-menu/.block-input 같은 클래스는
+   page-detail.css에 이미 있고, 여기 retrospective-detail.css에도 같은
+   이름으로 따로(다른 값으로) 정의돼 있었어요 — 둘 다 전역 CSS라 어느 쪽이
+   이기는지가 import 순서에 좌우되는 취약한 상태였는데, 이제 이 페이지도
+   BlockEditor 하나만 쓰니까 그 중복 정의를 여기서 걷어내고
+   page-detail.css 것 하나만 쓰게 했어요. Keep/Problem/Try 표 전용이던
+   .review-table, .review-line 관련 클래스도 같은 이유로 걷어냈어요(SimpleTableBlock이
+   그 자리를 대신해요).
+=========================== */
+
+.page-block-section {
+  margin-top: 4px;
+}
+
+/* ===========================
+   Responsive
+   요약/칸반은 .retro-section 카드의 너비("retsec" 컨테이너)를 기준으로 해요.
+   - 요약: 4칸(900px 이상) → 2칸 → 480px 미만은 아이콘을 줄여 2칸 유지
+   - 칸반: 열 개수 그대로(600px 이상) → 1열로 쌓기 (한 번에 바뀌어요)
+=========================== */
+
+@media (max-width: 900px) {
+  .retro-detail-page {
+    padding: 14px 12px 24px;
+  }
+}
+
+@container retsec (max-width: 899px) {
+  .retro-detail-page .retro-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container retsec (max-width: 479px) {
+  .retro-detail-page .retro-summary {
+    gap: 10px;
+  }
+
+  .retro-detail-page .summary-card {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  /* 완료율 카드는 문구가 길어서 한 줄을 다 써요. */
+  .retro-detail-page .summary-rate {
+    grid-column: 1 / -1;
+  }
+
+  .retro-detail-page .summary-circle {
+    width: 42px;
+    height: 42px;
+    border-width: 3px;
+  }
+
+  .retro-detail-page .summary-circle strong {
+    font-size: 11px;
+  }
+
+  .retro-detail-page .summary-icon {
+    display: none;
+  }
+
+  .retro-detail-page .summary-content h3 {
+    font-size: 20px;
+  }
+
+  .retro-detail-page .summary-members {
+    flex-wrap: wrap;
+  }
+}
+
+@container retsec (max-width: 599px) {
+  .retro-kanban {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .retro-section {
+    padding: 12px;
+  }
+}

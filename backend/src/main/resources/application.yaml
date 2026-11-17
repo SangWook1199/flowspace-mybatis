@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: flowspace
+
+  profiles:
+    active: secret
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    # SQL 로그는 평소엔 꺼둬요(디버깅할 때만 true로 바꿔서 확인해요).
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        # 연관 엔티티를 하나씩 따로 읽지 않고 100개씩 묶어서 읽어요(작업·댓글·페이지 목록의 쿼리 수가 크게 줄어요).
+        default_batch_fetch_size: 100
+
+  jackson:
+    time-zone: Asia/Seoul
+
+  # 업로드 크기 제한(파일 하나 20MB, 한 요청 25MB). 넘으면 "파일이 너무 커요"(413)로 답해요.
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+  # 비밀번호 찾기 메일(Gmail SMTP). 계정(username)과 앱 비밀번호(password)는 application-secret.yaml에 넣어요.
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+app:
+  # 메일 링크가 가리킬 프런트 주소(배포하면 실제 주소로 바꿔요)
+  frontend-url: http://localhost:5173
+
+server:
+  port: 8080
+
+file:
+  upload-dir: uploads
+
+# AI 프로젝트 자동 구성(로컬 Ollama). 배포 서버에 Ollama가 없으면 enabled를 false로 두세요.
+flowspace:
+  ai:
+    enabled: true
+    base-url: http://localhost:11434
+    model: qwen3.6:27b
+    # 모델이 한 번에 읽고 쓰는 크기. 클수록 GPU 메모리를 더 써요.
+    num-ctx: 8192
+    num-predict: 6144
+    temperature: 0.3
+    # 모델 응답을 기다리는 최대 시간(초)
+    timeout-seconds: 600
+    # 쓸 수 없는 초안이 나오면 처음 시도를 포함해 이 횟수까지 다시 만들어요.
+    max-attempts: 3
+    # 동시에 만드는 수(GPU 하나면 1)와 기다릴 수 있는 수
+    max-concurrent-jobs: 1
+    max-queued-jobs: 3
+    # 완성된 초안을 서버 메모리에 보관하는 시간(분)
+    draft-ttl-minutes: 30
