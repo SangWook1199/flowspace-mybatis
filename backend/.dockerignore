@@ -1,3 +1,4 @@
 build
 .gradle
 src/main/resources/application-secret.yaml
+database

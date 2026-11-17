@@ -63,7 +63,7 @@ import com.flowspace.repository.WorkspaceTaskStatusRepository;
 import com.flowspace.service.ActivityService;
 import com.flowspace.service.NotificationService;
 import com.flowspace.sprint.service.SprintService;
-import com.flowspace.sprint.service.SprintVO;
+import com.flowspace.sprint.service.SprintProgressVO;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -154,8 +154,8 @@ public class SprintServiceImpl implements SprintService {
 
         result.add(SprintResponse.backlog(workspace.getWorkspaceId(), (int) backlogCount));
 
-        // 스프린트 목록은 MyBatis로 조회해요
-        for (SprintVO sprint : sprintMapper.selectSprintListByWorkspaceId(workspaceId)) {
+        // 스프린트 목록과 작업 수·완료 수를 프로시저 한 번으로 가져와요
+        for (SprintProgressVO sprint : sprintMapper.selectSprintProgressList(workspaceId)) {
             result.add(toSprintResponse(sprint));
         }
 
@@ -171,7 +171,7 @@ public class SprintServiceImpl implements SprintService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
         // MyBatis는 결과가 없으면 null을 돌려줘서 직접 확인해요
-        SprintVO sprint = sprintMapper.selectSprintById(sprintId);
+        SprintProgressVO sprint = sprintMapper.selectSprintProgressById(sprintId);
 
         if (sprint == null) {
             throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
@@ -330,12 +330,12 @@ public class SprintServiceImpl implements SprintService {
         return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
     }
 
-    // 스프린트 진행률 계산 (MyBatis 조회 결과용)
-    private SprintResponse toSprintResponse(SprintVO sprint) {
+    // 스프린트 진행률 계산 (프로시저 조회 결과용: 작업 수와 완료 수가 이미 들어 있어요)
+    private SprintResponse toSprintResponse(SprintProgressVO sprint) {
 
-        int taskCount = sprintMapper.selectTaskCountBySprintId(sprint.getSprintId());
+        int taskCount = sprint.getTaskCount();
 
-        int completedTaskCount = sprintMapper.selectDoneTaskCountBySprintId(sprint.getSprintId());
+        int completedTaskCount = sprint.getCompletedTaskCount();
 
         int progress = taskCount == 0 ? 0 : (completedTaskCount * 100) / taskCount;
 

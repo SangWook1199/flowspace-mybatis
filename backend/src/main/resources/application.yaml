@@ -73,3 +73,8 @@ mybatis:
   mapper-locations: classpath:/sqlmap/mappers/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+# MyBatis가 실행하는 SQL과 인자를 로그로 봐요(쿼리가 몇 번 나가는지 확인할 때 써요. 필요 없으면 지워도 돼요).
+logging:
+  level:
+    com.flowspace.sprint.service.impl.SprintMapper: debug

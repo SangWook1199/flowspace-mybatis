@@ -15,28 +15,16 @@
         WHERE sprint_id = #{sprintId}
     </select>
 
-    <!-- 워크스페이스의 스프린트 목록 (시작일이 늦은 순) -->
-    <select id="selectSprintListByWorkspaceId" resultType="com.flowspace.sprint.service.SprintVO">
-        SELECT <include refid="sprintColumns"/>
-        FROM sprints
-        WHERE workspace_id = #{workspaceId}
-        ORDER BY start_date DESC
+    <!-- 워크스페이스의 스프린트 목록과 진행 상황. 조인과 집계는 프로시저 안에서 해요(backend/database/procedures). -->
+    <select id="selectSprintProgressList" statementType="CALLABLE"
+            resultType="com.flowspace.sprint.service.SprintProgressVO">
+        {call sp_sprint_progress_list(#{workspaceId})}
     </select>
 
-    <!-- 스프린트에 속한 작업 수 -->
-    <select id="selectTaskCountBySprintId" resultType="int">
-        SELECT COUNT(*)
-        FROM tasks
-        WHERE sprint_id = #{sprintId}
-    </select>
-
-    <!-- 스프린트에 속한 작업 중 완료(DONE) 상태인 작업 수. 3단계에서 진행률 프로시저로 합칠 예정이에요. -->
-    <select id="selectDoneTaskCountBySprintId" resultType="int">
-        SELECT COUNT(*)
-        FROM tasks t
-        JOIN task_statuses s ON s.status_id = t.status_id
-        WHERE t.sprint_id = #{sprintId}
-          AND s.category = 'DONE'
+    <!-- 스프린트 한 건과 진행 상황 -->
+    <select id="selectSprintProgressById" statementType="CALLABLE"
+            resultType="com.flowspace.sprint.service.SprintProgressVO">
+        {call sp_sprint_progress(#{sprintId})}
     </select>
 
 </mapper>
