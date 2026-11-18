@@ -1,9 +1,9 @@
-package com.flowspace.dto.comment;
+package com.flowspace.comment.dto.response;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.flowspace.entity.Comment;
+import com.flowspace.comment.service.CommentVO;
 
 // @formatter:off
 
@@ -23,21 +23,18 @@ public record CommentResponse(
 
 ) {
 
+    // 조회 결과(CommentVO)로 만들어요 (쓴 사람 이름·이미지가 조인으로 들어 있어요)
     public static CommentResponse from(
-        Comment comment,
+        CommentVO comment,
         List<CommentResponse> replies
     ) {
         return new CommentResponse(
             comment.getCommentId(),
-            comment.getParentComment() == null ? null : comment.getParentComment().getCommentId(),
-            comment.getUser().getUserId(),
-            comment.getUser().getNickname(),
-            comment.getUser().getProfileFile() == null
-                ? null
-                : comment.getUser().getProfileFile().getFileId(),
-            comment.getUser().getProfileFile() == null
-                ? null
-                : comment.getUser().getProfileFile().getFileUrl(),
+            comment.getParentCommentId(),
+            comment.getUserId(),
+            comment.getUserName(),
+            comment.getProfileFileId(),
+            comment.getProfileImageUrl(),
             comment.getContent(),
             comment.getCreatedAt(),
             comment.getUpdatedAt(),

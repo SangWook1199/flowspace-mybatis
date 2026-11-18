@@ -1,6 +1,6 @@
 package com.flowspace.task.dto.response;
 
-import com.flowspace.dto.comment.CommentResponse;
+import com.flowspace.comment.dto.response.CommentResponse;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;

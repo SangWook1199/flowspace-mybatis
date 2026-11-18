@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.comment.service.impl.CommentMapper">
+
+    <!-- 이메일로 사용자 번호와 닉네임 -->
+    <select id="selectUserByEmail" resultType="com.flowspace.user.service.UserVO">
+        SELECT user_id,
+               nickname
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- ==================== 댓글 ==================== -->
+
+    <!-- 댓글 컬럼과 쓴 사람 조인. 아래 세 SQL이 <include>로 같이 써서, 컬럼을 바꿀 때 여기만 고쳐요. -->
+    <sql id="commentSelect">
+        SELECT c.comment_id,
+               c.task_id,
+               c.block_id,
+               c.user_id,
+               c.parent_comment_id,
+               c.content,
+               c.created_at,
+               c.updated_at,
+               u.nickname AS user_name,
+               u.profile_file_id,
+               f.file_url AS profile_image_url
+          FROM comments c
+          JOIN users u ON u.user_id = c.user_id
+          LEFT JOIN files f ON f.file_id = u.profile_file_id
+    </sql>
+
+    <!-- 댓글 한 건 -->
+    <select id="selectCommentById" resultType="com.flowspace.comment.service.CommentVO">
+        <include refid="commentSelect"/>
+         WHERE c.comment_id = #{commentId}
+    </select>
+
+    <!-- 여러 작업의 댓글. 원 댓글과 답글을 한 번에 읽고, 나누는 건 자바에서 해요. -->
+    <select id="selectCommentListByTaskIds" resultType="com.flowspace.comment.service.CommentVO">
+        <include refid="commentSelect"/>
+         WHERE c.task_id IN
+        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
+            #{taskId}
+        </foreach>
+         ORDER BY c.created_at, c.comment_id
+    </select>
+
+    <!-- 여러 블록의 댓글 -->
+    <select id="selectCommentListByBlockIds" resultType="com.flowspace.comment.service.CommentVO">
+        <include refid="commentSelect"/>
+         WHERE c.block_id IN
+        <foreach collection="blockIds" item="blockId" open="(" separator="," close=")">
+            #{blockId}
+        </foreach>
+         ORDER BY c.created_at, c.comment_id
+    </select>
+
+    <!-- 댓글 등록. 작업 댓글이면 blockId, 블록 댓글이면 taskId가 null이에요. -->
+    <insert id="insertComment" parameterType="com.flowspace.comment.service.CommentVO"
+            useGeneratedKeys="true" keyProperty="commentId">
+        INSERT INTO comments (task_id, block_id, user_id, parent_comment_id, content)
+        VALUES (#{taskId}, #{blockId}, #{userId}, #{parentCommentId}, #{content})
+    </insert>
+
+    <!-- 댓글 내용 수정. updated_at은 DB가 바꿔요. -->
+    <update id="updateCommentContent">
+        UPDATE comments
+        SET content = #{content}
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <!-- 댓글 삭제. 답글은 fk_comment_parent(ON DELETE CASCADE)로 DB가 함께 지워요. -->
+    <delete id="deleteComment">
+        DELETE FROM comments
+        WHERE comment_id = #{commentId}
+    </delete>
+
+    <!-- ==================== 댓글이 달리는 곳 ==================== -->
+
+    <!-- 작업 정보 -->
+    <select id="selectCommentTask" resultType="com.flowspace.comment.service.CommentTargetVO">
+        SELECT task_id AS target_id,
+               workspace_id,
+               title,
+               created_by,
+               sprint_id
+        FROM tasks
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 블록이 있는 페이지 정보. blocks와 pages 조인은 프로시저 안에서 해요(backend/database/procedures/comment). -->
+    <select id="selectCommentBlock" statementType="CALLABLE" resultType="com.flowspace.comment.service.CommentTargetVO">
+        {call sp_comment_block(#{blockId})}
+    </select>
+
+    <!-- 작업 담당자 번호 -->
+    <select id="selectTaskAssigneeUserIds" resultType="long">
+        SELECT user_id
+        FROM task_assignees
+        WHERE task_id = #{taskId}
+        ORDER BY task_assignee_id
+    </select>
+
+    <!-- 멘션된 사람 중 워크스페이스 멤버 -->
+    <select id="selectWorkspaceMemberIds" resultType="long">
+        SELECT user_id
+        FROM workspace_members
+        WHERE workspace_id = #{workspaceId}
+          AND user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+
+</mapper>

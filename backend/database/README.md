@@ -20,7 +20,8 @@ database/
     ├── user/               사용자·로그인
     ├── notification/       알림
     ├── activity/           활동 기록
-    └── calendar/           캘린더·일정
+    ├── calendar/           캘린더·일정
+    └── comment/            댓글
 ```
 
 ## 규칙
@@ -115,6 +116,16 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_calendar_task_list` | 조인 | 워크스페이스, 스프린트(NULL이면 백로그), 그 달 첫날·마지막 날 | 그 달에 시작하는 작업과 상태 색 | `CalendarMapper.selectCalendarTaskList` |
 
 일정 등록·수정·삭제·검색, 한 달 일정 목록, 기본 스프린트 고르기는 테이블 하나라서 `Calendar_SQL.xml`에 있어요.
+
+### 댓글 (`procedures/comment`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_comment_block` | 조인 | 블록 | 블록이 있는 페이지의 워크스페이스·제목·만든 사람·휴지통 여부 | `CommentMapper.selectCommentBlock` |
+
+댓글 목록은 작업·블록 **번호 목록**(`<foreach>`)을 넘겨야 해서, 사용자 조인이 있어도 `Comment_SQL.xml`에 뒀어요.
+같은 조인을 댓글 한 건 조회에도 써야 해서, 컬럼과 조인은 `<sql id="commentSelect">` 한 곳에 두고 세 SQL이 `<include>`로 가져다 써요.
+그래서 댓글 컬럼을 바꿀 때는 이 한 곳만 고치면 돼요.
 
 ## 함께 고쳐야 하는 쌍
 

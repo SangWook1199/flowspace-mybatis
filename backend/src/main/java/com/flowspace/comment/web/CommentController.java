@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.comment.web;
 
 import java.util.List;
 
@@ -6,10 +6,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import com.flowspace.dto.comment.CommentCreateRequest;
-import com.flowspace.dto.comment.CommentResponse;
-import com.flowspace.dto.comment.CommentUpdateRequest;
-import com.flowspace.service.CommentService;
+import com.flowspace.comment.dto.request.CommentCreateRequest;
+import com.flowspace.comment.dto.response.CommentResponse;
+import com.flowspace.comment.dto.request.CommentUpdateRequest;
+import com.flowspace.comment.service.CommentService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

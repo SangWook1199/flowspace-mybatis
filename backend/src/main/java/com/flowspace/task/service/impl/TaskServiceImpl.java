@@ -31,12 +31,12 @@ import com.flowspace.task.dto.request.TaskStatusReorderRequest;
 import com.flowspace.task.dto.response.TaskStatusResponse;
 import com.flowspace.task.dto.request.TaskStatusUpdateRequest;
 import com.flowspace.task.dto.request.TaskUpdateRequest;
-import com.flowspace.dto.comment.CommentResponse;
+import com.flowspace.comment.dto.response.CommentResponse;
+import com.flowspace.comment.service.CommentService;
 import com.flowspace.task.dto.request.SubTaskCreateRequest;
 import com.flowspace.task.dto.request.SubTaskReorderRequest;
 import com.flowspace.task.dto.response.SubTaskResponse;
 import com.flowspace.task.dto.request.SubTaskUpdateRequest;
-import com.flowspace.entity.Comment;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.User;
@@ -47,7 +47,6 @@ import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.TaskAttachmentRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.UserRepository;
@@ -66,13 +65,13 @@ public class TaskServiceImpl implements TaskService {
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final CommentRepository commentRepository;
     private final TaskAttachmentRepository taskAttachmentRepository;
     private final FileService fileService;
     private final UserRepository userRepository;
 
     private final ActivityService activityService;
     private final NotificationService notificationService;
+    private final CommentService commentService;
 
     // 작업 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
     private final TaskMapper taskMapper;
@@ -806,7 +805,7 @@ public class TaskServiceImpl implements TaskService {
                 .add(SubTaskResponse.from(subTask));
         }
 
-        Map<Long, List<CommentResponse>> commentsByTask = getTaskCommentResponses(taskIds);
+        Map<Long, List<CommentResponse>> commentsByTask = commentService.getTaskCommentMap(taskIds);
 
         return tasks.stream()
             .map(task -> TaskResponse.from(task, assigneesByTask.getOrDefault(task.getTaskId(), List.of()),
@@ -877,7 +876,8 @@ public class TaskServiceImpl implements TaskService {
         List<SubTaskResponse> subtasks = taskMapper.selectSubTaskList(List.of(taskId)).stream()
             .map(SubTaskResponse::from).toList();
 
-        List<CommentResponse> comments = getTaskCommentResponses(List.of(taskId)).getOrDefault(taskId, List.of());
+        List<CommentResponse> comments =
+            commentService.getTaskCommentMap(List.of(taskId)).getOrDefault(taskId, List.of());
 
         return TaskResponse.from(task, assignees, subtasks, comments);
     }
@@ -889,32 +889,6 @@ public class TaskServiceImpl implements TaskService {
 
         for (TaskAssigneeVO assignee : assignees) {
             result.computeIfAbsent(assignee.getTaskId(), key -> new ArrayList<>()).add(AssigneeItem.from(assignee));
-        }
-
-        return result;
-    }
-
-    // 여러 작업의 댓글(대댓글 포함)을 한 번에 읽어서 작업 id별로 나눠 담아요.
-    private Map<Long, List<CommentResponse>> getTaskCommentResponses(List<Long> taskIds) {
-
-        Map<Long, List<CommentResponse>> result = new HashMap<>();
-
-        List<Comment> roots = commentRepository.findByTask_TaskIdInAndParentCommentIsNullOrderByCreatedAtAsc(taskIds);
-
-        if (roots.isEmpty()) {
-            return result;
-        }
-
-        Map<Long, List<CommentResponse>> repliesByParent = new HashMap<>();
-
-        for (Comment reply : commentRepository.findByParentCommentInOrderByCreatedAtAsc(roots)) {
-            repliesByParent.computeIfAbsent(reply.getParentComment().getCommentId(), key -> new ArrayList<>())
-                .add(CommentResponse.from(reply, List.of()));
-        }
-
-        for (Comment root : roots) {
-            result.computeIfAbsent(root.getTask().getTaskId(), key -> new ArrayList<>()).add(
-                CommentResponse.from(root, repliesByParent.getOrDefault(root.getCommentId(), List.of())));
         }
 
         return result;

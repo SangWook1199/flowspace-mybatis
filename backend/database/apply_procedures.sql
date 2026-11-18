@@ -50,3 +50,6 @@ source /database/procedures/activity/sp_activity_list.sql
 -- 캘린더·일정
 source /database/procedures/calendar/sp_event.sql
 source /database/procedures/calendar/sp_calendar_task_list.sql
+
+-- 댓글
+source /database/procedures/comment/sp_comment_block.sql

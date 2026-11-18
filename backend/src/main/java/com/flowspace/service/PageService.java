@@ -22,7 +22,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.flowspace.dto.comment.CommentResponse;
+import com.flowspace.comment.dto.response.CommentResponse;
+import com.flowspace.comment.service.CommentService;
 import com.flowspace.dto.page.PageCoverUpdateRequest;
 import com.flowspace.dto.page.PageCreateRequest;
 import com.flowspace.dto.page.PageDetailResponse;
@@ -36,7 +37,6 @@ import com.flowspace.entity.BlockDatabaseCell;
 import com.flowspace.entity.BlockDatabaseColumn;
 import com.flowspace.entity.BlockDatabaseColumnOption;
 import com.flowspace.entity.BlockDatabaseRow;
-import com.flowspace.entity.Comment;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
@@ -54,7 +54,6 @@ import com.flowspace.repository.BlockDatabaseColumnRepository;
 import com.flowspace.repository.BlockDatabaseRepository;
 import com.flowspace.repository.BlockDatabaseRowRepository;
 import com.flowspace.repository.BlockRepository;
-import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.PageRepository;
 import com.flowspace.repository.RetrospectiveRepository;
 import com.flowspace.repository.UserRepository;
@@ -74,7 +73,6 @@ public class PageService {
     private final BlockRepository blockRepository;
     private final UserRepository userRepository;
     private final FileService fileService;
-    private final CommentRepository commentRepository;
     private final BlockDatabaseRowRepository blockDatabaseRowRepository;
     private final BlockDatabaseRepository blockDatabaseRepository;
     private final BlockDatabaseColumnRepository blockDatabaseColumnRepository;
@@ -83,6 +81,7 @@ public class PageService {
     private final RetrospectiveRepository retrospectiveRepository;
 
     private final ActivityService activityService;
+    private final CommentService commentService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -692,27 +691,9 @@ public class PageService {
 
         List<Block> blocks = blockRepository.findWithImageAndDatabaseByPageOrderByPositionAsc(page);
 
-        // 댓글·대댓글은 블록마다 따로 읽지 않고 한 번에 읽어서 블록 id별로 나눠 담아요.
-        Map<Long, List<CommentResponse>> commentsByBlock = new HashMap<>();
-
-        if (!blocks.isEmpty()) {
-
-            List<Comment> roots = commentRepository.findByBlockInAndParentCommentIsNullOrderByCreatedAtAsc(blocks);
-
-            Map<Long, List<CommentResponse>> repliesByParent = new HashMap<>();
-
-            if (!roots.isEmpty()) {
-                for (Comment reply : commentRepository.findByParentCommentInOrderByCreatedAtAsc(roots)) {
-                    repliesByParent.computeIfAbsent(reply.getParentComment().getCommentId(), key -> new ArrayList<>())
-                        .add(CommentResponse.from(reply, List.of()));
-                }
-            }
-
-            for (Comment root : roots) {
-                commentsByBlock.computeIfAbsent(root.getBlock().getBlockId(), key -> new ArrayList<>()).add(
-                    CommentResponse.from(root, repliesByParent.getOrDefault(root.getCommentId(), List.of())));
-            }
-        }
+        // 댓글·대댓글은 블록마다 따로 읽지 않고 한 번에 읽어서 블록 id별로 나눠 담아요(댓글 서비스가 해요).
+        Map<Long, List<CommentResponse>> commentsByBlock =
+            commentService.getBlockCommentMap(blocks.stream().map(Block::getBlockId).toList());
 
         List<PageDetailResponse.BlockItem> blockItems = blocks.stream()
             .map(block -> PageDetailResponse.BlockItem.from(block,

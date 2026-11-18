@@ -3,7 +3,7 @@ package com.flowspace.dto.page;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.flowspace.dto.comment.CommentResponse;
+import com.flowspace.comment.dto.response.CommentResponse;
 import com.flowspace.entity.Block;
 import com.flowspace.entity.Page;
 
