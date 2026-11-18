@@ -285,18 +285,30 @@ public class TaskServiceImpl implements TaskService {
 
         TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
 
+        // 같은 상태인 작업 수를 순서로 써서, 새 작업이 그 상태의 맨 뒤에 놓여요
         BigDecimal position = BigDecimal
-            .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(workspace, status).size());
+            .valueOf(taskMapper.selectTaskCountByStatus(workspace.getWorkspaceId(), status.getStatusId()));
 
         // 작업 번호는 워크스페이스 기준으로 다음 번호를 줘요(스프린트와 상관없이 T-1, T-2 … 로 이어져요).
-        int taskNumber = taskRepository.findMaxTaskNumber(workspace) + 1;
+        int taskNumber = taskMapper.selectMaxTaskNumber(workspace.getWorkspaceId()) + 1;
 
-        Task task = Task.builder().workspace(workspace).sprint(sprint).createdBy(user).status(status)
-            .taskNumber(taskNumber).position(position).title(request.title()).description(request.description()).startDate(request.startDate())
-            .endDate(request.endDate()).priority(request.priority()).build();
+        // 등록할 값을 VO에 담아요. 워크스페이스·스프린트·상태·작성자는 객체가 아니라 번호로 넣어요.
+        TaskVO task = new TaskVO();
+        task.setWorkspaceId(workspace.getWorkspaceId());
+        task.setSprintId(sprint == null ? null : sprint.getSprintId());
+        task.setStatusId(status.getStatusId());
+        task.setCreatedBy(user.getUserId());
+        task.setTaskNumber(taskNumber);
+        task.setPosition(position);
+        task.setTitle(request.title());
+        task.setDescription(request.description());
+        task.setStartDate(request.startDate());
+        task.setEndDate(request.endDate());
+        task.setPriority(request.priority());
 
-        taskRepository.save(task);
+        taskMapper.insertTask(task);
 
+        // INSERT가 끝나면 DB가 만든 번호가 task.getTaskId()에 들어 있어요
         activityService.log(workspace, user, ActivityType.TASK_CREATED, ActivityTargetType.TASK, task.getTaskId());
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
@@ -309,16 +321,13 @@ public class TaskServiceImpl implements TaskService {
             workspaceMemberRepository.findByWorkspaceAndUser(workspace, assignee)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-            taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
+            taskMapper.insertTaskAssignee(task.getTaskId(), assignee.getUserId());
 
-            notifyAssigned(task, assignee, user);
+            notifyAssigned(task, workspace, assignee, user);
         }
 
-        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-        List<CommentResponse> comments = getTaskCommentResponses(task);
-        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-        return TaskResponse.from(task, assignees, subtasks, comments);
+        // 상태 이름과 만든 시각은 DB에만 있어서 다시 조회해서 돌려줘요
+        return toTaskResponse(findTask(task.getTaskId()));
     }
 
     // 스프린트 Task 목록 조회
@@ -346,16 +355,16 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        TaskVO task = findTask(taskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+        // VO에는 워크스페이스 번호만 있어서, 멤버 확인에 쓸 워크스페이스를 따로 조회해요
+        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-        List<CommentResponse> comments = getTaskCommentResponses(task);
-        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-        return TaskResponse.from(task, assignees, subtasks, comments);
+        return toTaskResponse(task);
     }
 
     // Task 수정
@@ -753,6 +762,13 @@ public class TaskServiceImpl implements TaskService {
             NotificationService.taskLink(task));
     }
 
+    // 담당자로 지정된 사람에게 알림 (MyBatis로 읽은 작업용)
+    private void notifyAssigned(TaskVO task, Workspace workspace, User assignee, User actor) {
+        notificationService.send(assignee, actor, workspace, NotificationType.TASK_ASSIGNED,
+            actor.getNickname() + "님이 '" + task.getTitle() + "' 작업의 담당자로 지정했어요.", task.getTaskId(),
+            NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
+    }
+
     // 작업 상태가 바뀌었음을 담당자들에게 알림 (바꾼 본인은 제외돼요)
     private void notifyStatusChanged(Task task, TaskStatus status, User actor, List<TaskAssignee> assignees) {
         notificationService.sendAll(assignees.stream().map(TaskAssignee::getUser).toList(), actor,
@@ -830,6 +846,35 @@ public class TaskServiceImpl implements TaskService {
                 subtasksByTask.getOrDefault(task.getTaskId(), List.of()),
                 commentsByTask.getOrDefault(task.getTaskId(), List.of())))
             .toList();
+    }
+
+    // 작업 한 건 (없으면 예외)
+    private TaskVO findTask(Long taskId) {
+
+        // MyBatis는 결과가 없으면 null을 돌려줘서 직접 확인해요
+        TaskVO task = taskMapper.selectTaskById(taskId);
+
+        if (task == null) {
+            throw new FlowSpaceException(ErrorCode.TASK_NOT_FOUND);
+        }
+
+        return task;
+    }
+
+    // 작업 한 건을 응답으로 바꿔요 (목록과 같은 방식: 담당자는 프로시저, 하위 작업은 XML SQL, 댓글은 아직 JPA)
+    private TaskResponse toTaskResponse(TaskVO task) {
+
+        Long taskId = task.getTaskId();
+
+        List<AssigneeItem> assignees = taskMapper.selectTaskAssigneeListByTaskId(taskId).stream()
+            .map(AssigneeItem::from).toList();
+
+        List<SubTaskResponse> subtasks = taskMapper.selectSubTaskList(List.of(taskId)).stream()
+            .map(SubTaskResponse::from).toList();
+
+        List<CommentResponse> comments = getTaskCommentResponses(List.of(taskId)).getOrDefault(taskId, List.of());
+
+        return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
     // 여러 작업의 담당자를 한 번에 읽어서 작업 id별로 나눠 담아요.

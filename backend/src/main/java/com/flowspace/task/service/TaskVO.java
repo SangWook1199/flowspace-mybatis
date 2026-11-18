@@ -10,7 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 작업 한 건과 상태 이름을 담는 객체예요(프로시저 sp_task_list의 결과).
+// 작업 한 건과 상태 이름을 담는 객체예요(프로시저 sp_task_list, sp_task의 결과). 작업을 등록할 때도 써요.
 // 워크스페이스·스프린트·상태는 객체가 아니라 번호로 가져요.
 @Getter
 @Setter
@@ -26,6 +26,9 @@ public class TaskVO {
     private Long sprintId;
 
     private Long statusId;
+
+    // 작업을 만든 사람의 번호
+    private Long createdBy;
 
     // task_statuses 테이블에서 조인해 온 값이에요
     private String statusName;

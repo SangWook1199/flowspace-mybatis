@@ -25,4 +25,46 @@
         ORDER BY position
     </select>
 
+    <!-- 작업 한 건과 상태 이름 -->
+    <select id="selectTaskById" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskVO">
+        {call sp_task(#{taskId})}
+    </select>
+
+    <!-- 작업 한 건의 담당자 -->
+    <select id="selectTaskAssigneeListByTaskId" statementType="CALLABLE"
+            resultType="com.flowspace.task.service.TaskAssigneeVO">
+        {call sp_task_assignee(#{taskId})}
+    </select>
+
+    <!-- 워크스페이스에서 해당 상태인 작업 수 -->
+    <select id="selectTaskCountByStatus" resultType="int">
+        SELECT COUNT(*)
+        FROM tasks
+        WHERE workspace_id = #{workspaceId}
+          AND status_id = #{statusId}
+    </select>
+
+    <!-- 워크스페이스에서 지금까지 쓴 가장 큰 작업 번호 (작업이 없으면 0) -->
+    <select id="selectMaxTaskNumber" resultType="int">
+        SELECT COALESCE(MAX(task_number), 0)
+        FROM tasks
+        WHERE workspace_id = #{workspaceId}
+    </select>
+
+    <!-- 작업 등록. DB가 만든 task_id를 VO의 taskId에 넣어 줘요.
+         완료 시각은 비워 두고, 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertTask" parameterType="com.flowspace.task.service.TaskVO"
+            useGeneratedKeys="true" keyProperty="taskId">
+        INSERT INTO tasks (workspace_id, sprint_id, status_id, task_number, position, created_by,
+                           title, description, start_date, end_date, priority)
+        VALUES (#{workspaceId}, #{sprintId}, #{statusId}, #{taskNumber}, #{position}, #{createdBy},
+                #{title}, #{description}, #{startDate}, #{endDate}, #{priority})
+    </insert>
+
+    <!-- 작업 담당자 등록 -->
+    <insert id="insertTaskAssignee">
+        INSERT INTO task_assignees (task_id, user_id)
+        VALUES (#{taskId}, #{userId})
+    </insert>
+
 </mapper>

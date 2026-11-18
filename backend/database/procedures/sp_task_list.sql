@@ -16,6 +16,7 @@ BEGIN
            t.workspace_id,
            t.sprint_id,
            t.status_id,
+           t.created_by,
            ts.name AS status_name,
            t.position,
            t.title,

@@ -9,3 +9,5 @@ source /database/procedures/sp_start_sprint.sql
 source /database/procedures/sp_complete_sprint.sql
 source /database/procedures/sp_task_list.sql
 source /database/procedures/sp_task_assignee_list.sql
+source /database/procedures/sp_task.sql
+source /database/procedures/sp_task_assignee.sql

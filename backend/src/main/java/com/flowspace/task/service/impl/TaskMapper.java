@@ -22,4 +22,22 @@ public interface TaskMapper {
 
     // 여러 작업의 하위 작업 (taskIds가 비어 있으면 안 돼요)
     List<SubTaskVO> selectSubTaskList(@Param("taskIds") List<Long> taskIds);
+
+    // 작업 한 건과 상태 이름 (프로시저 sp_task, 없으면 null)
+    TaskVO selectTaskById(Long taskId);
+
+    // 작업 한 건의 담당자 (프로시저 sp_task_assignee)
+    List<TaskAssigneeVO> selectTaskAssigneeListByTaskId(Long taskId);
+
+    // 워크스페이스에서 해당 상태인 작업 수 (새 작업을 그 상태의 맨 뒤에 놓을 때 써요)
+    int selectTaskCountByStatus(@Param("workspaceId") Long workspaceId, @Param("statusId") Long statusId);
+
+    // 워크스페이스에서 지금까지 쓴 가장 큰 작업 번호 (작업이 없으면 0)
+    int selectMaxTaskNumber(Long workspaceId);
+
+    // 작업 등록. 실행 후 DB가 만든 번호가 task의 taskId에 들어가요.
+    int insertTask(TaskVO task);
+
+    // 작업 담당자 등록
+    int insertTaskAssignee(@Param("taskId") Long taskId, @Param("userId") Long userId);
 }
