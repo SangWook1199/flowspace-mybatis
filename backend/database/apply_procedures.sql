@@ -31,3 +31,6 @@ source /database/procedures/workspace/sp_member_task_count.sql
 source /database/procedures/workspace/sp_init_workspace.sql
 source /database/procedures/workspace/sp_delete_workspace.sql
 source /database/procedures/workspace/sp_my_invite_list.sql
+
+-- 사용자
+source /database/procedures/user/sp_user_by_email.sql

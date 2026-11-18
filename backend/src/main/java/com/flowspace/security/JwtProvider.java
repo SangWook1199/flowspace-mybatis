@@ -1,6 +1,7 @@
 package com.flowspace.security;
 
 import com.flowspace.entity.User;
+import com.flowspace.entity.enums.Provider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -32,12 +33,17 @@ public class JwtProvider {
     }
 
     public String createAccessToken(User user) {
+        return createAccessToken(user.getUserId(), user.getEmail(), user.getProvider());
+    }
+
+    // 엔티티 없이 번호·이메일·가입 방식만으로 만들어요 (MyBatis로 읽은 사용자)
+    public String createAccessToken(Long userId, String email, Provider provider) {
         Date now = new Date();
 
         return Jwts.builder()
-                .subject(String.valueOf(user.getUserId()))
-                .claim("email", user.getEmail())
-                .claim("provider", user.getProvider().name())
+                .subject(String.valueOf(userId))
+                .claim("email", email)
+                .claim("provider", provider.name())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + accessTokenExpiration))
                 .signWith(secretKey)
@@ -50,10 +56,15 @@ public class JwtProvider {
 
     // 유효 기간(ms)을 직접 정해서 만들어요 (로그인 상태 유지 여부에 따라 길이가 달라져요)
     public String createRefreshToken(User user, long ttlMillis) {
+        return createRefreshToken(user.getUserId(), ttlMillis);
+    }
+
+    // 엔티티 없이 사용자 번호만으로 만들어요 (MyBatis로 읽은 사용자)
+    public String createRefreshToken(Long userId, long ttlMillis) {
         Date now = new Date();
 
         return Jwts.builder()
-                .subject(String.valueOf(user.getUserId()))
+                .subject(String.valueOf(userId))
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + ttlMillis))
                 .signWith(secretKey)

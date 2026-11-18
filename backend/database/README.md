@@ -16,7 +16,8 @@ database/
 └── procedures/
     ├── sprint/             스프린트
     ├── task/               작업(칸반)
-    └── workspace/          워크스페이스
+    ├── workspace/          워크스페이스
+    └── user/               사용자·로그인
 ```
 
 ## 규칙
@@ -76,6 +77,12 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_init_workspace` | 일괄 변경 | 워크스페이스 번호, 소유자 번호 | 소유자 멤버와 기본 상태 3개 연결 | `WorkspaceMapper.insertWorkspaceInit` |
 | `sp_my_invite_list` | 조인 | 내 이메일 | 받은 초대와 워크스페이스 이름·초대한 사람 | `WorkspaceMapper.selectMyInviteList` |
 | `sp_delete_workspace` | 일괄 변경 | 워크스페이스 번호 | 작업을 먼저 지우고 워크스페이스 삭제 (나머지는 CASCADE) | `WorkspaceMapper.deleteWorkspace` |
+
+### 사용자 (`procedures/user`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_user_by_email` | 조인 | 이메일 | 사용자 한 명과 프로필 이미지 주소 | `UserMapper.selectUserByEmail` |
 
 ## 함께 고쳐야 하는 쌍
 

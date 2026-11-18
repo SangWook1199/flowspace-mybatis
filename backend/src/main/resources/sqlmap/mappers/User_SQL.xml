@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.user.service.impl.UserMapper">
+
+    <!-- 이메일로 사용자 한 명. 프로필 이미지 조인은 프로시저 안에서 해요(backend/database/procedures/user). -->
+    <select id="selectUserByEmail" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user_by_email(#{email})}
+    </select>
+
+    <!-- 프로필 수정 -->
+    <update id="updateUserProfile" parameterType="com.flowspace.user.service.UserVO">
+        UPDATE users
+           SET nickname        = #{nickname},
+               bio             = #{bio},
+               profile_file_id = #{profileFileId}
+         WHERE user_id = #{userId}
+    </update>
+
+    <!-- 프로필 이미지만 바꾸기 -->
+    <update id="updateUserProfileFile">
+        UPDATE users
+           SET profile_file_id = #{profileFileId}
+         WHERE user_id = #{userId}
+    </update>
+
+    <!-- 비밀번호 바꾸기 -->
+    <update id="updateUserPassword">
+        UPDATE users
+           SET password = #{password}
+         WHERE user_id = #{userId}
+    </update>
+
+    <!-- 참여 중인 첫 워크스페이스 번호 -->
+    <select id="selectFirstWorkspaceId" resultType="long">
+        SELECT workspace_id
+        FROM workspace_members
+        WHERE user_id = #{userId}
+        ORDER BY member_id
+        LIMIT 1
+    </select>
+
+    <!-- 리프레시 토큰의 만료 시각 -->
+    <select id="selectRefreshTokenExpiredAt" resultType="java.time.LocalDateTime">
+        SELECT expired_at
+        FROM refresh_tokens
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 리프레시 토큰 지우기 -->
+    <delete id="deleteRefreshToken">
+        DELETE FROM refresh_tokens
+        WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 리프레시 토큰 저장 -->
+    <insert id="insertRefreshToken">
+        INSERT INTO refresh_tokens (user_id, token, expired_at)
+        VALUES (#{userId}, #{token}, #{expiredAt})
+    </insert>
+
+</mapper>

@@ -3,6 +3,7 @@ package com.flowspace.user.service.impl;
 import com.flowspace.service.FileService;
 import com.flowspace.user.service.EmailVerificationService;
 import com.flowspace.user.service.AuthService;
+import com.flowspace.user.service.UserVO;
 
 import com.flowspace.workspace.service.WorkspaceService;
 
@@ -25,7 +26,6 @@ import com.flowspace.entity.File;
 import com.flowspace.entity.RefreshToken;
 import com.flowspace.entity.User;
 import com.flowspace.entity.UserSocialAccount;
-import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
@@ -33,7 +33,7 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.UserSocialAccountRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
+import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.security.JwtProvider;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -70,13 +70,16 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final UserSocialAccountRepository socialAccountRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
     private final EmailVerificationService emailVerificationService;
+    private final WorkspaceRepository workspaceRepository;
+
+    // 사용자 조회·수정용 MyBatis Mapper (같은 패키지라 import가 없어요)
+    private final UserMapper userMapper;
 
     // 로그인 상태를 유지하지 않을 때 리프레시 토큰이 살아 있는 시간
     private static final Duration SESSION_REFRESH_TTL = Duration.ofDays(1);
@@ -206,11 +209,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     @Override
     public UserResponse getMe(String email) {
-
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        return UserResponse.from(user);
+        return UserResponse.from(findUser(email));
     }
 
     // 프로필 이미지 수정
@@ -218,35 +217,37 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse updateProfileImage(MultipartFile image, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
+        // 파일 저장은 아직 JPA(FileService)라서 엔티티로 받아요
         File file = fileService.uploadImage(image, profileWorkspace(user), email);
 
-        user.updateProfileImage(file);
+        userMapper.updateUserProfileFile(user.getUserId(), file.getFileId());
 
-        return UserResponse.from(user);
+        // 새 이미지 주소는 파일 테이블에 있어서 다시 조회해요
+        return UserResponse.from(findUser(email));
     }
 
     // 프로필 수정
     @Override
     public UserResponse updateProfile(ProfileUpdateRequest request, MultipartFile image, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        File profileFile = user.getProfileFile();
+        UserVO user = findUser(email);
 
         if (image != null && !image.isEmpty()) {
-            profileFile = fileService.uploadImage(image, profileWorkspace(user), email);
+            user.setProfileFileId(fileService.uploadImage(image, profileWorkspace(user), email).getFileId());
         }
 
         // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.
         String bio = request.bio() == null ? null : request.bio().trim();
 
-        user.updateProfile(request.nickname().trim(), bio == null || bio.isEmpty() ? null : bio, profileFile);
+        user.setNickname(request.nickname().trim());
+        user.setBio(bio == null || bio.isEmpty() ? null : bio);
 
-        return UserResponse.from(user);
+        // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
+        userMapper.updateUserProfile(user);
+
+        return UserResponse.from(findUser(email));
     }
 
     // 비밀번호 변경
@@ -254,8 +255,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse changePassword(PasswordChangeRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
         // 구글·마이크로소프트 계정은 비밀번호가 없어요.
         if (user.getPassword() == null) {
@@ -270,19 +270,21 @@ public class AuthServiceImpl implements AuthService {
             throw new FlowSpaceException(ErrorCode.SAME_PASSWORD);
         }
 
-        user.changePassword(passwordEncoder.encode(request.newPassword()));
+        userMapper.updateUserPassword(user.getUserId(), passwordEncoder.encode(request.newPassword()));
 
         // 로그인 상태 유지 여부는 지금 로그인의 남은 기간을 그대로 이어받아요.
-        Duration remaining = refreshTokenRepository.findByUser(user)
-            .map(saved -> Duration.between(LocalDateTime.now(), saved.getExpiredAt())).filter(d -> !d.isNegative())
-            .orElse(SESSION_REFRESH_TTL);
+        LocalDateTime expiredAt = userMapper.selectRefreshTokenExpiredAt(user.getUserId());
 
-        String accessToken = jwtProvider.createAccessToken(user);
+        Duration remaining = expiredAt == null ? SESSION_REFRESH_TTL : Duration.between(LocalDateTime.now(), expiredAt);
+
+        if (remaining.isNegative()) {
+            remaining = SESSION_REFRESH_TTL;
+        }
+
+        String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getEmail(), user.getProvider());
         String refreshToken = issueRefreshToken(user, remaining);
 
-        Long workspaceId = user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
-
-        return LoginResponse.from(user, accessToken, refreshToken, workspaceId);
+        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspaceId());
     }
 
     // 로그인 응답에 실을 "마지막으로 보던 워크스페이스 id". 그 워크스페이스가 삭제됐거나 비어 있으면 null이에요(화면이 알아서 첫 워크스페이스를 골라요).
@@ -292,14 +294,36 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // 프로필 이미지를 저장할 워크스페이스: 마지막으로 보던 곳, 없으면 참여 중인 첫 워크스페이스예요(파일은 워크스페이스에 속해야 해요).
-    private Workspace profileWorkspace(User user) {
+    private Workspace profileWorkspace(UserVO user) {
 
-        if (user.getLastWorkspace() != null) {
-            return user.getLastWorkspace();
+        Long workspaceId = user.getLastWorkspaceId() != null ? user.getLastWorkspaceId()
+            : userMapper.selectFirstWorkspaceId(user.getUserId());
+
+        // 파일 저장(FileService)이 아직 JPA라 엔티티가 필요해요. getReferenceById는 DB를 읽지 않아요.
+        return workspaceId == null ? null : workspaceRepository.getReferenceById(workspaceId);
+    }
+
+    // 이메일로 사용자 한 명 (없으면 예외)
+    private UserVO findUser(String email) {
+
+        UserVO user = userMapper.selectUserByEmail(email);
+
+        if (user == null) {
+            throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
         }
 
-        return workspaceMemberRepository.findByUser(user).stream().map(WorkspaceMember::getWorkspace).findFirst()
-            .orElse(null);
+        return user;
+    }
+
+    // 리프레시 토큰 발급 (MyBatis로 읽은 사용자용): 기존 토큰은 지우고 새로 저장해요(계정당 하나).
+    private String issueRefreshToken(UserVO user, Duration ttl) {
+
+        String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), ttl.toMillis());
+
+        userMapper.deleteRefreshToken(user.getUserId());
+        userMapper.insertRefreshToken(user.getUserId(), refreshToken, LocalDateTime.now().plus(ttl));
+
+        return refreshToken;
     }
 
     // 리프레시 토큰 발급: 기존 토큰은 지우고 새로 저장해요(계정당 하나).
@@ -327,15 +351,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse deleteProfileImage(String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
-        if (user.getProfileFile() != null) {
-            fileService.delete(user.getProfileFile());
-            user.removeProfileImage();
+        if (user.getProfileFileId() != null) {
+            // 사용자 쪽 연결을 먼저 끊고, 파일(서버의 실제 파일과 files 행)을 지워요
+            userMapper.updateUserProfileFile(user.getUserId(), null);
+            fileService.delete(user.getProfileFileId());
         }
 
-        return UserResponse.from(user);
+        return UserResponse.from(findUser(email));
     }
 
 

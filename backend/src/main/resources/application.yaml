@@ -80,3 +80,4 @@ logging:
     com.flowspace.sprint.service.impl.SprintMapper: debug
     com.flowspace.task.service.impl.TaskMapper: debug
     com.flowspace.workspace.service.impl.WorkspaceMapper: debug
+    com.flowspace.user.service.impl.UserMapper: debug

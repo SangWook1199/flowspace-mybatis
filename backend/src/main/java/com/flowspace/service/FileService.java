@@ -168,6 +168,11 @@ public class FileService {
     }
 
     // 파일 삭제
+    // 파일 번호로 삭제해요 (MyBatis로 읽은 쪽은 엔티티 없이 번호만 있어요). 없으면 아무것도 하지 않아요.
+    public void delete(Long fileId) {
+        fileRepository.findById(fileId).ifPresent(this::delete);
+    }
+
     public void delete(File file) {
 
         if (!file.getFileUrl().startsWith("/covers/")) {
