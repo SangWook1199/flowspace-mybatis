@@ -1,43 +1,33 @@
-package com.flowspace.dto.retrospective;
+package com.flowspace.retrospective.dto.response;
 
-import com.flowspace.entity.SubTaskSnapshot;
+import com.flowspace.retrospective.service.SubTaskSnapshotVO;
 
 // @formatter:off
 
 public record SubTaskSnapshotItem(
 
     Long subTaskSnapshotId,
-
     String content,
-
     Boolean isCompleted,
-
     String assigneeName,
-
     Long assigneeProfileFileId,
-
     String assigneeProfileImageUrl,
-
     Integer position
 
 ) {
 
-    public static SubTaskSnapshotItem from(SubTaskSnapshot subtask) {
+    // 담당자 사진 주소는 프로시저가 files와 조인해서 넣어 줘요
+    public static SubTaskSnapshotItem from(SubTaskSnapshotVO subtask) {
         return new SubTaskSnapshotItem(
             subtask.getSubTaskSnapshotId(),
             subtask.getContent(),
             subtask.getIsCompleted(),
             subtask.getAssigneeName(),
-            subtask.getAssigneeProfileFile() == null
-                ? null
-                : subtask.getAssigneeProfileFile().getFileId(),
-            subtask.getAssigneeProfileFile() == null
-                ? null
-                : subtask.getAssigneeProfileFile().getFileUrl(),
+            subtask.getAssigneeProfileFileId(),
+            subtask.getAssigneeProfileImageUrl(),
             subtask.getPosition()
         );
     }
-
 }
 
 // @formatter:on

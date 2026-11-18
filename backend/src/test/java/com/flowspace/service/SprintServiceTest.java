@@ -1,120 +1,67 @@
 package com.flowspace.service;
 
-import com.flowspace.activity.service.ActivityService;
-
-import com.flowspace.notification.service.NotificationService;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
-import com.flowspace.repository.WorkspaceRepository;
-import com.flowspace.sprint.service.SprintProgressVO;
-import com.flowspace.sprint.service.SprintVO;
-import com.flowspace.sprint.service.impl.SprintMapper;
-import com.flowspace.sprint.service.impl.SprintServiceImpl;
-import com.flowspace.entity.Page;
-import com.flowspace.entity.Retrospective;
-import com.flowspace.entity.Sprint;
-import com.flowspace.entity.Task;
-import com.flowspace.entity.TaskStatus;
+import com.flowspace.activity.service.ActivityService;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.SprintStatus;
-import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.BlockDatabaseCellRepository;
-import com.flowspace.repository.BlockDatabaseColumnRepository;
-import com.flowspace.repository.BlockDatabaseRepository;
-import com.flowspace.repository.BlockDatabaseRowRepository;
-import com.flowspace.repository.BlockRepository;
-import com.flowspace.repository.PageRepository;
-import com.flowspace.repository.RetrospectiveRepository;
-import com.flowspace.repository.RetrospectiveStatusSnapshotRepository;
-import com.flowspace.repository.SprintRepository;
-import com.flowspace.repository.SubTaskRepository;
-import com.flowspace.repository.SubTaskSnapshotRepository;
-import com.flowspace.repository.TaskAssigneeRepository;
+import com.flowspace.notification.service.NotificationService;
 import com.flowspace.repository.TaskRepository;
-import com.flowspace.repository.TaskSnapshotAssigneeRepository;
-import com.flowspace.repository.TaskSnapshotRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
-import com.flowspace.repository.WorkspaceTaskStatusRepository;
+import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.retrospective.service.RetrospectiveService;
+import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
+import com.flowspace.sprint.service.SprintProgressVO;
+import com.flowspace.sprint.service.SprintVO;
+import com.flowspace.sprint.service.impl.SprintMapper;
+import com.flowspace.sprint.service.impl.SprintServiceImpl;
 
-// 스프린트 완료 → 회고 생성(진행 중이던 작업만 백로그로), 이미 회고가 있으면 거절, 삭제는 관리자 이상만 가능한지 확인해요.
+// 스프린트 완료 → 회고를 먼저 만들고 완료 프로시저, 회고를 못 만들면 완료하지 않음, 삭제는 관리자 이상만 가능한지 확인해요.
 @ExtendWith(MockitoExtension.class)
 class SprintServiceTest {
 
-    @Mock
-    private SprintRepository sprintRepository;
     @Mock
     private WorkspaceMemberRepository workspaceMemberRepository;
     @Mock
     private TaskRepository taskRepository;
     @Mock
-    private PageRepository pageRepository;
-    @Mock
-    private BlockRepository blockRepository;
-    @Mock
-    private BlockDatabaseRepository blockDatabaseRepository;
-    @Mock
-    private BlockDatabaseRowRepository blockDatabaseRowRepository;
-    @Mock
-    private BlockDatabaseCellRepository blockDatabaseCellRepository;
-    @Mock
-    private BlockDatabaseColumnRepository blockDatabaseColumnRepository;
-    @Mock
-    private WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
-    @Mock
-    private RetrospectiveRepository retrospectiveRepository;
-    @Mock
-    private RetrospectiveStatusSnapshotRepository statusSnapshotRepository;
-    @Mock
-    private TaskSnapshotRepository taskSnapshotRepository;
-    @Mock
-    private TaskSnapshotAssigneeRepository taskSnapshotAssigneeRepository;
-    @Mock
-    private SubTaskSnapshotRepository subTaskSnapshotRepository;
-    @Mock
-    private TaskAssigneeRepository taskAssigneeRepository;
-    @Mock
-    private SubTaskRepository subTaskRepository;
-    @Mock
     private UserRepository userRepository;
+    @Mock
+    private WorkspaceRepository workspaceRepository;
     @Mock
     private ActivityService activityService;
     @Mock
     private NotificationService notificationService;
     @Mock
-    private WorkspaceRepository workspaceRepository;
+    private RetrospectiveService retrospectiveService;
     @Mock
     private SprintMapper sprintMapper;
 
@@ -123,17 +70,13 @@ class SprintServiceTest {
 
     private User user;
     private Workspace workspace;
-    private Sprint sprint;
 
     @BeforeEach
     void setUp() {
         user = User.builder().userId(1L).email("a@a.com").nickname("a").build();
         workspace = Workspace.builder().workspaceId(5L).name("w").initials("W").build();
-        sprint = Sprint.builder().sprintId(10L).workspace(workspace).createdBy(user).name("스프린트 1").startDate(LocalDate.now())
-            .endDate(LocalDate.now().plusDays(7)).status(SprintStatus.ACTIVE).build();
 
         when(userRepository.findByEmail("a@a.com")).thenReturn(Optional.of(user));
-        lenient().when(sprintRepository.findById(10L)).thenReturn(Optional.of(sprint));
     }
 
     // 스프린트 한 건 (MyBatis 조회 결과)
@@ -168,35 +111,12 @@ class SprintServiceTest {
         memberWithRole(WorkspaceRole.MEMBER);
         sprintRow(SprintStatus.ACTIVE);
 
-        TaskStatus doneStatus = TaskStatus.builder().statusId(3L).name("DONE").category(TaskStatusCategory.DONE).build();
-        TaskStatus todoStatus = TaskStatus.builder().statusId(1L).name("TODO").category(TaskStatusCategory.TODO).build();
-        Task done = Task.builder().taskId(1L).workspace(workspace).sprint(sprint).status(doneStatus).title("끝난 작업")
-            .taskNumber(1).build();
-        Task todo = Task.builder().taskId(2L).workspace(workspace).sprint(sprint).status(todoStatus).title("남은 작업")
-            .taskNumber(2).build();
-
-        when(taskRepository.findBySprintOrderByPositionAsc(sprint)).thenReturn(List.of(done, todo));
-        when(pageRepository.save(any(Page.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(retrospectiveRepository.save(any(Retrospective.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
         sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com");
 
-        // 회고 페이지 제목과 회고-스프린트 연결
-        ArgumentCaptor<Page> page = ArgumentCaptor.forClass(Page.class);
-        verify(pageRepository).save(page.capture());
-        assertEquals("스프린트 1 회고", page.getValue().getTitle());
-
-        ArgumentCaptor<Retrospective> retrospective = ArgumentCaptor.forClass(Retrospective.class);
-        verify(retrospectiveRepository).save(retrospective.capture());
-        assertSame(sprint, retrospective.getValue().getSprint());
-        assertSame(page.getValue(), retrospective.getValue().getPage());
-
-        // 작업 두 개 모두 스냅샷으로 남아요
-        verify(taskSnapshotRepository, org.mockito.Mockito.times(2)).save(any());
-
         // 회고(스냅샷)를 먼저 만들고, 그다음 프로시저가 끝나지 않은 작업을 옮겨요
-        InOrder order = inOrder(retrospectiveRepository, sprintMapper);
-        order.verify(retrospectiveRepository).save(any(Retrospective.class));
+        // 스프린트 이름은 회고 페이지 제목("스프린트 1 회고")에 쓰여요
+        InOrder order = inOrder(retrospectiveService, sprintMapper);
+        order.verify(retrospectiveService).createRetrospective(10L, 5L, "스프린트 1", 1L);
         order.verify(sprintMapper).updateSprintComplete(10L);
 
         verify(activityService).log(eq(5L), eq(1L), eq(ActivityType.SPRINT_COMPLETED),
@@ -238,22 +158,24 @@ class SprintServiceTest {
             () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com"));
 
         assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
-        verify(retrospectiveRepository, never()).save(any(Retrospective.class));
+        verify(retrospectiveService, never()).createRetrospective(any(), any(), any(), any());
         verify(sprintMapper, never()).updateSprintComplete(any());
     }
 
     @Test
-    @DisplayName("이미 회고가 있는 스프린트는 다시 완료할 수 없다")
+    @DisplayName("회고를 만들지 못하면(이미 있으면) 스프린트를 완료하지 않는다")
     void alreadyHasRetrospective() {
         memberWithRole(WorkspaceRole.MEMBER);
         sprintRow(SprintStatus.ACTIVE);
-        when(retrospectiveRepository.existsBySprint(sprint)).thenReturn(true);
+
+        // 회고가 이미 있는지는 회고 서비스가 확인해요 → 여기서는 거절했다고 가정해요
+        doThrow(new FlowSpaceException(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS)).when(retrospectiveService)
+            .createRetrospective(10L, 5L, "스프린트 1", 1L);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com"));
 
         assertEquals(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS, e.getErrorCode());
-        verify(retrospectiveRepository, never()).save(any(Retrospective.class));
         verify(sprintMapper, never()).updateSprintComplete(any());
     }
 

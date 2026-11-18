@@ -1,6 +1,6 @@
-package com.flowspace.dto.retrospective;
+package com.flowspace.retrospective.dto.response;
 
-import com.flowspace.entity.RetrospectiveStatusSnapshot;
+import com.flowspace.retrospective.service.StatusSnapshotVO;
 
 // @formatter:off
 
@@ -13,7 +13,7 @@ public record StatusSnapshotItem(
 
 ) {
 
-    public static StatusSnapshotItem from(RetrospectiveStatusSnapshot status) {
+    public static StatusSnapshotItem from(StatusSnapshotVO status) {
         return new StatusSnapshotItem(
             status.getSnapshotStatusId(),
             status.getName(),
@@ -21,7 +21,6 @@ public record StatusSnapshotItem(
             status.getPosition()
         );
     }
-
 }
 
 // @formatter:on

@@ -1,4 +1,4 @@
-package com.flowspace.dto.retrospective;
+package com.flowspace.retrospective.dto.response;
 
 import java.util.List;
 

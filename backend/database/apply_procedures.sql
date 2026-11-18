@@ -55,3 +55,11 @@ source /database/procedures/calendar/sp_calendar_task_list.sql
 
 -- 댓글
 source /database/procedures/comment/sp_comment_block.sql
+
+-- 회고
+source /database/procedures/retrospective/sp_create_retrospective.sql
+source /database/procedures/retrospective/sp_retrospective_list.sql
+source /database/procedures/retrospective/sp_retrospective.sql
+source /database/procedures/retrospective/sp_task_snapshot_list.sql
+source /database/procedures/retrospective/sp_task_snapshot_assignee_list.sql
+source /database/procedures/retrospective/sp_subtask_snapshot_list.sql

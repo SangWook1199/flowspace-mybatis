@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.retrospective.web;
 
 import java.util.List;
 
@@ -6,9 +6,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import com.flowspace.dto.retrospective.RetrospectiveListItem;
-import com.flowspace.dto.retrospective.RetrospectiveResponse;
-import com.flowspace.service.RetrospectiveService;
+import com.flowspace.retrospective.dto.response.RetrospectiveListItem;
+import com.flowspace.retrospective.dto.response.RetrospectiveResponse;
+import com.flowspace.retrospective.service.RetrospectiveService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

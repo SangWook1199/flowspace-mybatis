@@ -1,11 +1,11 @@
 package com.flowspace.sprint.web;
 
-import com.flowspace.dto.retrospective.RetrospectiveResponse;
+import com.flowspace.retrospective.dto.response.RetrospectiveResponse;
 import com.flowspace.sprint.dto.request.SprintCreateRequest;
 import com.flowspace.sprint.dto.response.SprintResponse;
 import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
 import com.flowspace.sprint.dto.request.SprintUpdateRequest;
-import com.flowspace.service.RetrospectiveService;
+import com.flowspace.retrospective.service.RetrospectiveService;
 import com.flowspace.sprint.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

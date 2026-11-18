@@ -1,13 +1,14 @@
-package com.flowspace.dto.retrospective;
+package com.flowspace.retrospective.dto.response;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import com.flowspace.dto.page.PageDetailResponse;
-import com.flowspace.entity.Retrospective;
+import com.flowspace.retrospective.service.RetrospectiveVO;
 
 // @formatter:off
 
+// 회고 상세: 요약, 상태·작업 스냅샷, 회고 페이지 내용
 public record RetrospectiveResponse(
 
     Long retrospectiveId,
@@ -24,27 +25,25 @@ public record RetrospectiveResponse(
 ) {
 
     public static RetrospectiveResponse from(
-        Retrospective retrospective,
+        RetrospectiveVO retrospective,
         RetrospectiveSummary summary,
         List<StatusSnapshotItem> statuses,
         List<TaskSnapshotItem> snapshots,
         PageDetailResponse page
     ) {
-
         return new RetrospectiveResponse(
             retrospective.getRetrospectiveId(),
-            retrospective.getSprint().getSprintId(),
-            retrospective.getSprint().getName(),
-            retrospective.getSprint().getStartDate(),
-            retrospective.getSprint().getEndDate(),
-            retrospective.getPage().getPageId(),
+            retrospective.getSprintId(),
+            retrospective.getSprintName(),
+            retrospective.getStartDate(),
+            retrospective.getEndDate(),
+            retrospective.getPageId(),
             summary,
             statuses,
             snapshots,
             page
         );
     }
-
 }
 
 // @formatter:on

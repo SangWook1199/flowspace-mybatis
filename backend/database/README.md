@@ -21,7 +21,8 @@ database/
     ├── notification/       알림
     ├── activity/           활동 기록
     ├── calendar/           캘린더·일정
-    └── comment/            댓글
+    ├── comment/            댓글
+    └── retrospective/      회고
 ```
 
 ## 규칙
@@ -129,6 +130,20 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 같은 조인을 댓글 한 건 조회에도 써야 해서, 컬럼과 조인은 `<sql id="commentSelect">` 한 곳에 두고 세 SQL이 `<include>`로 가져다 써요.
 그래서 댓글 컬럼을 바꿀 때는 이 한 곳만 고치면 돼요.
 
+### 회고 (`procedures/retrospective`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_create_retrospective` | 여러 단계 | 스프린트, 워크스페이스, 만든 사람, 페이지 제목·아이콘, 표 제목 (OUT 페이지 번호) | 회고 페이지·회고·KPT 표·스냅샷을 한 번에 만들어요 | `RetrospectiveMapper.insertRetrospective` |
+| `sp_retrospective_list` | 조인 | 워크스페이스 | 스프린트와 회고 (회고 없는 스프린트 포함) | `RetrospectiveMapper.selectRetrospectiveList` |
+| `sp_retrospective` | 조인 | 회고 | 위와 같은데 회고 한 건 | `RetrospectiveMapper.selectRetrospectiveById` |
+| `sp_task_snapshot_list` | 조인 | 워크스페이스, 회고(NULL이면 전체) | 작업 스냅샷과 상태 이름 | `RetrospectiveMapper.selectTaskSnapshotList` |
+| `sp_task_snapshot_assignee_list` | 조인 | 워크스페이스, 회고(NULL이면 전체) | 스냅샷 담당자와 프로필 사진 주소 | `RetrospectiveMapper.selectTaskSnapshotAssigneeList` |
+| `sp_subtask_snapshot_list` | 조인 | 회고 | 하위 작업 스냅샷과 담당자 사진 주소 | `RetrospectiveMapper.selectSubTaskSnapshotList` |
+
+`sp_create_retrospective`는 앞 단계에서 만든 번호(페이지 → 회고 → 표)를 다음 단계가 써야 해서 프로시저 안에서 변수로 이어 가요.
+상태 스냅샷 목록, 회고 페이지의 TODO 블록, 스프린트의 회고 번호는 테이블 하나라서 `Retrospective_SQL.xml`에 있어요.
+
 ## 함께 고쳐야 하는 쌍
 
 아래 쌍은 결과 컬럼이 같고 `WHERE`만 달라요. 컬럼을 바꾸면 **두 파일을 함께** 고쳐야 해요(VO 하나가 두 결과를 함께 받아요).
@@ -143,6 +158,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_workspace_member_list` | `sp_workspace_member` | `WorkspaceMemberVO` |
 | `sp_user_by_email` | `sp_user` (둘 다 한 건, 찾는 기준만 달라요) | `UserVO` |
 | `sp_notification_list` | `sp_notification` | `NotificationVO` |
+| `sp_retrospective_list` | `sp_retrospective` | `RetrospectiveVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
 작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요.
