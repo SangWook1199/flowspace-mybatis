@@ -31,7 +31,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         private static final int PROFILE_TASK_LIMIT = 5;
 
         private final WorkspaceRepository workspaceRepository;
-        private final WorkspaceMemberRepository workspaceMemberRepository;
         private final UserRepository userRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
@@ -333,28 +332,27 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                WorkspaceMember owner = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-                if (owner.getRole() != WorkspaceRole.OWNER) {
+                if (findMemberRole(workspaceId, user) != WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
                 User targetUser = userRepository.findById(request.userId())
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                WorkspaceMember targetMember = workspaceMemberRepository.findByWorkspaceAndUser(workspace, targetUser)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+                // 넘겨받을 사람도 이 워크스페이스 멤버여야 해요
+                if (workspaceMapper.selectMemberRole(workspaceId, targetUser.getUserId()) == null) {
+                        throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+                }
 
-                owner.changeRole(WorkspaceRole.MEMBER);
-                targetMember.changeRole(WorkspaceRole.OWNER);
+                // 세 줄 모두 테이블 하나씩이고 값은 자바가 알고 있어서 XML SQL로 해요(같은 트랜잭션이라 함께 반영·취소돼요)
+                workspaceMapper.updateMemberRole(workspaceId, user.getUserId(), WorkspaceRole.MEMBER);
+                workspaceMapper.updateMemberRole(workspaceId, targetUser.getUserId(), WorkspaceRole.OWNER);
+                workspaceMapper.updateWorkspaceOwner(workspaceId, targetUser.getUserId());
 
-                workspace.changeOwner(targetUser);
-
-                notificationService.send(targetUser, user, workspace, NotificationType.OWNERSHIP_TRANSFERRED,
+                notificationService.send(targetUser, user, workspaceRepository.getReferenceById(workspaceId),
+                        NotificationType.OWNERSHIP_TRANSFERRED,
                         user.getNickname() + "님이 '" + workspace.getName() + "'의 소유권을 넘겼어요. 이제 내가 소유자예요.", null,
                         null);
         }
@@ -388,35 +386,37 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User loginUser = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                WorkspaceMember actor = workspaceMemberRepository.findByWorkspaceAndUser(workspace, loginUser)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+                WorkspaceRole actorRole = findMemberRole(workspaceId, loginUser);
 
-                if (!actor.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
+                if (!actorRole.isAtLeast(WorkspaceRole.ADMIN)) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
                 User targetUser = userRepository.findById(userId)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                WorkspaceMember targetMember = workspaceMemberRepository.findByWorkspaceAndUser(workspace, targetUser)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND));
+                WorkspaceRole targetRole = workspaceMapper.selectMemberRole(workspaceId, userId);
 
-                if (targetMember.getRole() == WorkspaceRole.OWNER) {
+                if (targetRole == null) {
+                        throw new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND);
+                }
+
+                if (targetRole == WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.OWNER_CANNOT_REMOVE);
                 }
 
                 // 관리자는 다른 관리자를 내보낼 수 없어요. (내보내기 전에 소유자가 역할을 바꿔야 해요.)
-                if (actor.getRole() == WorkspaceRole.ADMIN && targetMember.getRole() != WorkspaceRole.MEMBER) {
+                if (actorRole == WorkspaceRole.ADMIN && targetRole != WorkspaceRole.MEMBER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                workspaceMemberRepository.delete(targetMember);
+                workspaceMapper.deleteWorkspaceMember(workspaceId, userId);
 
-                notificationService.send(targetUser, loginUser, workspace, NotificationType.MEMBER_REMOVED,
-                        "'" + workspace.getName() + "' 워크스페이스에서 내보내졌어요.", null, null);
+                notificationService.send(targetUser, loginUser, workspaceRepository.getReferenceById(workspaceId),
+                        NotificationType.MEMBER_REMOVED, "'" + workspace.getName() + "' 워크스페이스에서 내보내졌어요.", null,
+                        null);
         }
 
         // 멤버 역할 변경 (소유자만 가능, ADMIN ↔ MEMBER)
@@ -427,13 +427,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User loginUser = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                findWorkspace(workspaceId);
 
-                WorkspaceMember actor = workspaceMemberRepository.findByWorkspaceAndUser(workspace, loginUser)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-                if (actor.getRole() != WorkspaceRole.OWNER) {
+                if (findMemberRole(workspaceId, loginUser) != WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
@@ -442,19 +438,27 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.INVALID_ROLE_CHANGE);
                 }
 
-                User targetUser = userRepository.findById(userId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                if (!userRepository.existsById(userId)) {
+                        throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+                }
 
-                WorkspaceMember targetMember = workspaceMemberRepository.findByWorkspaceAndUser(workspace, targetUser)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND));
+                // 응답에 이름·사진이 필요해서 역할만이 아니라 멤버 정보를 통째로 읽어요
+                WorkspaceMemberVO member = workspaceMapper.selectWorkspaceMember(workspaceId, userId);
 
-                if (targetMember.getRole() == WorkspaceRole.OWNER) {
+                if (member == null) {
+                        throw new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND);
+                }
+
+                if (member.getRole() == WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.INVALID_ROLE_CHANGE);
                 }
 
-                targetMember.changeRole(request.role());
+                workspaceMapper.updateMemberRole(workspaceId, userId, request.role());
 
-                return WorkspaceMemberResponse.from(targetMember, presenceService.isOnline(targetUser.getUserId()));
+                // DB가 따로 채우는 값이 없어서, 바꾼 역할을 VO에 넣어 바로 응답해요
+                member.setRole(request.role());
+
+                return WorkspaceMemberResponse.from(member, presenceService.isOnline(userId));
         }
 
         // 워크스페이스 나가기
@@ -464,27 +468,28 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-                if (member.getRole() == WorkspaceRole.OWNER) {
+                if (findMemberRole(workspaceId, user) == WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.OWNER_CANNOT_LEAVE);
                 }
 
                 // 내가 속한 워크스페이스가 이것 하나뿐이면 나갈 수 없어요.
-                if (workspaceMemberRepository.findByUser(user).size() <= 1) {
+                if (workspaceMapper.selectMyWorkspaceCount(user.getUserId()) <= 1) {
                         throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
 
-                workspaceMemberRepository.delete(member);
+                workspaceMapper.deleteWorkspaceMember(workspaceId, user.getUserId());
 
-                // 소유자에게 멤버가 나갔다고 알려요.
-                notificationService.send(workspace.getOwner(), user, workspace, NotificationType.MEMBER_LEFT,
+                // 소유자에게 멤버가 나갔다고 알려요. (알림 기능이 엔티티를 받아서 소유자를 엔티티로 읽어요)
+                User owner = userRepository.findById(workspace.getOwnerId())
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                notificationService.send(owner, user, workspaceRepository.getReferenceById(workspaceId),
+                        NotificationType.MEMBER_LEFT,
                         user.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
 
+                // 사용자는 JPA 엔티티로 들고 있어서 JPA로 바꿔요(6-3단계와 같은 이유)
                 if (user.getLastWorkspace() != null && user.getLastWorkspace().getWorkspaceId().equals(workspaceId)) {
                         user.updateLastWorkspace(null);
                 }

@@ -123,4 +123,26 @@
         VALUES (#{workspaceId}, #{userId}, #{role})
     </insert>
 
+    <!-- 멤버 역할 변경 -->
+    <update id="updateMemberRole">
+        UPDATE workspace_members
+           SET role = #{role}
+         WHERE workspace_id = #{workspaceId}
+           AND user_id = #{userId}
+    </update>
+
+    <!-- 워크스페이스 소유자 변경 -->
+    <update id="updateWorkspaceOwner">
+        UPDATE workspaces
+           SET owner_id = #{ownerId}
+         WHERE workspace_id = #{workspaceId}
+    </update>
+
+    <!-- 멤버 빼기 -->
+    <delete id="deleteWorkspaceMember">
+        DELETE FROM workspace_members
+        WHERE workspace_id = #{workspaceId}
+          AND user_id = #{userId}
+    </delete>
+
 </mapper>

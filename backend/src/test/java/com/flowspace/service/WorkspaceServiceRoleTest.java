@@ -1,10 +1,5 @@
 package com.flowspace.service;
 
-import com.flowspace.workspace.service.InviteVO;
-import com.flowspace.workspace.service.WorkspaceVO;
-import com.flowspace.workspace.service.impl.WorkspaceMapper;
-import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,91 +17,75 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.flowspace.workspace.dto.request.WorkspaceInviteRequest;
-import com.flowspace.workspace.dto.response.WorkspaceMemberResponse;
-import com.flowspace.workspace.dto.request.WorkspaceRoleChangeRequest;
 import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
-import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.TaskAssigneeRepository;
-import com.flowspace.repository.TaskRepository;
-import com.flowspace.repository.TaskStatusRepository;
 import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceInviteRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
-import com.flowspace.repository.WorkspaceTaskStatusRepository;
+import com.flowspace.workspace.dto.request.WorkspaceInviteRequest;
+import com.flowspace.workspace.dto.request.WorkspaceRoleChangeRequest;
+import com.flowspace.workspace.dto.response.WorkspaceMemberResponse;
+import com.flowspace.workspace.service.InviteVO;
+import com.flowspace.workspace.service.WorkspaceMemberVO;
+import com.flowspace.workspace.service.WorkspaceVO;
+import com.flowspace.workspace.service.impl.WorkspaceMapper;
+import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
 
 // 워크스페이스 역할 규칙: 초대·추방은 관리자 이상, 역할 변경은 소유자만, 관리자는 관리자를 못 내보내는지 확인해요.
+// 역할은 MyBatis Mapper(selectMemberRole)로 읽어서, 테스트에서는 Mapper가 돌려줄 역할을 정해 둬요.
 @ExtendWith(MockitoExtension.class)
 class WorkspaceServiceRoleTest {
 
     @Mock
     private WorkspaceRepository workspaceRepository;
     @Mock
-    private WorkspaceMemberRepository workspaceMemberRepository;
-    @Mock
     private UserRepository userRepository;
-    @Mock
-    private WorkspaceInviteRepository workspaceInviteRepository;
-    @Mock
-    private TaskStatusRepository taskStatusRepository;
-    @Mock
-    private WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
     @Mock
     private NotificationService notificationService;
     @Mock
     private PresenceService presenceService;
-    @Mock
-    private TaskAssigneeRepository taskAssigneeRepository;
-    @Mock
-    private TaskRepository taskRepository;
     @Mock
     private WorkspaceMapper workspaceMapper;
 
     @InjectMocks
     private WorkspaceServiceImpl workspaceService;
 
-    private Workspace workspace;
     private User actor;
     private User target;
 
     @BeforeEach
     void setUp() {
-        workspace = Workspace.builder().workspaceId(5L).name("w").initials("W").build();
         actor = User.builder().userId(1L).email("actor@a.com").nickname("actor").build();
         target = User.builder().userId(2L).email("target@a.com").nickname("target").build();
 
         lenient().when(userRepository.findByEmail("actor@a.com")).thenReturn(Optional.of(actor));
         lenient().when(userRepository.findById(2L)).thenReturn(Optional.of(target));
-        lenient().when(workspaceRepository.findById(5L)).thenReturn(Optional.of(workspace));
+        lenient().when(userRepository.existsById(2L)).thenReturn(true);
+
+        WorkspaceVO workspace = new WorkspaceVO();
+        workspace.setWorkspaceId(5L);
+        workspace.setName("w");
+
+        lenient().when(workspaceMapper.selectWorkspaceById(5L)).thenReturn(workspace);
     }
 
-    private WorkspaceMember actorWithRole(WorkspaceRole role) {
-        WorkspaceMember member = WorkspaceMember.builder().workspace(workspace).user(actor).role(role).build();
-        lenient().when(workspaceMemberRepository.findByWorkspaceAndUser(workspace, actor))
-            .thenReturn(Optional.of(member));
-        return member;
-    }
-
-    // MyBatis로 바꾼 기능(초대)에서 쓰는 준비: 워크스페이스와 로그인한 사람의 역할
-    private void actorRoleInMapper(WorkspaceRole role) {
-        WorkspaceVO row = new WorkspaceVO();
-        row.setWorkspaceId(5L);
-        row.setName("w");
-
-        lenient().when(workspaceMapper.selectWorkspaceById(5L)).thenReturn(row);
+    // 로그인한 사람(1번)의 역할
+    private void actorRole(WorkspaceRole role) {
         lenient().when(workspaceMapper.selectMemberRole(5L, 1L)).thenReturn(role);
     }
 
-    private WorkspaceMember targetWithRole(WorkspaceRole role) {
-        WorkspaceMember member = WorkspaceMember.builder().workspace(workspace).user(target).role(role).build();
-        lenient().when(workspaceMemberRepository.findByWorkspaceAndUser(workspace, target))
-            .thenReturn(Optional.of(member));
-        return member;
+    // 대상(2번)의 역할. 역할 변경은 멤버 정보를 통째로 읽어서 둘 다 준비해요.
+    private void targetRole(WorkspaceRole role) {
+        lenient().when(workspaceMapper.selectMemberRole(5L, 2L)).thenReturn(role);
+
+        WorkspaceMemberVO member = new WorkspaceMemberVO();
+        member.setWorkspaceId(5L);
+        member.setUserId(2L);
+        member.setNickname("target");
+        member.setRole(role);
+
+        lenient().when(workspaceMapper.selectWorkspaceMember(5L, 2L)).thenReturn(member);
     }
 
     // ───── 초대 ─────
@@ -114,7 +93,7 @@ class WorkspaceServiceRoleTest {
     @Test
     @DisplayName("일반 멤버는 초대할 수 없다")
     void memberCannotInvite() {
-        actorRoleInMapper(WorkspaceRole.MEMBER);
+        actorRole(WorkspaceRole.MEMBER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> workspaceService.inviteMember(5L, new WorkspaceInviteRequest("target@a.com"), "actor@a.com"));
@@ -126,7 +105,7 @@ class WorkspaceServiceRoleTest {
     @Test
     @DisplayName("관리자는 초대할 수 있다")
     void adminCanInvite() {
-        actorRoleInMapper(WorkspaceRole.ADMIN);
+        actorRole(WorkspaceRole.ADMIN);
         lenient().when(userRepository.findByEmail("target@a.com")).thenReturn(Optional.of(target));
         // 대상은 아직 멤버가 아니고(역할 null), 보낸 초대도 없어요(0) — Mockito 기본값이라 따로 정하지 않아요
 
@@ -140,60 +119,62 @@ class WorkspaceServiceRoleTest {
     @Test
     @DisplayName("일반 멤버는 추방할 수 없다")
     void memberCannotRemove() {
-        actorWithRole(WorkspaceRole.MEMBER);
-        targetWithRole(WorkspaceRole.MEMBER);
+        actorRole(WorkspaceRole.MEMBER);
+        targetRole(WorkspaceRole.MEMBER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> workspaceService.removeMember(5L, 2L, "actor@a.com"));
 
         assertEquals(ErrorCode.ACCESS_DENIED, e.getErrorCode());
+        verify(workspaceMapper, never()).deleteWorkspaceMember(any(), any());
     }
 
     @Test
     @DisplayName("관리자는 일반 멤버를 내보낼 수 있다")
     void adminCanRemoveMember() {
-        actorWithRole(WorkspaceRole.ADMIN);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.MEMBER);
+        actorRole(WorkspaceRole.ADMIN);
+        targetRole(WorkspaceRole.MEMBER);
 
         workspaceService.removeMember(5L, 2L, "actor@a.com");
 
-        verify(workspaceMemberRepository).delete(targetMember);
+        verify(workspaceMapper).deleteWorkspaceMember(5L, 2L);
     }
 
     @Test
     @DisplayName("관리자는 다른 관리자를 내보낼 수 없다")
     void adminCannotRemoveAdmin() {
-        actorWithRole(WorkspaceRole.ADMIN);
-        targetWithRole(WorkspaceRole.ADMIN);
+        actorRole(WorkspaceRole.ADMIN);
+        targetRole(WorkspaceRole.ADMIN);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> workspaceService.removeMember(5L, 2L, "actor@a.com"));
 
         assertEquals(ErrorCode.ACCESS_DENIED, e.getErrorCode());
-        verify(workspaceMemberRepository, never()).delete(any(WorkspaceMember.class));
+        verify(workspaceMapper, never()).deleteWorkspaceMember(any(), any());
     }
 
     @Test
     @DisplayName("소유자는 관리자도 내보낼 수 있다")
     void ownerCanRemoveAdmin() {
-        actorWithRole(WorkspaceRole.OWNER);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.ADMIN);
+        actorRole(WorkspaceRole.OWNER);
+        targetRole(WorkspaceRole.ADMIN);
 
         workspaceService.removeMember(5L, 2L, "actor@a.com");
 
-        verify(workspaceMemberRepository).delete(targetMember);
+        verify(workspaceMapper).deleteWorkspaceMember(5L, 2L);
     }
 
     @Test
     @DisplayName("소유자는 누구도 내보낼 수 없다")
     void ownerCannotBeRemoved() {
-        actorWithRole(WorkspaceRole.ADMIN);
-        targetWithRole(WorkspaceRole.OWNER);
+        actorRole(WorkspaceRole.ADMIN);
+        targetRole(WorkspaceRole.OWNER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> workspaceService.removeMember(5L, 2L, "actor@a.com"));
 
         assertEquals(ErrorCode.OWNER_CANNOT_REMOVE, e.getErrorCode());
+        verify(workspaceMapper, never()).deleteWorkspaceMember(any(), any());
     }
 
     // ───── 역할 변경 ─────
@@ -201,65 +182,64 @@ class WorkspaceServiceRoleTest {
     @Test
     @DisplayName("소유자는 멤버를 관리자로 바꿀 수 있다")
     void ownerCanPromoteMember() {
-        actorWithRole(WorkspaceRole.OWNER);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.MEMBER);
-        lenient().when(presenceService.isOnline(2L)).thenReturn(false);
+        actorRole(WorkspaceRole.OWNER);
+        targetRole(WorkspaceRole.MEMBER);
 
         WorkspaceMemberResponse response = workspaceService.changeMemberRole(5L, 2L,
             new WorkspaceRoleChangeRequest(WorkspaceRole.ADMIN), "actor@a.com");
 
-        assertEquals(WorkspaceRole.ADMIN, targetMember.getRole());
+        verify(workspaceMapper).updateMemberRole(5L, 2L, WorkspaceRole.ADMIN);
         assertEquals(WorkspaceRole.ADMIN, response.role());
     }
 
     @Test
     @DisplayName("소유자는 관리자를 다시 멤버로 바꿀 수 있다")
     void ownerCanDemoteAdmin() {
-        actorWithRole(WorkspaceRole.OWNER);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.ADMIN);
+        actorRole(WorkspaceRole.OWNER);
+        targetRole(WorkspaceRole.ADMIN);
 
         workspaceService.changeMemberRole(5L, 2L, new WorkspaceRoleChangeRequest(WorkspaceRole.MEMBER),
             "actor@a.com");
 
-        assertEquals(WorkspaceRole.MEMBER, targetMember.getRole());
+        verify(workspaceMapper).updateMemberRole(5L, 2L, WorkspaceRole.MEMBER);
     }
 
     @Test
     @DisplayName("관리자는 역할을 바꿀 수 없다")
     void adminCannotChangeRole() {
-        actorWithRole(WorkspaceRole.ADMIN);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.MEMBER);
+        actorRole(WorkspaceRole.ADMIN);
+        targetRole(WorkspaceRole.MEMBER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class, () -> workspaceService.changeMemberRole(5L, 2L,
             new WorkspaceRoleChangeRequest(WorkspaceRole.ADMIN), "actor@a.com"));
 
         assertEquals(ErrorCode.ACCESS_DENIED, e.getErrorCode());
-        assertEquals(WorkspaceRole.MEMBER, targetMember.getRole());
+        verify(workspaceMapper, never()).updateMemberRole(any(), any(), any());
     }
 
     @Test
     @DisplayName("역할을 소유자로 바꾸는 요청은 거절한다 (소유권 이전을 써야 해요)")
     void cannotSetOwnerByRoleChange() {
-        actorWithRole(WorkspaceRole.OWNER);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.MEMBER);
+        actorRole(WorkspaceRole.OWNER);
+        targetRole(WorkspaceRole.MEMBER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class, () -> workspaceService.changeMemberRole(5L, 2L,
             new WorkspaceRoleChangeRequest(WorkspaceRole.OWNER), "actor@a.com"));
 
         assertEquals(ErrorCode.INVALID_ROLE_CHANGE, e.getErrorCode());
-        assertEquals(WorkspaceRole.MEMBER, targetMember.getRole());
+        verify(workspaceMapper, never()).updateMemberRole(any(), any(), any());
     }
 
     @Test
     @DisplayName("소유자의 역할은 바꿀 수 없다")
     void cannotChangeOwnerRole() {
-        actorWithRole(WorkspaceRole.OWNER);
-        WorkspaceMember targetMember = targetWithRole(WorkspaceRole.OWNER);
+        actorRole(WorkspaceRole.OWNER);
+        targetRole(WorkspaceRole.OWNER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class, () -> workspaceService.changeMemberRole(5L, 2L,
             new WorkspaceRoleChangeRequest(WorkspaceRole.MEMBER), "actor@a.com"));
 
         assertEquals(ErrorCode.INVALID_ROLE_CHANGE, e.getErrorCode());
-        assertEquals(WorkspaceRole.OWNER, targetMember.getRole());
+        verify(workspaceMapper, never()).updateMemberRole(any(), any(), any());
     }
 }

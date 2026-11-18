@@ -72,4 +72,14 @@ public interface WorkspaceMapper {
     // 멤버 추가
     int insertWorkspaceMember(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId,
         @Param("role") WorkspaceRole role);
+
+    // 멤버 역할 변경
+    int updateMemberRole(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId,
+        @Param("role") WorkspaceRole role);
+
+    // 워크스페이스 소유자 변경
+    int updateWorkspaceOwner(@Param("workspaceId") Long workspaceId, @Param("ownerId") Long ownerId);
+
+    // 멤버 빼기 (내보내기·나가기)
+    int deleteWorkspaceMember(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
 }
