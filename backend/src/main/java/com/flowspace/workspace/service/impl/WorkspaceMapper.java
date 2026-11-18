@@ -36,4 +36,19 @@ public interface WorkspaceMapper {
 
     // 멤버가 맡은 작업의 진행 중·완료 수 (프로시저 sp_member_task_count)
     MemberTaskCountVO selectMemberTaskCount(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
+
+    // 내가 속한 워크스페이스 수
+    int selectMyWorkspaceCount(Long userId);
+
+    // 워크스페이스 등록. 실행 후 DB가 만든 번호가 workspace의 workspaceId에 들어가요.
+    int insertWorkspace(WorkspaceVO workspace);
+
+    // 새 워크스페이스에 소유자와 기본 상태 연결 (프로시저 sp_init_workspace)
+    void insertWorkspaceInit(@Param("workspaceId") Long workspaceId, @Param("ownerId") Long ownerId);
+
+    // 워크스페이스 수정 (이름·이니셜·색·아이콘)
+    int updateWorkspace(WorkspaceVO workspace);
+
+    // 워크스페이스 삭제 (프로시저 sp_delete_workspace)
+    void deleteWorkspace(Long workspaceId);
 }

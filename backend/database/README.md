@@ -73,6 +73,8 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_workspace_member` | 조인 | 워크스페이스 번호, 사용자 번호 | 위와 같은데 한 명 (멤버가 아니면 없음) | `WorkspaceMapper.selectWorkspaceMember` |
 | `sp_member_open_task_list` | 조인 | 워크스페이스 번호, 사용자 번호, 개수 | 맡은 작업 중 끝나지 않은 것 (마감일 순) | `WorkspaceMapper.selectMemberOpenTaskList` |
 | `sp_member_task_count` | 조인·집계 | 워크스페이스 번호, 사용자 번호 | 맡은 작업의 진행 중·완료 수 | `WorkspaceMapper.selectMemberTaskCount` |
+| `sp_init_workspace` | 일괄 변경 | 워크스페이스 번호, 소유자 번호 | 소유자 멤버와 기본 상태 3개 연결 | `WorkspaceMapper.insertWorkspaceInit` |
+| `sp_delete_workspace` | 일괄 변경 | 워크스페이스 번호 | 작업을 먼저 지우고 워크스페이스 삭제 (나머지는 CASCADE) | `WorkspaceMapper.deleteWorkspace` |
 
 ## 함께 고쳐야 하는 쌍
 

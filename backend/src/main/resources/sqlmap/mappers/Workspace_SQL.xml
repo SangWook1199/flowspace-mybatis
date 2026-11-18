@@ -47,4 +47,38 @@
         {call sp_member_task_count(#{workspaceId}, #{userId})}
     </select>
 
+    <!-- 내가 속한 워크스페이스 수 -->
+    <select id="selectMyWorkspaceCount" resultType="int">
+        SELECT COUNT(*)
+        FROM workspace_members
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 워크스페이스 등록. 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertWorkspace" parameterType="com.flowspace.workspace.service.WorkspaceVO"
+            useGeneratedKeys="true" keyProperty="workspaceId">
+        INSERT INTO workspaces (owner_id, name, initials, color, icon)
+        VALUES (#{ownerId}, #{name}, #{initials}, #{color}, #{icon})
+    </insert>
+
+    <!-- 소유자와 기본 상태 연결 -->
+    <insert id="insertWorkspaceInit" statementType="CALLABLE">
+        {call sp_init_workspace(#{workspaceId}, #{ownerId})}
+    </insert>
+
+    <!-- 워크스페이스 수정 -->
+    <update id="updateWorkspace" parameterType="com.flowspace.workspace.service.WorkspaceVO">
+        UPDATE workspaces
+           SET name     = #{name},
+               initials = #{initials},
+               color    = #{color},
+               icon     = #{icon}
+         WHERE workspace_id = #{workspaceId}
+    </update>
+
+    <!-- 워크스페이스 삭제 -->
+    <delete id="deleteWorkspace" statementType="CALLABLE">
+        {call sp_delete_workspace(#{workspaceId})}
+    </delete>
+
 </mapper>

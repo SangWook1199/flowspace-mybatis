@@ -11,7 +11,6 @@ import com.flowspace.workspace.dto.request.*;
 import com.flowspace.workspace.dto.response.*;
 import com.flowspace.entity.*;
 import com.flowspace.entity.enums.*;
-import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
@@ -34,11 +33,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         private final WorkspaceMemberRepository workspaceMemberRepository;
         private final UserRepository userRepository;
         private final WorkspaceInviteRepository workspaceInviteRepository;
-        private final TaskStatusRepository taskStatusRepository;
-        private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
-        private final TaskRepository taskRepository;
 
         // 워크스페이스 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
         private final WorkspaceMapper workspaceMapper;
@@ -50,20 +46,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = Workspace.builder().owner(user).name(request.name()).initials(request.initials())
-                        .color(request.color()).icon(normalizeIcon(request.icon())).build();
+                WorkspaceVO workspace = new WorkspaceVO();
+                workspace.setName(request.name());
+                workspace.setInitials(request.initials());
+                workspace.setColor(request.color());
+                workspace.setIcon(normalizeIcon(request.icon()));
 
-                workspaceRepository.save(workspace);
-
-                WorkspaceMember member = WorkspaceMember.builder().workspace(workspace).user(user)
-                        .role(WorkspaceRole.OWNER).build();
-
-                workspaceMemberRepository.save(member);
-
-                // 공통 메서드 호출
-                createDefaultStatuses(workspace);
-
-                user.updateLastWorkspace(workspace);
+                saveNewWorkspace(workspace, user);
 
                 return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
         }
@@ -80,63 +69,55 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+                WorkspaceRole role = findMemberRole(workspaceId, user);
 
-                if (member.getRole() != WorkspaceRole.OWNER) {
+                if (role != WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                workspace.update(request.name().trim(), request.initials().trim(), request.color(),
-                        normalizeIcon(request.icon()));
+                workspace.setName(request.name().trim());
+                workspace.setInitials(request.initials().trim());
+                workspace.setColor(request.color());
+                workspace.setIcon(normalizeIcon(request.icon()));
 
-                return WorkspaceResponse.from(workspace, member.getRole());
+                // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
+                workspaceMapper.updateWorkspace(workspace);
+
+                return WorkspaceResponse.from(workspace, role);
         }
 
         // 개인 워크스페이스 생성 (회원가입 전용)
         @Override
         public Workspace createPersonalWorkspace(User user) {
 
-                Workspace workspace = Workspace.builder().owner(user).name(user.getNickname() + "의 워크스페이스")
-                        .initials(user.getNickname().substring(0, 1)).color(WorkspaceColor.BLUE).build();
+                WorkspaceVO workspace = new WorkspaceVO();
+                workspace.setName(user.getNickname() + "의 워크스페이스");
+                workspace.setInitials(user.getNickname().substring(0, 1));
+                workspace.setColor(WorkspaceColor.BLUE);
 
-                workspaceRepository.save(workspace);
+                saveNewWorkspace(workspace, user);
 
-                workspaceMemberRepository.save(
-                        WorkspaceMember.builder().workspace(workspace).user(user).role(WorkspaceRole.OWNER).build());
-
-                createDefaultStatuses(workspace);
-
-                user.updateLastWorkspace(workspace);
-
-                return workspace;
+                // 회원가입 코드(AuthService)는 아직 JPA라 엔티티가 필요해요.
+                // getReferenceById는 DB를 읽지 않고 번호만 가진 엔티티(프록시)를 돌려줘요.
+                return workspaceRepository.getReferenceById(workspace.getWorkspaceId());
         }
 
-        // 기본 Task 상태 생성
-        private void createDefaultStatuses(Workspace workspace) {
+        // 새 워크스페이스 저장 공통 처리: 워크스페이스 INSERT → 소유자·기본 상태 연결 → 마지막으로 본 워크스페이스로 지정
+        private void saveNewWorkspace(WorkspaceVO workspace, User owner) {
 
-                TaskStatus todo = taskStatusRepository.findById(1L)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+                workspace.setOwnerId(owner.getUserId());
 
-                TaskStatus inProgress = taskStatusRepository.findById(2L)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+                // INSERT가 끝나면 DB가 만든 번호가 workspace.getWorkspaceId()에 들어 있어요
+                workspaceMapper.insertWorkspace(workspace);
 
-                TaskStatus done = taskStatusRepository.findById(3L)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+                // 소유자 멤버와 기본 상태 3개를 프로시저 한 번으로 연결해요
+                workspaceMapper.insertWorkspaceInit(workspace.getWorkspaceId(), owner.getUserId());
 
-                workspaceTaskStatusRepository.saveAll(List.of(
-
-                        WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 1L))
-                                .workspace(workspace).taskStatus(todo).position(0).isDefault(true).build(),
-
-                        WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 2L))
-                                .workspace(workspace).taskStatus(inProgress).position(1).isDefault(true).build(),
-
-                        WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 3L))
-                                .workspace(workspace).taskStatus(done).position(2).isDefault(true).build()));
+                // 사용자는 JPA 엔티티로 들고 있어서 JPA로 바꿔요.
+                // SQL로 바꾸면, 끝날 때 JPA가 이 엔티티의 옛날 값으로 사용자 행을 다시 덮어쓸 수 있어요.
+                owner.updateLastWorkspace(workspaceRepository.getReferenceById(workspace.getWorkspaceId()));
         }
 
         // 내 워크스페이스 목록 조회
@@ -376,25 +357,19 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                findWorkspace(workspaceId);
 
-                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-                if (member.getRole() != WorkspaceRole.OWNER) {
+                if (findMemberRole(workspaceId, user) != WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
                 // 내가 속한 워크스페이스가 이것 하나뿐이면 삭제할 수 없어요(앱을 쓸 곳이 없어져요).
-                if (workspaceMemberRepository.findByUser(user).size() <= 1) {
+                if (workspaceMapper.selectMyWorkspaceCount(user.getUserId()) <= 1) {
                         throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
 
-                // 작업이 남아 있으면 FK 때문에 삭제가 실패하므로 작업부터 지워요.
-                taskRepository.deleteAllByWorkspace(workspace);
-
-                workspaceRepository.delete(workspace);
+                // 작업을 먼저 지우고 워크스페이스를 지우는 일을 프로시저 한 번으로 해요
+                workspaceMapper.deleteWorkspace(workspaceId);
         }
 
         // 워크스페이스 멤버 추방 (관리자는 일반 멤버만, 소유자는 관리자·멤버를 내보낼 수 있어요)
