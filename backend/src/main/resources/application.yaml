@@ -88,3 +88,4 @@ logging:
     com.flowspace.file.service.impl.FileMapper: debug
     com.flowspace.task.service.impl.TaskAttachmentMapper: debug
     com.flowspace.retrospective.service.impl.RetrospectiveMapper: debug
+    com.flowspace.page.service.impl.PageMapper: debug

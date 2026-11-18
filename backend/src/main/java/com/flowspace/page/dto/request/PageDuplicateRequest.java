@@ -1,4 +1,4 @@
-package com.flowspace.dto.page;
+package com.flowspace.page.dto.request;
 
 // @formatter:off
 

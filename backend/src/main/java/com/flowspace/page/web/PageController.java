@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.page.web;
 
 import java.util.List;
 
@@ -8,15 +8,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.flowspace.file.dto.response.CoverResponse;
-import com.flowspace.dto.page.PageCoverUpdateRequest;
-import com.flowspace.dto.page.PageCreateRequest;
-import com.flowspace.dto.page.PageDetailResponse;
-import com.flowspace.dto.page.PageDuplicateRequest;
-import com.flowspace.dto.page.PageReorderRequest;
-import com.flowspace.dto.page.PageResponse;
-import com.flowspace.dto.page.PageUpdateRequest;
+import com.flowspace.page.dto.request.PageCoverUpdateRequest;
+import com.flowspace.page.dto.request.PageCreateRequest;
+import com.flowspace.page.dto.response.PageDetailResponse;
+import com.flowspace.page.dto.request.PageDuplicateRequest;
+import com.flowspace.page.dto.request.PageReorderRequest;
+import com.flowspace.page.dto.response.PageResponse;
+import com.flowspace.page.dto.request.PageUpdateRequest;
 import com.flowspace.file.service.FileService;
-import com.flowspace.service.PageService;
+import com.flowspace.page.service.PageService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

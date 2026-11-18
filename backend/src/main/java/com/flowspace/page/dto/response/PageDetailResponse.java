@@ -1,4 +1,4 @@
-package com.flowspace.dto.page;
+package com.flowspace.page.dto.response;
 
 import java.math.BigDecimal;
 import java.util.List;

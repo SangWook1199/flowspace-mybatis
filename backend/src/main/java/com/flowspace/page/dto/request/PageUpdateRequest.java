@@ -1,12 +1,12 @@
-package com.flowspace.dto.page;
+package com.flowspace.page.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 // @formatter:off
 
-// 페이지 생성 요청 DTO
-public record PageCreateRequest(
+// 페이지 수정 요청 DTO
+public record PageUpdateRequest(
 
     Long parentPageId,
 

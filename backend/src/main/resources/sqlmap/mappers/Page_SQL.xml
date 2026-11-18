@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.page.service.impl.PageMapper">
+
+    <!-- 이메일로 사용자 번호 -->
+    <select id="selectUserIdByEmail" resultType="long">
+        SELECT user_id
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- ==================== 조회 ==================== -->
+
+    <!-- 페이지 목록. 커버·회고·상위 페이지 조인은 프로시저 안에서 해요(backend/database/procedures/page). -->
+    <select id="selectPageList" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page_list(#{workspaceId}, #{deleted})}
+    </select>
+
+    <!-- 페이지 한 개 -->
+    <select id="selectPageById" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page(#{pageId})}
+    </select>
+
+    <!-- 본인과 모든 하위 페이지 -->
+    <select id="selectPageSubtree" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page_subtree(#{pageId})}
+    </select>
+
+    <!-- 여러 페이지 (순서 바꾸기 확인용) -->
+    <select id="selectPageListByIds" resultType="com.flowspace.page.service.PageVO">
+        SELECT page_id,
+               workspace_id,
+               parent_page_id,
+               is_deleted
+        FROM pages
+        WHERE page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+    </select>
+
+    <!-- 상위 페이지 번호 -->
+    <select id="selectParentPageId" resultType="long">
+        SELECT parent_page_id
+        FROM pages
+        WHERE page_id = #{pageId}
+    </select>
+
+    <!-- 같은 상위 페이지 아래의 페이지 수. <=> 는 NULL끼리도 같다고 봐요 (NULL이면 최상위).
+         XML에서는 < 가 태그의 시작으로 읽혀서 CDATA로 감싸요. -->
+    <select id="selectSiblingCount" resultType="int">
+        SELECT COUNT(*)
+        FROM pages
+        WHERE workspace_id = #{workspaceId}
+          AND parent_page_id <![CDATA[ <=> ]]> #{parentPageId}
+          AND is_deleted = FALSE
+    </select>
+
+    <!-- ==================== 등록·수정 ==================== -->
+
+    <!-- 페이지 등록. 휴지통 여부(FALSE)·버전(0)·만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertPage" parameterType="com.flowspace.page.service.PageVO"
+            useGeneratedKeys="true" keyProperty="pageId">
+        INSERT INTO pages (workspace_id, parent_page_id, title, icon, position, created_by)
+        VALUES (#{workspaceId}, #{parentPageId}, #{title}, #{icon}, #{position}, #{createdBy})
+    </insert>
+
+    <!-- 제목·아이콘·상위 페이지 수정. 상위 페이지를 비우면(null) 최상위로 옮겨져요. -->
+    <update id="updatePage" parameterType="com.flowspace.page.service.PageVO">
+        UPDATE pages
+        SET title          = #{title},
+            icon           = #{icon},
+            parent_page_id = #{parentPageId}
+        WHERE page_id = #{pageId}
+    </update>
+
+    <!-- 순서 수정 -->
+    <update id="updatePagePosition">
+        UPDATE pages
+        SET position = #{position}
+        WHERE page_id = #{pageId}
+    </update>
+
+    <!-- 상위 페이지와 순서 수정 -->
+    <update id="updatePageParent">
+        UPDATE pages
+        SET parent_page_id = #{parentPageId},
+            position       = #{position}
+        WHERE page_id = #{pageId}
+    </update>
+
+    <!-- 커버 수정 -->
+    <update id="updatePageCover">
+        UPDATE pages
+        SET cover_file_id = #{fileId}
+        WHERE page_id = #{pageId}
+    </update>
+
+    <!-- ==================== 휴지통 ==================== -->
+
+    <!-- 여러 페이지를 같은 시각으로 휴지통에 보내요 (같은 시각 = 함께 지운 묶음이라 복원할 때 같이 돌아와요) -->
+    <update id="updatePagesTrashed">
+        UPDATE pages
+        SET is_deleted = TRUE,
+            deleted_at = #{deletedAt}
+        WHERE page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+    </update>
+
+    <!-- 여러 페이지 복원 -->
+    <update id="updatePagesRestored">
+        UPDATE pages
+        SET is_deleted = FALSE,
+            deleted_at = NULL
+        WHERE page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+    </update>
+
+    <!-- 데이터베이스 행 = 페이지라서, 휴지통에 가는 페이지를 가리키는 다른 페이지의 데이터베이스 행을 지워요(셀은 DB가 함께 지워요).
+         단, 같이 휴지통에 가는 페이지들 안의 데이터베이스는 그대로 둬요 — 복원했을 때 표가 온전히 돌아와야 해서요.
+         행 → 데이터베이스 → 블록으로 이어 그 데이터베이스가 어느 페이지에 있는지 찾아요. -->
+    <delete id="deleteOutsideDatabaseRows">
+        DELETE r
+          FROM block_database_rows r
+          JOIN block_databases d ON d.database_id = r.database_id
+          JOIN blocks b          ON b.block_id = d.block_id
+         WHERE r.page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+           AND b.page_id NOT IN
+        <foreach collection="subtreeIds" item="subtreeId" open="(" separator="," close=")">
+            #{subtreeId}
+        </foreach>
+    </delete>
+
+</mapper>

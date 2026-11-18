@@ -22,7 +22,8 @@ database/
     ├── activity/           활동 기록
     ├── calendar/           캘린더·일정
     ├── comment/            댓글
-    └── retrospective/      회고
+    ├── retrospective/      회고
+    └── page/               페이지
 ```
 
 ## 규칙
@@ -144,6 +145,16 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 `sp_create_retrospective`는 앞 단계에서 만든 번호(페이지 → 회고 → 표)를 다음 단계가 써야 해서 프로시저 안에서 변수로 이어 가요.
 상태 스냅샷 목록, 회고 페이지의 TODO 블록, 스프린트의 회고 번호는 테이블 하나라서 `Retrospective_SQL.xml`에 있어요.
 
+### 페이지 (`procedures/page`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_page_list` | 조인 | 워크스페이스, 휴지통 여부 | 페이지 목록과 커버 주소·회고 여부 | `PageMapper.selectPageList` |
+| `sp_page` | 조인 | 페이지 | 위와 같은데 한 개 (상위 페이지가 휴지통에 있는지 포함) | `PageMapper.selectPageById` |
+| `sp_page_subtree` | 재귀 조인 | 페이지 | 본인과 모든 하위 페이지 (`WITH RECURSIVE`) | `PageMapper.selectPageSubtree` |
+
+휴지통 보내기·복원은 하위 페이지 번호 **목록**을 받아 한 번에 바꾸는 SQL이라 `Page_SQL.xml`의 `<foreach>`로 했어요.
+
 ## 함께 고쳐야 하는 쌍
 
 아래 쌍은 결과 컬럼이 같고 `WHERE`만 달라요. 컬럼을 바꾸면 **두 파일을 함께** 고쳐야 해요(VO 하나가 두 결과를 함께 받아요).
@@ -159,6 +170,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_user_by_email` | `sp_user` (둘 다 한 건, 찾는 기준만 달라요) | `UserVO` |
 | `sp_notification_list` | `sp_notification` | `NotificationVO` |
 | `sp_retrospective_list` | `sp_retrospective` | `RetrospectiveVO` |
+| `sp_page_list` | `sp_page` | `PageVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
 작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요.

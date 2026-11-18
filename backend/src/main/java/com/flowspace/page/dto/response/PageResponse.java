@@ -1,6 +1,7 @@
-package com.flowspace.dto.page;
+package com.flowspace.page.dto.response;
 
 import com.flowspace.entity.Page;
+import com.flowspace.page.service.PageVO;
 
 import java.time.LocalDateTime;
 
@@ -26,6 +27,25 @@ public record PageResponse(
 
 ) {
 
+    // MyBatis 조회 결과(PageVO)로 만들어요 (커버 주소·회고 여부는 프로시저가 조인해 와요)
+    public static PageResponse from(PageVO page) {
+        return new PageResponse(
+            page.getPageId(),
+            page.getWorkspaceId(),
+            page.getParentPageId(),
+            page.getTitle(),
+            page.getIcon(),
+            page.getCoverUrl(),
+            page.getPosition(),
+            page.getCreatedBy(),
+            page.getCreatedAt(),
+            page.getUpdatedAt(),
+            page.getDeletedAt(),
+            Boolean.TRUE.equals(page.getRetrospective())
+        );
+    }
+
+    // 아직 JPA인 페이지 복제에서 써요 (복제를 바꾸면 지워요)
     public static PageResponse from(Page page, boolean retrospective) {
         return new PageResponse(
             page.getPageId(),

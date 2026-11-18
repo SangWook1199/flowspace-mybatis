@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowspace.activity.service.ActivityService;
-import com.flowspace.dto.page.PageDetailResponse;
+import com.flowspace.page.dto.response.PageDetailResponse;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
@@ -31,7 +31,7 @@ import com.flowspace.retrospective.service.SubTaskSnapshotVO;
 import com.flowspace.retrospective.service.TaskSnapshotAssigneeVO;
 import com.flowspace.retrospective.service.TaskSnapshotVO;
 import com.flowspace.retrospective.service.TodoBlockVO;
-import com.flowspace.service.PageService;
+import com.flowspace.page.service.PageService;
 import com.flowspace.workspace.service.WorkspaceService;
 
 import lombok.RequiredArgsConstructor;

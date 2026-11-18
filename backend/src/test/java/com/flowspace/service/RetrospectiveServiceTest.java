@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.page.service.PageService;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;

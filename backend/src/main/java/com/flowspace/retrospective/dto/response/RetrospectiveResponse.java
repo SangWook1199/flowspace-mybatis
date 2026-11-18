@@ -3,7 +3,7 @@ package com.flowspace.retrospective.dto.response;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.flowspace.dto.page.PageDetailResponse;
+import com.flowspace.page.dto.response.PageDetailResponse;
 import com.flowspace.retrospective.service.RetrospectiveVO;
 
 // @formatter:off

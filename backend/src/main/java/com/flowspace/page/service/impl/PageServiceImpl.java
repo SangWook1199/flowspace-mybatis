@@ -1,4 +1,8 @@
-package com.flowspace.service;
+package com.flowspace.page.service.impl;
+
+import com.flowspace.page.service.PageVO;
+import com.flowspace.workspace.service.WorkspaceService;
+import com.flowspace.page.service.PageService;
 
 import com.flowspace.file.service.FileService;
 import com.flowspace.file.service.FileVO;
@@ -27,13 +31,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.flowspace.comment.dto.response.CommentResponse;
 import com.flowspace.comment.service.CommentService;
-import com.flowspace.dto.page.PageCoverUpdateRequest;
-import com.flowspace.dto.page.PageCreateRequest;
-import com.flowspace.dto.page.PageDetailResponse;
-import com.flowspace.dto.page.PageDuplicateRequest;
-import com.flowspace.dto.page.PageReorderRequest;
-import com.flowspace.dto.page.PageResponse;
-import com.flowspace.dto.page.PageUpdateRequest;
+import com.flowspace.page.dto.request.PageCoverUpdateRequest;
+import com.flowspace.page.dto.request.PageCreateRequest;
+import com.flowspace.page.dto.response.PageDetailResponse;
+import com.flowspace.page.dto.request.PageDuplicateRequest;
+import com.flowspace.page.dto.request.PageReorderRequest;
+import com.flowspace.page.dto.response.PageResponse;
+import com.flowspace.page.dto.request.PageUpdateRequest;
 import com.flowspace.entity.Block;
 import com.flowspace.entity.BlockDatabase;
 import com.flowspace.entity.BlockDatabaseCell;
@@ -69,8 +73,9 @@ import com.flowspace.repository.FileRepository;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class PageService {
+public class PageServiceImpl implements PageService {
 
+    // ↓ 아직 JPA인 기능(영구 삭제·휴지통 비우기·복제·상세 조회)에서 써요. 블록을 바꿀 때 함께 정리해요.
     private final PageRepository pageRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
@@ -86,193 +91,161 @@ public class PageService {
     private final RetrospectiveRepository retrospectiveRepository;
 
     private final ActivityService activityService;
+    private final WorkspaceService workspaceService;
+
+    // 페이지 SQL (같은 패키지라 import가 없어요)
+    private final PageMapper pageMapper;
     private final CommentService commentService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // 페이지 생성
+    @Override
     public PageResponse createPage(Long workspaceId, PageCreateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        // 워크스페이스가 있는지, 만드는 사람이 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
+        workspaceService.getWorkspace(workspaceId, email);
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+        Long parentId = request.parentPageId();
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        if (parentId != null) {
+            PageVO parent = findActivePage(parentId);
 
-        Page parent = null;
-        if (request.parentPageId() != null) {
-            parent = pageRepository.findByPageIdAndIsDeletedFalse(request.parentPageId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-            if (!parent.getWorkspace().getWorkspaceId().equals(workspace.getWorkspaceId())) {
+            if (!parent.getWorkspaceId().equals(workspaceId)) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
         }
 
-        Page page = Page.builder().workspace(workspace).parentPage(parent).title(request.title()).icon(request.icon())
-            .position(countSiblings(workspace, parent)).createdBy(user).build();
+        PageVO page = new PageVO();
+        page.setWorkspaceId(workspaceId);
+        page.setParentPageId(parentId);
+        page.setTitle(request.title());
+        page.setIcon(request.icon());
+        // 같은 상위 페이지 안에서 맨 뒤에 둬요
+        page.setPosition(pageMapper.selectSiblingCount(workspaceId, parentId));
+        page.setCreatedBy(findUserId(email));
 
-        pageRepository.save(page);
+        pageMapper.insertPage(page);
 
-        activityService.log(workspace, user, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE, page.getPageId());
+        activityService.log(workspaceId, page.getCreatedBy(), ActivityType.PAGE_CREATED, ActivityTargetType.PAGE,
+            page.getPageId());
 
-        return toResponse(page);
+        return toResponse(page.getPageId());
     }
 
     // 페이지 목록 조회
+    @Transactional(readOnly = true)
+    @Override
     public List<PageResponse> getPages(Long workspaceId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        workspaceService.getWorkspace(workspaceId, email);
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return toResponses(workspace,
-            pageRepository.findByWorkspaceAndIsDeletedFalseOrderByPositionAscCreatedAtAsc(workspace));
+        return pageMapper.selectPageList(workspaceId, false).stream().map(PageResponse::from).toList();
     }
 
     // 페이지 단건 조회
+    @Transactional(readOnly = true)
+    @Override
     public PageResponse getPage(Long pageId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return toResponse(page);
+        return PageResponse.from(page);
     }
 
-    // 페이지 수정
+    // 페이지 수정 (상위 페이지를 비우면 최상위로 옮겨져요)
+    @Override
     public PageResponse updatePage(Long pageId, PageUpdateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+        Long parentId = request.parentPageId();
 
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        if (parentId != null) {
+            PageVO parent = findActivePage(parentId);
 
-        Page parent = null;
-
-        if (request.parentPageId() != null) {
-            parent = pageRepository.findByPageIdAndIsDeletedFalse(request.parentPageId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-            if (!parent.getWorkspace().getWorkspaceId().equals(page.getWorkspace().getWorkspaceId())) {
+            if (!parent.getWorkspaceId().equals(page.getWorkspaceId())) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
 
-            validateParentHierarchy(page, parent);
+            validateParentHierarchy(pageId, parentId);
         }
 
-        page.update(request.title(), request.icon(), page.getCoverFile(), parent);
+        page.setTitle(request.title());
+        page.setIcon(request.icon());
+        page.setParentPageId(parentId);
 
-        return toResponse(page);
+        pageMapper.updatePage(page);
+
+        return toResponse(pageId);
     }
 
-    // 페이지 삭제
+    // 페이지 삭제 (휴지통으로 보내기)
+    @Override
     public void deletePage(Long pageId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
         // 하위 페이지도 같은 시각으로 함께 휴지통에 보내요. 이미 휴지통에 있던 하위 페이지는
         // 삭제 시각을 덮어쓰지 않아요(복원할 때 함께 삭제된 묶음을 구분하기 위해서예요).
-        LocalDateTime deletedAt = LocalDateTime.now();
+        List<PageVO> subtree = pageMapper.selectPageSubtree(pageId);
 
-        List<Page> subtree = collectSubtree(page);
-        Set<Long> subtreeIds = new HashSet<>();
-        for (Page target : subtree) {
-            subtreeIds.add(target.getPageId());
-        }
+        List<Long> subtreeIds = subtree.stream().map(PageVO::getPageId).toList();
 
-        for (Page target : subtree) {
+        List<Long> targetIds = subtree.stream().filter(target -> !Boolean.TRUE.equals(target.getIsDeleted()))
+            .map(PageVO::getPageId).toList();
 
-            if (target.getIsDeleted()) {
-                continue;
-            }
+        // 다른 페이지의 데이터베이스에서 이 페이지들을 가리키는 행을 먼저 지워요(XML 주석에 이유가 있어요)
+        pageMapper.deleteOutsideDatabaseRows(targetIds, subtreeIds);
 
-            target.delete(deletedAt);
-
-            // 데이터베이스 행 = 페이지라서, 다른 페이지의 데이터베이스 블록에
-            // 이 페이지를 가리키는 행이 있으면 같이 지워줘요 — 안 그러면 삭제된
-            // 페이지를 계속 가리키는 고아 행이 남아요(셀은 FK ON DELETE CASCADE로
-            // 같이 정리돼요).
-            // 단, 그 데이터베이스가 지금 함께 휴지통으로 가는 페이지들 안에 있으면 지우지 않아요 —
-            // 데이터베이스 블록과 행이 그대로 남아 있어야 복원했을 때 표가 온전히 돌아와요.
-            List<BlockDatabaseRow> orphanRows = blockDatabaseRowRepository.findByPage(target).stream()
-                .filter(row -> !subtreeIds.contains(row.getDatabase().getBlock().getPage().getPageId()))
-                .toList();
-            blockDatabaseRowRepository.deleteAll(orphanRows);
-        }
+        pageMapper.updatePagesTrashed(targetIds, LocalDateTime.now());
     }
 
     // 휴지통 목록 조회
     @Transactional(readOnly = true)
+    @Override
     public List<PageResponse> getTrash(Long workspaceId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        workspaceService.getWorkspace(workspaceId, email);
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return toResponses(workspace, pageRepository.findByWorkspaceAndIsDeletedTrueOrderByDeletedAtDesc(workspace));
+        return pageMapper.selectPageList(workspaceId, true).stream().map(PageResponse::from).toList();
     }
 
     // 휴지통 페이지 복원
+    @Override
     public PageResponse restorePage(Long pageId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findPage(pageId);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedTrue(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+        if (!Boolean.TRUE.equals(page.getIsDeleted())) {
+            throw new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND);
+        }
 
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
+
+        // 상위 페이지가 아직 휴지통에 있으면 사이드바에서 보이지 않으니 최상위 맨 뒤로 올려요.
+        if (Boolean.TRUE.equals(page.getParentDeleted())) {
+            pageMapper.updatePageParent(pageId, null, pageMapper.selectSiblingCount(page.getWorkspaceId(), null));
+        }
 
         // 이 페이지와 같은 시각에 함께 삭제된 하위 페이지만 복원해요.
         LocalDateTime deletedAt = page.getDeletedAt();
 
-        // 상위 페이지가 아직 휴지통에 있으면 사이드바에서 보이지 않으니 최상위로 올려요.
-        if (page.getParentPage() != null && page.getParentPage().getIsDeleted()) {
-            page.updateParent(null);
-            page.updatePosition(countSiblings(page.getWorkspace(), null));
-        }
+        List<Long> targetIds = pageMapper.selectPageSubtree(pageId).stream()
+            .filter(target -> Boolean.TRUE.equals(target.getIsDeleted())
+                && Objects.equals(target.getDeletedAt(), deletedAt))
+            .map(PageVO::getPageId).toList();
 
-        for (Page target : collectSubtree(page)) {
-            if (target.getIsDeleted() && Objects.equals(target.getDeletedAt(), deletedAt)) {
-                target.restore();
-            }
-        }
+        pageMapper.updatePagesRestored(targetIds);
 
-        return toResponse(page);
+        return toResponse(pageId);
     }
 
     // 휴지통 페이지 영구 삭제
+    @Override
     public void deletePagePermanently(Long pageId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -308,6 +281,7 @@ public class PageService {
     }
 
     // 휴지통 비우기 (회고 페이지는 남겨둠)
+    @Override
     public void emptyTrash(Long workspaceId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -329,6 +303,7 @@ public class PageService {
 
     // 휴지통에 들어간 지 retentionDays일이 지난 페이지를 모든 워크스페이스에서 영구 삭제 (스케줄러가 호출)
     // 반환값: 삭제를 시도한 대상 수
+    @Override
     public int purgeExpiredTrash(int retentionDays) {
 
         LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
@@ -447,17 +422,11 @@ public class PageService {
         return (int) count;
     }
 
-    // 페이지 순서 변경
+    // 페이지 순서 변경 (같은 상위 페이지 아래의 페이지들만 한 번에 바꿀 수 있어요)
+    @Override
     public void reorderPages(Long workspaceId, PageReorderRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
 
         List<Long> pageIds = request.pageIds();
 
@@ -465,30 +434,42 @@ public class PageService {
             throw new FlowSpaceException(ErrorCode.INVALID_PAGE_REORDER);
         }
 
+        // 페이지마다 따로 읽지 않고 한 번에 읽어서 번호로 찾아요
+        Map<Long, PageVO> pages = new HashMap<>();
+
+        for (PageVO page : pageMapper.selectPageListByIds(pageIds)) {
+            pages.put(page.getPageId(), page);
+        }
+
+        // 먼저 모두 확인하고, 문제가 없을 때만 순서를 바꿔요
         Long parentId = null;
 
         for (int i = 0; i < pageIds.size(); i++) {
 
-            Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageIds.get(i))
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+            PageVO page = pages.get(pageIds.get(i));
 
-            if (!page.getWorkspace().getWorkspaceId().equals(workspaceId)) {
+            if (page == null || Boolean.TRUE.equals(page.getIsDeleted())) {
+                throw new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND);
+            }
+
+            if (!page.getWorkspaceId().equals(workspaceId)) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
 
-            Long currentParentId = page.getParentPage() == null ? null : page.getParentPage().getPageId();
-
             if (i == 0) {
-                parentId = currentParentId;
-            } else if (!Objects.equals(parentId, currentParentId)) {
+                parentId = page.getParentPageId();
+            } else if (!Objects.equals(parentId, page.getParentPageId())) {
                 throw new FlowSpaceException(ErrorCode.INVALID_PAGE_REORDER);
             }
+        }
 
-            page.updatePosition(i);
+        for (int i = 0; i < pageIds.size(); i++) {
+            pageMapper.updatePagePosition(pageIds.get(i), i);
         }
     }
 
     // 페이지 복제 (하위 페이지, 블록, 데이터베이스까지 함께 복사)
+    @Override
     public PageResponse duplicatePage(Long pageId, PageDuplicateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -668,23 +649,9 @@ public class PageService {
         }
     }
 
-    // 순환 참조 검증
-    private void validateParentHierarchy(Page page, Page parent) {
-
-        Page current = parent;
-
-        while (current != null) {
-
-            if (current.getPageId().equals(page.getPageId())) {
-                throw new FlowSpaceException(ErrorCode.INVALID_PAGE_PARENT);
-            }
-
-            current = current.getParentPage();
-        }
-    }
-
     // 페이지 정보와 블록 전체 조회
     @Transactional(readOnly = true)
+    @Override
     public PageDetailResponse getPageDetail(Long pageId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -712,71 +679,56 @@ public class PageService {
         return PageDetailResponse.from(page, blockItems, childPages);
     }
 
-    // 페이지 커버 업로드
+    // 페이지 커버 업로드 (새 파일을 저장하기 전에 기존 커버를 지워요)
+    @Override
     public PageResponse uploadCover(Long pageId, MultipartFile file, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        if (page.getCoverFile() != null) {
-            fileService.delete(page.getCoverFile().getFileId());
+        if (page.getCoverFileId() != null) {
+            fileService.delete(page.getCoverFileId());
         }
 
-        File cover = fileEntity(fileService.uploadImage(file, page.getWorkspace().getWorkspaceId(), email));
+        FileVO cover = fileService.uploadImage(file, page.getWorkspaceId(), email);
 
-        page.updateCover(cover);
+        pageMapper.updatePageCover(pageId, cover.getFileId());
 
-        return toResponse(page);
+        return toResponse(pageId);
     }
 
     // 페이지 커버 삭제
+    @Override
     public PageResponse deleteCover(Long pageId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        if (page.getCoverFile() != null) {
-            fileService.delete(page.getCoverFile().getFileId());
-            page.updateCover(null);
+        if (page.getCoverFileId() != null) {
+            // 파일 행을 지우면 DB가 cover_file_id를 NULL로 바꾸지만(외래키), 읽는 사람이 알기 쉽게 직접 비워요
+            fileService.delete(page.getCoverFileId());
+            pageMapper.updatePageCover(pageId, null);
         }
 
-        return toResponse(page);
+        return toResponse(pageId);
     }
 
     // 기본 커버 적용
+    @Override
     public PageResponse applyDefaultCover(Long pageId, PageCoverUpdateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        if (page.getCoverFile() != null) {
-            fileService.delete(page.getCoverFile().getFileId());
+        if (page.getCoverFileId() != null) {
+            fileService.delete(page.getCoverFileId());
         }
 
-        File cover = fileEntity(
-            fileService.createDefaultCover(request.coverName(), page.getWorkspace().getWorkspaceId(), user.getUserId()));
+        FileVO cover = fileService.createDefaultCover(request.coverName(), page.getWorkspaceId(), findUserId(email));
 
-        page.updateCover(cover);
+        pageMapper.updatePageCover(pageId, cover.getFileId());
 
-        return toResponse(page);
+        return toResponse(pageId);
     }
 
     // 파일은 MyBatis(FileService)로 저장해서 번호만 있어요. 페이지·블록은 아직 JPA라 그 번호를 가리키는 엔티티로 바꿔요.
@@ -790,11 +742,60 @@ public class PageService {
         return PageResponse.from(page, retrospectiveRepository.existsByPage(page));
     }
 
-    // 페이지 목록을 응답으로 바꿔요 (회고 페이지 id를 한 번만 조회해서 페이지마다 쿼리하지 않아요)
-    private List<PageResponse> toResponses(Workspace workspace, List<Page> pages) {
-        Set<Long> retrospectivePageIds = new HashSet<>(retrospectiveRepository.findPageIdsByWorkspace(workspace));
+    // ---------- MyBatis로 바꾼 기능의 도우미 ----------
 
-        return pages.stream().map(page -> PageResponse.from(page, retrospectivePageIds.contains(page.getPageId())))
-            .toList();
+    // 페이지 한 개 (휴지통에 있어도 돼요, 없으면 예외)
+    private PageVO findPage(Long pageId) {
+
+        PageVO page = pageMapper.selectPageById(pageId);
+
+        if (page == null) {
+            throw new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND);
+        }
+
+        return page;
+    }
+
+    // 휴지통에 있지 않은 페이지 (휴지통에 있으면 없는 것으로 봐요)
+    private PageVO findActivePage(Long pageId) {
+
+        PageVO page = findPage(pageId);
+
+        if (Boolean.TRUE.equals(page.getIsDeleted())) {
+            throw new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND);
+        }
+
+        return page;
+    }
+
+    private Long findUserId(String email) {
+
+        Long userId = pageMapper.selectUserIdByEmail(email);
+
+        if (userId == null) {
+            throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return userId;
+    }
+
+    // 순환 참조 검증: 새 상위 페이지에서 위로 올라가다가 자기 자신을 만나면, 자기 하위 페이지 아래로 옮기려는 거예요
+    private void validateParentHierarchy(Long pageId, Long parentId) {
+
+        Long current = parentId;
+
+        while (current != null) {
+
+            if (current.equals(pageId)) {
+                throw new FlowSpaceException(ErrorCode.INVALID_PAGE_PARENT);
+            }
+
+            current = pageMapper.selectParentPageId(current);
+        }
+    }
+
+    // 바뀐 값(수정 시각, 커버 주소 등)을 담으려고 다시 읽어서 응답으로 만들어요
+    private PageResponse toResponse(Long pageId) {
+        return PageResponse.from(findPage(pageId));
     }
 }

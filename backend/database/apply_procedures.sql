@@ -63,3 +63,8 @@ source /database/procedures/retrospective/sp_retrospective.sql
 source /database/procedures/retrospective/sp_task_snapshot_list.sql
 source /database/procedures/retrospective/sp_task_snapshot_assignee_list.sql
 source /database/procedures/retrospective/sp_subtask_snapshot_list.sql
+
+-- 페이지
+source /database/procedures/page/sp_page_list.sql
+source /database/procedures/page/sp_page.sql
+source /database/procedures/page/sp_page_subtree.sql
