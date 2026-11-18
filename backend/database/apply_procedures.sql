@@ -35,3 +35,6 @@ source /database/procedures/workspace/sp_my_invite_list.sql
 -- 사용자
 source /database/procedures/user/sp_user_by_email.sql
 source /database/procedures/user/sp_user.sql
+source /database/procedures/user/sp_withdraw_check.sql
+source /database/procedures/user/sp_withdraw_user.sql
+source /database/procedures/user/sp_user_lookup.sql

@@ -1,6 +1,7 @@
 package com.flowspace.user.dto.response;
 
 import com.flowspace.entity.User;
+import com.flowspace.user.service.UserLookupVO;
 
 // @formatter:off
 
@@ -30,6 +31,16 @@ public record UserLookupResponse(
         );
     }
 
+    // MyBatis 조회 결과(UserLookupVO)로 응답을 만들어요
+    public static UserLookupResponse of(UserLookupVO user, Status status) {
+        return new UserLookupResponse(
+            user.getUserId(),
+            user.getNickname(),
+            user.getEmail(),
+            user.getProfileImageUrl(),
+            status
+        );
+    }
 }
 
 // @formatter:on

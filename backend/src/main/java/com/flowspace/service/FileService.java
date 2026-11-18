@@ -170,7 +170,12 @@ public class FileService {
     // 파일 삭제
     // 파일 번호로 삭제해요 (MyBatis로 읽은 쪽은 엔티티 없이 번호만 있어요). 없으면 아무것도 하지 않아요.
     public void delete(Long fileId) {
-        fileRepository.findById(fileId).ifPresent(this::delete);
+        fileRepository.findById(fileId).ifPresent(file -> {
+            delete(file);
+            // JPA는 지운 내용을 트랜잭션이 끝날 때 보내요. 같은 요청에서 뒤이어 MyBatis SQL이 그 행을 지우거나
+            // 바꾸면(예: 탈퇴 때 워크스페이스와 함께 파일이 지워짐) 순서가 어긋나서, 여기서 바로 DB에 보내요.
+            fileRepository.flush();
+        });
     }
 
     public void delete(File file) {

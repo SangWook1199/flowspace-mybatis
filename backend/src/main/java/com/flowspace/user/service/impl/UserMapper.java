@@ -1,6 +1,7 @@
 package com.flowspace.user.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -8,7 +9,9 @@ import org.apache.ibatis.annotations.Param;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.user.service.MailTokenVO;
 import com.flowspace.user.service.RefreshTokenVO;
+import com.flowspace.user.service.UserLookupVO;
 import com.flowspace.user.service.UserVO;
+import com.flowspace.user.service.WithdrawWorkspaceVO;
 
 // 사용자 DB 접근. 메서드 이름이 User_SQL.xml의 id와 같아야 해요.
 @Mapper
@@ -103,4 +106,15 @@ public interface UserMapper {
 
     // 해시로 재설정 토큰 찾기 (없으면 null)
     MailTokenVO selectPasswordTokenByHash(String tokenHash);
+
+    // ───── 탈퇴·사용자 찾기 ─────
+
+    // 내가 속한 워크스페이스마다 내 역할과 멤버 수 (프로시저 sp_withdraw_check)
+    List<WithdrawWorkspaceVO> selectWithdrawCheckList(Long userId);
+
+    // 회원 탈퇴 처리 (프로시저 sp_withdraw_user)
+    void updateUserWithdraw(@Param("userId") Long userId, @Param("nickname") String nickname);
+
+    // 이메일로 사용자 한 명과 그 워크스페이스의 멤버·초대 여부 (프로시저 sp_user_lookup, 없으면 null)
+    UserLookupVO selectUserLookup(@Param("email") String email, @Param("workspaceId") Long workspaceId);
 }

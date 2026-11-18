@@ -84,6 +84,9 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 |---|---|---|---|---|
 | `sp_user_by_email` | 조인 | 이메일 | 사용자 한 명과 프로필 이미지 주소 | `UserMapper.selectUserByEmail` |
 | `sp_user` | 조인 | 사용자 번호 | 위와 같은데 번호로 찾음 | `UserMapper.selectUserById` |
+| `sp_withdraw_check` | 조인·집계 | 사용자 번호 | 내 워크스페이스마다 내 역할과 멤버 수 (탈퇴 전 확인) | `UserMapper.selectWithdrawCheckList` |
+| `sp_withdraw_user` | 일괄 변경 | 사용자 번호, 탈퇴 후 이름 | 다른 워크스페이스에서 나가기, 내 워크스페이스 삭제, 연결 기록 삭제, 개인정보 지우기 | `UserMapper.updateUserWithdraw` |
+| `sp_user_lookup` | 조인 | 이메일, 워크스페이스 번호 | 사용자 한 명과 그 워크스페이스의 멤버·초대 여부 | `UserMapper.selectUserLookup` |
 
 ## 함께 고쳐야 하는 쌍
 

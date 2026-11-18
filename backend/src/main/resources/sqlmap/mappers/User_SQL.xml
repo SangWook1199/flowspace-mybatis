@@ -188,4 +188,20 @@
         WHERE token_hash = #{tokenHash}
     </delete>
 
+    <!-- 탈퇴 전 확인. 조인과 멤버 수 세기는 프로시저 안에서 해요. -->
+    <select id="selectWithdrawCheckList" statementType="CALLABLE"
+            resultType="com.flowspace.user.service.WithdrawWorkspaceVO">
+        {call sp_withdraw_check(#{userId})}
+    </select>
+
+    <!-- 회원 탈퇴 처리 -->
+    <update id="updateUserWithdraw" statementType="CALLABLE">
+        {call sp_withdraw_user(#{userId}, #{nickname})}
+    </update>
+
+    <!-- 이메일로 사용자 찾기. workspaceId가 null일 수 있어서 jdbcType을 적어요. -->
+    <select id="selectUserLookup" statementType="CALLABLE" resultType="com.flowspace.user.service.UserLookupVO">
+        {call sp_user_lookup(#{email}, #{workspaceId, jdbcType=BIGINT})}
+    </select>
+
 </mapper>
