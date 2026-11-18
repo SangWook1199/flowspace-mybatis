@@ -27,4 +27,35 @@
         {call sp_sprint_progress(#{sprintId})}
     </select>
 
+    <!-- 워크스페이스에서 해당 상태인 스프린트 수 -->
+    <select id="selectSprintCountByStatus" resultType="int">
+        SELECT COUNT(*)
+        FROM sprints
+        WHERE workspace_id = #{workspaceId}
+          AND status = #{status}
+    </select>
+
+    <!-- 스프린트 등록
+         useGeneratedKeys, keyProperty: DB가 만든 sprint_id를 VO의 sprintId에 넣어 줘요.
+         created_at은 넣지 않아서 DB 기본값(CURRENT_TIMESTAMP)이 들어가요. -->
+    <insert id="insertSprint" parameterType="com.flowspace.sprint.service.SprintVO"
+            useGeneratedKeys="true" keyProperty="sprintId">
+        INSERT INTO sprints (workspace_id, created_by, name, goal, description,
+                             color, start_date, end_date, status)
+        VALUES (#{workspaceId}, #{createdBy}, #{name}, #{goal}, #{description},
+                #{color}, #{startDate}, #{endDate}, #{status})
+    </insert>
+
+    <!-- 스프린트 수정 (상태는 상태 변경에서만 바꿔요) -->
+    <update id="updateSprint" parameterType="com.flowspace.sprint.service.SprintVO">
+        UPDATE sprints
+           SET name        = #{name},
+               goal        = #{goal},
+               description = #{description},
+               color       = #{color},
+               start_date  = #{startDate},
+               end_date    = #{endDate}
+         WHERE sprint_id = #{sprintId}
+    </update>
+
 </mapper>

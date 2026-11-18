@@ -64,6 +64,7 @@ import com.flowspace.service.ActivityService;
 import com.flowspace.service.NotificationService;
 import com.flowspace.sprint.service.SprintService;
 import com.flowspace.sprint.service.SprintProgressVO;
+import com.flowspace.sprint.service.SprintVO;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -120,19 +121,29 @@ public class SprintServiceImpl implements SprintService {
 
         // 진행 중인 스프린트는 워크스페이스에서 하나만 둬요(칸반도 그 스프린트 하나를 보여줘요).
         if (request.status() == SprintStatus.ACTIVE) {
-            validateNoActiveSprint(workspace);
+            validateNoActiveSprint(workspaceId);
         }
 
-        Sprint sprint = Sprint.builder().workspace(workspace).createdBy(user).name(request.name()).goal(request.goal())
-            .description(request.description()).color(request.color()).startDate(request.startDate())
-            .endDate(request.endDate()).status(request.status()).build();
+        // 등록할 값을 VO에 담아요. 워크스페이스와 작성자는 객체가 아니라 번호로 넣어요.
+        SprintVO sprint = new SprintVO();
+        sprint.setWorkspaceId(workspaceId);
+        sprint.setCreatedBy(user.getUserId());
+        sprint.setName(request.name());
+        sprint.setGoal(request.goal());
+        sprint.setDescription(request.description());
+        sprint.setColor(request.color());
+        sprint.setStartDate(request.startDate());
+        sprint.setEndDate(request.endDate());
+        sprint.setStatus(request.status());
 
-        sprintRepository.save(sprint);
+        sprintMapper.insertSprint(sprint);
 
+        // INSERT가 끝나면 DB가 만든 번호가 sprint.getSprintId()에 들어 있어요
         activityService.log(workspace, user, ActivityType.SPRINT_CREATED, ActivityTargetType.SPRINT,
             sprint.getSprintId());
 
-        return toSprintResponse(sprint);
+        // 만든 날짜는 DB가 채웠기 때문에 다시 조회해서 돌려줘요
+        return toSprintResponse(sprintMapper.selectSprintProgressById(sprint.getSprintId()));
     }
 
     // 워크스페이스 스프린트 목록 조회
@@ -193,16 +204,29 @@ public class SprintServiceImpl implements SprintService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+        SprintVO sprint = sprintMapper.selectSprintById(sprintId);
 
-        validateMember(sprint.getWorkspace(), user);
+        if (sprint == null) {
+            throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
+        }
+
+        Workspace workspace = workspaceRepository.findById(sprint.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        validateMember(workspace, user);
         validateSprintDate(request.startDate(), request.endDate());
 
-        sprint.update(request.name(), request.goal(), request.description(), request.color(), request.startDate(),
-            request.endDate());
+        sprint.setName(request.name());
+        sprint.setGoal(request.goal());
+        sprint.setDescription(request.description());
+        sprint.setColor(request.color());
+        sprint.setStartDate(request.startDate());
+        sprint.setEndDate(request.endDate());
 
-        return toSprintResponse(sprint);
+        // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
+        sprintMapper.updateSprint(sprint);
+
+        return toSprintResponse(sprintMapper.selectSprintProgressById(sprintId));
     }
 
     // 스프린트 상태 변경
@@ -354,9 +378,9 @@ public class SprintServiceImpl implements SprintService {
     }
 
     // 진행 중인 스프린트가 이미 있으면 막아요(스프린트를 처음 만들 때만 써요)
-    private void validateNoActiveSprint(Workspace workspace) {
+    private void validateNoActiveSprint(Long workspaceId) {
 
-        if (sprintRepository.existsByWorkspaceAndStatus(workspace, SprintStatus.ACTIVE)) {
+        if (sprintMapper.selectSprintCountByStatus(workspaceId, SprintStatus.ACTIVE) > 0) {
             throw new FlowSpaceException(ErrorCode.SPRINT_ALREADY_ACTIVE);
         }
     }
