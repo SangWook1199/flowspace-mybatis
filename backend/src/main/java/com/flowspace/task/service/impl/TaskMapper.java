@@ -52,4 +52,7 @@ public interface TaskMapper {
 
     // 작업 담당자가 아닌 사람이 맡은 하위 작업의 담당자를 비워요 (assigneeIds가 비어 있으면 모두 비워요)
     int updateSubTaskAssigneeClear(@Param("taskId") Long taskId, @Param("assigneeIds") List<Long> assigneeIds);
+
+    // 작업 삭제. 같은 칸에 남은 작업의 순서를 다시 매기는 것까지 프로시저 sp_delete_task가 해요.
+    void deleteTask(Long taskId);
 }

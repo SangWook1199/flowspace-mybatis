@@ -44,7 +44,6 @@ import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
-import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
@@ -404,12 +403,7 @@ public class TaskServiceImpl implements TaskService {
                 .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), status.getStatusId())));
         }
 
-        // 완료 시각: 완료 상태가 되면 처음 한 번만 기록하고, 완료가 아니면 비워요(엔티티의 syncCompletedAt과 같은 규칙)
-        if (status.getCategory() != TaskStatusCategory.DONE) {
-            task.setCompletedAt(null);
-        } else if (task.getCompletedAt() == null) {
-            task.setCompletedAt(LocalDateTime.now());
-        }
+        syncCompletedAt(task, status);
 
         task.setSprintId(request.sprintId());
         task.setStatusId(status.getStatusId());
@@ -488,42 +482,36 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        TaskVO task = findTask(taskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), request.statusId());
+        TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
 
         // 같은 Status면 변경하지 않음
-        if (task.getStatus().getStatusId().equals(request.statusId())) {
-            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            List<CommentResponse> comments = getTaskCommentResponses(task);
-            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-            return TaskResponse.from(task, assignees, subtasks, comments);
+        if (task.getStatusId().equals(request.statusId())) {
+            return toTaskResponse(task);
         }
 
-        BigDecimal position = BigDecimal
-            .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
+        // 새 상태의 맨 뒤로 보내요
+        task.setPosition(BigDecimal
+            .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), status.getStatusId())));
+        task.setStatusId(status.getStatusId());
+        syncCompletedAt(task, status);
 
-        task.updateStatus(status);
+        taskMapper.updateTask(task);
 
         if (status.getCategory() == TaskStatusCategory.DONE) {
-            activityService.log(task.getWorkspace(), user, ActivityType.TASK_COMPLETED, ActivityTargetType.TASK,
-                task.getTaskId());
-
+            activityService.log(workspace, user, ActivityType.TASK_COMPLETED, ActivityTargetType.TASK, taskId);
         }
 
-        task.updatePosition(position);
+        notifyStatusChanged(task, workspace, status, user, findAssigneeUsers(taskId));
 
-        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-        List<CommentResponse> comments = getTaskCommentResponses(task);
-        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-        notifyStatusChanged(task, status, user, assignees);
-
-        return TaskResponse.from(task, assignees, subtasks, comments);
+        return toTaskResponse(findTask(taskId));
     }
 
     // Task 삭제
@@ -533,37 +521,22 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        TaskVO task = findTask(taskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus status = task.getStatus();
-        Sprint sprint = task.getSprint();
+        // 관련 문서로 올려 둔 파일은 서버에서도 같이 지워야 해서, 작업을 지우기 전에 먼저 읽어 둬요.
+        List<File> attachmentFiles = taskAttachmentRepository.findFilesByTaskId(taskId);
 
-        // 관련 문서로 올려 둔 파일은 서버에서도 같이 지워요(첨부 행은 DB가 작업과 함께 지워요).
-        List<File> attachmentFiles = taskAttachmentRepository.findFilesByTask(task);
-
-        taskRepository.delete(task);
+        // 작업 삭제와 같은 칸에 남은 작업의 순서 정리를 프로시저 한 번으로 해요
+        taskMapper.deleteTask(taskId);
 
         for (File attachmentFile : attachmentFiles) {
             fileService.delete(attachmentFile);
-        }
-
-        List<Task> tasks;
-
-        if (sprint == null) {
-            tasks = taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(task.getWorkspace()).stream()
-                .filter(t -> t.getStatus().getStatusId().equals(status.getStatusId())).toList();
-        } else {
-            tasks = taskRepository.findBySprintOrderByPositionAsc(sprint).stream()
-                .filter(t -> t.getStatus().getStatusId().equals(status.getStatusId())).toList();
-        }
-
-        int position = 0;
-        for (Task t : tasks) {
-            t.updatePosition(BigDecimal.valueOf(position));
-            position++;
         }
     }
 
@@ -688,77 +661,70 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        TaskVO task = findTask(taskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        if (Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(), request.sprintId())) {
-
-            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            List<CommentResponse> comments = getTaskCommentResponses(task);
-            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-            return TaskResponse.from(task, assignees, subtasks, comments);
+        // 같은 곳으로 옮기면 바꾸지 않아요
+        if (Objects.equals(task.getSprintId(), request.sprintId())) {
+            return toTaskResponse(task);
         }
 
-        Sprint sprint = null;
-
         if (request.sprintId() != null) {
-            sprint = sprintRepository.findById(request.sprintId())
+            Sprint sprint = sprintRepository.findById(request.sprintId())
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
 
-            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
+            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspaceId())) {
                 throw new FlowSpaceException(ErrorCode.INVALID_SPRINT);
             }
         }
 
-        BigDecimal position;
+        // 옮겨 간 곳에서 같은 상태의 맨 뒤로 가요
+        task.setPosition(BigDecimal
+            .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), task.getStatusId())));
+        task.setSprintId(request.sprintId());
 
-        if (sprint == null) {
-            position = BigDecimal.valueOf(taskRepository
-                .findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), task.getStatus()).size());
-        } else {
-            position = BigDecimal.valueOf(taskRepository
-                .findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), task.getStatus()).size());
-        }
+        taskMapper.updateTask(task);
 
-        task.updateSprint(sprint);
-        task.updatePosition(position);
-
-        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-        List<CommentResponse> comments = getTaskCommentResponses(task);
-        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-        return TaskResponse.from(task, assignees, subtasks, comments);
+        return toTaskResponse(findTask(taskId));
     }
 
-    // Task 순서 변경
+    // Task 순서 변경 (칸반에서 끌어다 놓기)
     @Override
     public void reorderTasks(TaskReorderRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
+        // 화면이 계산한 순서를 작업마다 그대로 저장해요. 작업마다 확인할 것이 있어서 한 건씩 처리해요.
         for (TaskReorderRequest.Item item : request.tasks()) {
 
-            Task task = taskRepository.findById(item.taskId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+            TaskVO task = findTask(item.taskId());
 
-            workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+            // 같은 워크스페이스는 JPA가 처음 한 번만 DB에서 읽고, 그다음부터는 기억해 둔 것을 써요
+            Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+            workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-            TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), item.statusId());
+            TaskStatus status = validateWorkspaceStatus(workspace, item.statusId());
 
             // 칸반에서 다른 열로 옮긴 작업만(같은 열 안에서 순서만 바꾼 건 제외) 알려요.
-            boolean statusChanged = !task.getStatus().getStatusId().equals(status.getStatusId());
+            boolean statusChanged = !task.getStatusId().equals(status.getStatusId());
 
-            task.updateStatus(status);
-            task.updatePosition(item.position());
+            task.setStatusId(status.getStatusId());
+            task.setPosition(item.position());
+            syncCompletedAt(task, status);
+
+            taskMapper.updateTask(task);
 
             if (statusChanged) {
-                notifyStatusChanged(task, status, user,
-                    taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task));
+                notifyStatusChanged(task, workspace, status, user, findAssigneeUsers(task.getTaskId()));
             }
         }
     }
@@ -771,19 +737,26 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 작업 상태가 바뀌었음을 담당자들에게 알림 (바꾼 본인은 제외돼요)
-    private void notifyStatusChanged(Task task, TaskStatus status, User actor, List<TaskAssignee> assignees) {
-        notificationService.sendAll(assignees.stream().map(TaskAssignee::getUser).toList(), actor,
-            task.getWorkspace(), NotificationType.TASK_STATUS_CHANGED,
-            actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
-            task.getTaskId(), NotificationService.taskLink(task));
-    }
-
-    // 작업 상태가 바뀌었음을 담당자들에게 알림 (MyBatis로 읽은 작업용, 바꾼 본인은 제외돼요)
     private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatus status, User actor,
         List<User> targets) {
         notificationService.sendAll(targets, actor, workspace, NotificationType.TASK_STATUS_CHANGED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
             task.getTaskId(), NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
+    }
+
+    // 완료 시각: 완료 상태가 되면 처음 한 번만 기록하고, 완료가 아니면 비워요(엔티티의 syncCompletedAt과 같은 규칙)
+    private void syncCompletedAt(TaskVO task, TaskStatus status) {
+
+        if (status.getCategory() != TaskStatusCategory.DONE) {
+            task.setCompletedAt(null);
+        } else if (task.getCompletedAt() == null) {
+            task.setCompletedAt(LocalDateTime.now());
+        }
+    }
+
+    // 작업 담당자 (알림 받을 사람)
+    private List<User> findAssigneeUsers(Long taskId) {
+        return userRepository.findAllById(taskMapper.selectTaskAssigneeUserIds(taskId));
     }
 
     // 공통 검증 메서드
@@ -926,16 +899,5 @@ public class TaskServiceImpl implements TaskService {
         }
 
         return result;
-    }
-
-    // Task 댓글 조회
-    private List<CommentResponse> getTaskCommentResponses(Task task) {
-
-        return commentRepository.findByTaskAndParentCommentIsNullOrderByCreatedAtAsc(task).stream().map(comment -> {
-            List<CommentResponse> replies = commentRepository.findByParentCommentOrderByCreatedAtAsc(comment).stream()
-                .map(reply -> CommentResponse.from(reply, List.of())).toList();
-
-            return CommentResponse.from(comment, replies);
-        }).toList();
     }
 }

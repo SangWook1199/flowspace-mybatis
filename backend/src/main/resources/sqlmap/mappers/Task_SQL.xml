@@ -110,4 +110,9 @@
         </if>
     </update>
 
+    <!-- 작업 삭제. 남은 작업의 순서를 다시 매기는 것까지 프로시저 안에서 해요. -->
+    <delete id="deleteTask" statementType="CALLABLE">
+        {call sp_delete_task(#{taskId})}
+    </delete>
+
 </mapper>

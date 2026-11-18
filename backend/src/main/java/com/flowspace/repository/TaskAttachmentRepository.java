@@ -29,4 +29,8 @@ public interface TaskAttachmentRepository extends JpaRepository<TaskAttachment, 
     // 지워진 작업을 가리키는 첨부가 남아 flush 오류(TransientPropertyValueException)가 나요(첨부 행은 DB가 같이 지워요).
     @Query("select a.file from TaskAttachment a where a.task = :task and a.file is not null")
     List<File> findFilesByTask(@Param("task") Task task);
+
+    // 위와 같은데 작업 번호로 읽어요(MyBatis로 읽은 작업은 엔티티가 아니라 번호만 있어요)
+    @Query("select a.file from TaskAttachment a where a.task.taskId = :taskId and a.file is not null")
+    List<File> findFilesByTaskId(@Param("taskId") Long taskId);
 }
