@@ -145,4 +145,11 @@
           AND user_id = #{userId}
     </delete>
 
+    <!-- 사용자가 마지막으로 본 워크스페이스 지정 (users 테이블이지만 워크스페이스를 만들 때 함께 바꿔서 여기 둬요) -->
+    <update id="updateUserLastWorkspace">
+        UPDATE users
+           SET last_workspace_id = #{workspaceId}
+         WHERE user_id = #{userId}
+    </update>
+
 </mapper>

@@ -83,6 +83,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
 |---|---|---|---|---|
 | `sp_user_by_email` | 조인 | 이메일 | 사용자 한 명과 프로필 이미지 주소 | `UserMapper.selectUserByEmail` |
+| `sp_user` | 조인 | 사용자 번호 | 위와 같은데 번호로 찾음 | `UserMapper.selectUserById` |
 
 ## 함께 고쳐야 하는 쌍
 
@@ -95,6 +96,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_assignee_list` | `sp_task_assignee` | `TaskAssigneeVO` |
 | `sp_task_status_list` | `sp_task_status` | `TaskStatusVO` |
 | `sp_workspace_member_list` | `sp_workspace_member` | `WorkspaceMemberVO` |
+| `sp_user_by_email` | `sp_user` (둘 다 한 건, 찾는 기준만 달라요) | `UserVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
 작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요. 담당자 컬럼을 바꾸면 이 세 곳을 함께 고쳐요.

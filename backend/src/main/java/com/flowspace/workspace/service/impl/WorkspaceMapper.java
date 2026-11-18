@@ -82,4 +82,7 @@ public interface WorkspaceMapper {
 
     // 멤버 빼기 (내보내기·나가기)
     int deleteWorkspaceMember(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
+
+    // 사용자가 마지막으로 본 워크스페이스 지정
+    int updateUserLastWorkspace(@Param("userId") Long userId, @Param("workspaceId") Long workspaceId);
 }

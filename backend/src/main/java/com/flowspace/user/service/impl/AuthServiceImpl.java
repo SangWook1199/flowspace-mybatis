@@ -3,6 +3,7 @@ package com.flowspace.user.service.impl;
 import com.flowspace.service.FileService;
 import com.flowspace.user.service.EmailVerificationService;
 import com.flowspace.user.service.AuthService;
+import com.flowspace.user.service.RefreshTokenVO;
 import com.flowspace.user.service.UserVO;
 
 import com.flowspace.workspace.service.WorkspaceService;
@@ -23,16 +24,11 @@ import com.flowspace.user.dto.response.UserResponse;
 import com.flowspace.user.dto.response.TokenResponse;
 import com.flowspace.user.dto.request.TokenRequest;
 import com.flowspace.entity.File;
-import com.flowspace.entity.RefreshToken;
-import com.flowspace.entity.User;
-import com.flowspace.entity.UserSocialAccount;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.UserSocialAccountRepository;
 import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.security.JwtProvider;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -61,7 +57,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -69,8 +64,6 @@ import java.util.Optional;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final UserSocialAccountRepository socialAccountRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
@@ -99,32 +92,39 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public SignupResponse signup(SignupRequest request) {
 
-        User existing = userRepository.findByEmail(request.email()).orElse(null);
+        UserVO existing = userMapper.selectUserByEmail(request.email());
 
         if (existing != null) {
 
             // 이미 인증을 마친 계정이 있으면 가입할 수 없어요.
-            if (existing.isEmailVerified()) {
+            if (Boolean.TRUE.equals(existing.getEmailVerified())) {
                 throw new FlowSpaceException(ErrorCode.EMAIL_ALREADY_EXISTS);
             }
 
             // 인증하지 않은 채 남은 계정이면 같은 이메일로 다시 가입하는 걸로 보고, 새로 입력한 정보로 바꿔서 인증 메일을 다시 보내요.
             // (인증 전에는 로그인할 수 없어서, 남의 이메일로 먼저 가입해 두어도 그 주소의 주인이 다시 가입하면 되돌릴 수 있어요.)
-            existing.restartSignup(request.nickname(), passwordEncoder.encode(request.password()));
-            emailVerificationService.sendVerification(existing);
+            userMapper.updateUserSignupRestart(existing.getUserId(), request.nickname(),
+                passwordEncoder.encode(request.password()));
+            emailVerificationService.sendVerification(userRepository.getReferenceById(existing.getUserId()));
 
             return new SignupResponse(existing.getEmail());
         }
 
-        User user = User.builder().email(request.email()).password(passwordEncoder.encode(request.password()))
-            .nickname(request.nickname()).provider(Provider.LOCAL).emailVerified(false).build();
+        UserVO user = new UserVO();
+        user.setEmail(request.email());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setNickname(request.nickname());
+        user.setProvider(Provider.LOCAL);
+        user.setEmailVerified(false);
 
-        userRepository.save(user);
+        // INSERT가 끝나면 DB가 만든 번호가 user.getUserId()에 들어 있어요
+        userMapper.insertUser(user);
 
         // 개인 워크스페이스 자동 생성
-        workspaceService.createPersonalWorkspace(user);
+        workspaceService.createPersonalWorkspace(user.getUserId(), user.getNickname());
 
-        emailVerificationService.sendVerification(user);
+        // 인증 메일 기능(EmailVerificationService)은 아직 JPA라 번호만 가진 엔티티를 넘겨요 (7-4단계에서 바꿔요)
+        emailVerificationService.sendVerification(userRepository.getReferenceById(user.getUserId()));
 
         return new SignupResponse(user.getEmail());
     }
@@ -133,22 +133,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
 
-        User user = userRepository.findByEmail(request.email())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+        UserVO user = findLoginUser(request.email(), request.password());
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
-        }
-
-        // 비밀번호까지 맞은 뒤에 알려요(인증 여부로 가입된 이메일인지 알아내지 못하게요).
-        if (!user.isEmailVerified()) {
-            throw new FlowSpaceException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
-        String accessToken = jwtProvider.createAccessToken(user);
+        String accessToken = createAccessToken(user);
         String refreshToken = issueRefreshToken(user, request.remember());
 
-        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
+        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspaceId());
     }
 
     // 토큰 재발급 (로그인 때 저장해 둔 refresh token이 맞고 만료 전이면 새 access token을 발급해요)
@@ -162,47 +152,52 @@ public class AuthServiceImpl implements AuthService {
             throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        RefreshToken saved = refreshTokenRepository.findByToken(token)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN));
+        RefreshTokenVO saved = userMapper.selectRefreshToken(token);
 
-        if (saved.getExpiredAt().isBefore(LocalDateTime.now())) {
+        if (saved == null || saved.getExpiredAt().isBefore(LocalDateTime.now())) {
             throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        User user = saved.getUser();
+        UserVO user = userMapper.selectUserById(saved.getUserId());
 
         // 탈퇴한 계정은 재발급하지 않아요.
-        if (user.isWithdrawn()) {
+        if (user == null || user.getDeletedAt() != null) {
             throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         // 동시에 여러 탭이 재발급을 요청해도 서로 끊기지 않도록 refresh token은 그대로 돌려줘요.
-        String accessToken = jwtProvider.createAccessToken(user);
-
-        Long workspaceId = user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
-
-        return LoginResponse.from(user, accessToken, token, workspaceId);
+        return LoginResponse.from(user, createAccessToken(user), token, user.getLastWorkspaceId());
     }
 
     // Swagger OAuth2 로그인
     @Override
     public TokenResponse loginForSwagger(TokenRequest request) {
 
-        User user = userRepository.findByEmail(request.username())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+        UserVO user = findLoginUser(request.username(), request.password());
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        return TokenResponse.of(createAccessToken(user), issueRefreshToken(user, true));
+    }
+
+    // 이메일·비밀번호로 로그인할 사용자 (틀리면 어느 쪽이 틀렸는지 알려주지 않아요)
+    private UserVO findLoginUser(String email, String password) {
+
+        UserVO user = userMapper.selectUserByEmail(email);
+
+        if (user == null || user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
 
-        if (!user.isEmailVerified()) {
+        // 비밀번호까지 맞은 뒤에 알려요(인증 여부로 가입된 이메일인지 알아내지 못하게요).
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new FlowSpaceException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = issueRefreshToken(user, true);
+        return user;
+    }
 
-        return TokenResponse.of(accessToken, refreshToken);
+    // access token 발급 (토큰에는 번호·이메일·가입 방식만 들어가요)
+    private String createAccessToken(UserVO user) {
+        return jwtProvider.createAccessToken(user.getUserId(), user.getEmail(), user.getProvider());
     }
 
     // 로그인 사용자 정보 조회
@@ -287,12 +282,6 @@ public class AuthServiceImpl implements AuthService {
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspaceId());
     }
 
-    // 로그인 응답에 실을 "마지막으로 보던 워크스페이스 id". 그 워크스페이스가 삭제됐거나 비어 있으면 null이에요(화면이 알아서 첫 워크스페이스를 골라요).
-    private Long workspaceIdOf(User user) {
-
-        return user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
-    }
-
     // 프로필 이미지를 저장할 워크스페이스: 마지막으로 보던 곳, 없으면 참여 중인 첫 워크스페이스예요(파일은 워크스페이스에 속해야 해요).
     private Workspace profileWorkspace(UserVO user) {
 
@@ -326,25 +315,12 @@ public class AuthServiceImpl implements AuthService {
         return refreshToken;
     }
 
-    // 리프레시 토큰 발급: 기존 토큰은 지우고 새로 저장해요(계정당 하나).
-    // 로그인 상태 유지면 설정된 기간, 아니면 하루 동안 쓸 수 있어요.
-    private String issueRefreshToken(User user, boolean remember) {
+    // 리프레시 토큰 발급: 로그인 상태 유지면 설정된 기간, 아니면 하루 동안 쓸 수 있어요.
+    private String issueRefreshToken(UserVO user, boolean remember) {
 
         Duration ttl = remember ? Duration.ofMillis(jwtProvider.getRefreshTokenExpiration()) : SESSION_REFRESH_TTL;
 
         return issueRefreshToken(user, ttl);
-    }
-
-    private String issueRefreshToken(User user, Duration ttl) {
-
-        String refreshToken = jwtProvider.createRefreshToken(user, ttl.toMillis());
-
-        refreshTokenRepository.deleteByUser(user);
-
-        refreshTokenRepository.save(
-            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plus(ttl)).build());
-
-        return refreshToken;
     }
 
     // 프로필 이미지 삭제
@@ -364,34 +340,31 @@ public class AuthServiceImpl implements AuthService {
 
 
     // 소셜 계정으로 로그인할 사용자를 찾아요. 연결된 소셜 계정을 먼저 보고, 없으면 예전 방식(users.provider)으로 가입한 계정을 봐요.
-    private Optional<User> findSocialUser(Provider provider, String providerId) {
+    private UserVO findSocialUser(Provider provider, String providerId) {
 
-        return socialAccountRepository.findByProviderAndProviderId(provider, providerId).map(UserSocialAccount::getUser)
-            .or(() -> userRepository.findByProviderAndProviderId(provider, providerId));
-    }
+        Long userId = userMapper.selectSocialUserId(provider, providerId);
 
-    // 소셜 계정을 사용자에게 연결해요.
-    private void linkSocial(User user, Provider provider, String providerId) {
+        if (userId == null) {
+            userId = userMapper.selectUserIdByProvider(provider, providerId);
+        }
 
-        socialAccountRepository
-            .save(UserSocialAccount.builder().user(user).provider(provider).providerId(providerId).build());
+        return userId == null ? null : userMapper.selectUserById(userId);
     }
 
     // 이메일로 가입했지만 인증을 마치지 않은 계정이 있으면, 소셜 계정을 연결하고 인증을 마친 계정으로 바꿔요.
     // 가입 때 정한 비밀번호는 지워요 — 이메일 주인이 아닌 사람이 먼저 가입해 두었을 수 있어서, 주인은 소셜 로그인이나 비밀번호 찾기로 들어와요.
-    private User claimUnverifiedAccount(String email, Provider provider, String providerId) {
+    private UserVO claimUnverifiedAccount(String email, Provider provider, String providerId) {
 
-        User pending = userRepository.findByEmail(email).filter(u -> !u.isEmailVerified() && !u.isWithdrawn())
-            .orElse(null);
+        UserVO pending = userMapper.selectUserByEmail(email);
 
-        if (pending == null) {
+        if (pending == null || Boolean.TRUE.equals(pending.getEmailVerified()) || pending.getDeletedAt() != null) {
             return null;
         }
 
-        pending.claimBySocialLogin();
-        linkSocial(pending, provider, providerId);
+        userMapper.updateUserClaimBySocial(pending.getUserId());
+        userMapper.insertSocialAccount(pending.getUserId(), provider, providerId);
 
-        return pending;
+        return userMapper.selectUserById(pending.getUserId());
     }
 
     // 같은 이메일의 계정이 이미 있을 때 새 계정을 만들지 못하게 막아요.
@@ -400,14 +373,14 @@ public class AuthServiceImpl implements AuthService {
     //  - 그 밖(다른 소셜로 가입한 계정 등): 처음 가입한 방식으로 로그인하게 안내해요(SOCIAL_EMAIL_CONFLICT).
     private void rejectExistingEmail(String email, Provider provider) {
 
-        User existing = userRepository.findByEmail(email).orElse(null);
+        UserVO existing = userMapper.selectUserByEmail(email);
 
         if (existing == null) {
             return;
         }
 
-        if (existing.getPassword() != null && !existing.isWithdrawn()
-            && !socialAccountRepository.existsByUserAndProvider(existing, provider)) {
+        if (existing.getPassword() != null && existing.getDeletedAt() == null
+            && userMapper.selectSocialAccountCount(existing.getUserId(), provider) == 0) {
             throw new FlowSpaceException(ErrorCode.SOCIAL_LINK_REQUIRED);
         }
 
@@ -435,16 +408,19 @@ public class AuthServiceImpl implements AuthService {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
 
-        User user = findSocialUser(provider, providerId).orElse(null);
+        UserVO user = findSocialUser(provider, providerId);
 
         // 이미 연결된 소셜 계정이면 그대로 로그인해요.
         if (user == null) {
 
-            User existing = userRepository.findByEmail(email)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+            UserVO existing = userMapper.selectUserByEmail(email);
 
-            if (existing.isWithdrawn() || existing.getPassword() == null
-                || socialAccountRepository.existsByUserAndProvider(existing, provider)) {
+            if (existing == null) {
+                throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+            }
+
+            if (existing.getDeletedAt() != null || existing.getPassword() == null
+                || userMapper.selectSocialAccountCount(existing.getUserId(), provider) > 0) {
                 throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
             }
 
@@ -452,16 +428,43 @@ public class AuthServiceImpl implements AuthService {
                 throw new FlowSpaceException(ErrorCode.SOCIAL_LINK_PASSWORD_MISMATCH);
             }
 
-            linkSocial(existing, provider, providerId);
+            userMapper.insertSocialAccount(existing.getUserId(), provider, providerId);
             // 소셜 계정이 이 이메일의 주인임을 보여주니, 아직 인증 전이던 계정이면 인증으로 봐요.
-            existing.verifyEmail();
-            user = existing;
+            userMapper.updateUserEmailVerified(existing.getUserId());
+
+            user = userMapper.selectUserById(existing.getUserId());
         }
 
-        String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = issueRefreshToken(user, true);
+        return socialLoginResponse(user);
+    }
 
-        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
+    // 소셜 로그인 응답: 토큰 두 개를 발급해요(소셜 로그인은 항상 로그인 상태 유지)
+    private LoginResponse socialLoginResponse(UserVO user) {
+        return LoginResponse.from(user, createAccessToken(user), issueRefreshToken(user, true),
+            user.getLastWorkspaceId());
+    }
+
+    // 소셜 회원 생성 공통 처리: 사용자 INSERT → 소셜 계정 연결 → 개인 워크스페이스. 새 워크스페이스 번호를 돌려줘요.
+    private Long createSocialUser(UserVO user) {
+
+        // 소셜 계정은 소셜 서비스가 이메일을 확인해 줘서 인증된 것으로 만들어요(비밀번호는 없어요)
+        user.setPassword(null);
+        user.setEmailVerified(true);
+
+        userMapper.insertUser(user);
+        userMapper.insertSocialAccount(user.getUserId(), user.getProvider(), user.getProviderId());
+
+        return workspaceService.createPersonalWorkspace(user.getUserId(), user.getNickname());
+    }
+
+    // 소셜 프로필 사진 저장 공통 처리: 파일로 저장하고 사용자 프로필로 지정해요
+    private void saveSocialProfileImage(UserVO user, Long workspaceId, byte[] imageBytes) {
+
+        // 파일 저장(FileService)은 아직 JPA라 번호만 가진 엔티티를 넘겨요. getReferenceById는 DB를 읽지 않아요.
+        File profile = fileService.uploadProfileImage(imageBytes, workspaceRepository.getReferenceById(workspaceId),
+            userRepository.getReferenceById(user.getUserId()));
+
+        userMapper.updateUserProfileFile(user.getUserId(), profile.getFileId());
     }
 
     // Google 로그인
@@ -470,20 +473,20 @@ public class AuthServiceImpl implements AuthService {
 
         GoogleUserInfo googleUser = verifyGoogleToken(request.idToken());
 
-        User user = findSocialUser(Provider.GOOGLE, googleUser.providerId())
-            .orElseGet(() -> createGoogleUser(googleUser));
+        UserVO user = findSocialUser(Provider.GOOGLE, googleUser.providerId());
 
-        String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = issueRefreshToken(user, true);
+        if (user == null) {
+            user = createGoogleUser(googleUser);
+        }
 
-        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
+        return socialLoginResponse(user);
     }
 
     // Google 회원 생성
-    private User createGoogleUser(GoogleUserInfo googleUser) {
+    private UserVO createGoogleUser(GoogleUserInfo googleUser) {
 
         // 이메일 인증 전인 가입 계정이 있으면 소셜 계정이 이메일 주인임을 보여주니, 그 계정을 넘겨받아요.
-        User pending = claimUnverifiedAccount(googleUser.email(), Provider.GOOGLE, googleUser.providerId());
+        UserVO pending = claimUnverifiedAccount(googleUser.email(), Provider.GOOGLE, googleUser.providerId());
 
         if (pending != null) {
             return pending;
@@ -492,23 +495,24 @@ public class AuthServiceImpl implements AuthService {
         // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
         rejectExistingEmail(googleUser.email(), Provider.GOOGLE);
 
-        User user = User.builder().email(googleUser.email()).password(null).nickname(googleUser.nickname())
-            .provider(Provider.GOOGLE).providerId(googleUser.providerId()).build();
+        UserVO user = new UserVO();
+        user.setEmail(googleUser.email());
+        user.setNickname(googleUser.nickname());
+        user.setProvider(Provider.GOOGLE);
+        user.setProviderId(googleUser.providerId());
 
-        userRepository.save(user);
-        linkSocial(user, Provider.GOOGLE, googleUser.providerId());
-
-        Workspace workspace = workspaceService.createPersonalWorkspace(user);
+        Long workspaceId = createSocialUser(user);
 
         if (googleUser.pictureUrl() != null) {
-            uploadGoogleProfile(user, workspace, googleUser.pictureUrl());
+            uploadGoogleProfile(user, workspaceId, googleUser.pictureUrl());
         }
 
-        return user;
+        // 프로필 이미지 주소와 마지막으로 본 워크스페이스는 DB에 있어서 다시 조회해요
+        return userMapper.selectUserById(user.getUserId());
     }
 
     // Google 프로필 저장
-    private void uploadGoogleProfile(User user, Workspace workspace, String imageUrl) {
+    private void uploadGoogleProfile(UserVO user, Long workspaceId, String imageUrl) {
 
         try {
 
@@ -520,9 +524,7 @@ public class AuthServiceImpl implements AuthService {
                 return;
             }
 
-            File profile = fileService.uploadProfileImage(response.getBody(), workspace, user);
-
-            user.updateProfileImage(profile);
+            saveSocialProfileImage(user, workspaceId, response.getBody());
 
         } catch (Exception ignored) {
         }
@@ -565,20 +567,20 @@ public class AuthServiceImpl implements AuthService {
 
         MicrosoftUserInfo microsoftUser = verifyMicrosoftToken(request.idToken());
 
-        User user = findSocialUser(Provider.MICROSOFT, microsoftUser.providerId())
-            .orElseGet(() -> createMicrosoftUser(microsoftUser, request.accessToken()));
+        UserVO user = findSocialUser(Provider.MICROSOFT, microsoftUser.providerId());
 
-        String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = issueRefreshToken(user, true);
+        if (user == null) {
+            user = createMicrosoftUser(microsoftUser, request.accessToken());
+        }
 
-        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
+        return socialLoginResponse(user);
     }
 
     // Microsoft 회원 생성
-    private User createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
+    private UserVO createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
 
         // 이메일 인증 전인 가입 계정이 있으면 소셜 계정이 이메일 주인임을 보여주니, 그 계정을 넘겨받아요.
-        User pending = claimUnverifiedAccount(microsoftUser.email(), Provider.MICROSOFT, microsoftUser.providerId());
+        UserVO pending = claimUnverifiedAccount(microsoftUser.email(), Provider.MICROSOFT, microsoftUser.providerId());
 
         if (pending != null) {
             return pending;
@@ -587,21 +589,21 @@ public class AuthServiceImpl implements AuthService {
         // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
         rejectExistingEmail(microsoftUser.email(), Provider.MICROSOFT);
 
-        User user = User.builder().email(microsoftUser.email()).password(null).nickname(microsoftUser.nickname())
-            .provider(Provider.MICROSOFT).providerId(microsoftUser.providerId()).build();
+        UserVO user = new UserVO();
+        user.setEmail(microsoftUser.email());
+        user.setNickname(microsoftUser.nickname());
+        user.setProvider(Provider.MICROSOFT);
+        user.setProviderId(microsoftUser.providerId());
 
-        userRepository.save(user);
-        linkSocial(user, Provider.MICROSOFT, microsoftUser.providerId());
+        Long workspaceId = createSocialUser(user);
 
-        Workspace workspace = workspaceService.createPersonalWorkspace(user);
+        uploadMicrosoftProfile(user, workspaceId, accessToken);
 
-        uploadMicrosoftProfile(user, workspace, accessToken);
-
-        return user;
+        return userMapper.selectUserById(user.getUserId());
     }
 
     // Microsoft 프로필 저장
-    private void uploadMicrosoftProfile(User user, Workspace workspace, String accessToken) {
+    private void uploadMicrosoftProfile(UserVO user, Long workspaceId, String accessToken) {
 
         try {
 
@@ -619,9 +621,7 @@ public class AuthServiceImpl implements AuthService {
                 return;
             }
 
-            File profile = fileService.uploadProfileImage(response.getBody(), workspace, user);
-
-            user.updateProfileImage(profile);
+            saveSocialProfileImage(user, workspaceId, response.getBody());
 
         } catch (Exception ignored) {
         }

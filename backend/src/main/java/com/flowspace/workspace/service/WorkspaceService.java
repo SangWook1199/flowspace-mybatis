@@ -2,8 +2,6 @@ package com.flowspace.workspace.service;
 
 import java.util.List;
 
-import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
 import com.flowspace.workspace.dto.request.WorkspaceCreateRequest;
 import com.flowspace.workspace.dto.request.WorkspaceInviteRequest;
 import com.flowspace.workspace.dto.request.WorkspaceOwnerTransferRequest;
@@ -25,7 +23,7 @@ public interface WorkspaceService {
     WorkspaceResponse updateWorkspace(Long workspaceId, WorkspaceUpdateRequest request, String email);
 
     // 개인 워크스페이스 생성 (회원가입 전용)
-    Workspace createPersonalWorkspace(User user);
+    Long createPersonalWorkspace(Long userId, String nickname);
 
     // 내 워크스페이스 목록 조회
     List<WorkspaceResponse> getMyWorkspaces(String email);

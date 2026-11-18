@@ -58,4 +58,76 @@
         VALUES (#{userId}, #{token}, #{expiredAt})
     </insert>
 
+    <!-- 번호로 사용자 한 명 -->
+    <select id="selectUserById" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user(#{userId})}
+    </select>
+
+    <!-- 사용자 등록. 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertUser" parameterType="com.flowspace.user.service.UserVO"
+            useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO users (email, password, nickname, provider, provider_id, email_verified)
+        VALUES (#{email}, #{password}, #{nickname}, #{provider}, #{providerId}, #{emailVerified})
+    </insert>
+
+    <!-- 인증 전 다시 가입 -->
+    <update id="updateUserSignupRestart">
+        UPDATE users
+           SET nickname = #{nickname},
+               password = #{password}
+         WHERE user_id = #{userId}
+    </update>
+
+    <!-- 이메일 인증 완료 -->
+    <update id="updateUserEmailVerified">
+        UPDATE users
+           SET email_verified = TRUE
+         WHERE user_id = #{userId}
+    </update>
+
+    <!-- 인증 전 계정을 소셜 로그인으로 넘겨받기 -->
+    <update id="updateUserClaimBySocial">
+        UPDATE users
+           SET email_verified = TRUE,
+               password       = NULL
+         WHERE user_id = #{userId}
+    </update>
+
+    <!-- 저장된 리프레시 토큰 -->
+    <select id="selectRefreshToken" resultType="com.flowspace.user.service.RefreshTokenVO">
+        SELECT user_id, token, expired_at
+        FROM refresh_tokens
+        WHERE token = #{token}
+    </select>
+
+    <!-- 소셜 계정에 연결된 사용자 번호 -->
+    <select id="selectSocialUserId" resultType="long">
+        SELECT user_id
+        FROM user_social_accounts
+        WHERE provider = #{provider}
+          AND provider_id = #{providerId}
+    </select>
+
+    <!-- 예전 방식으로 가입한 소셜 사용자 번호 -->
+    <select id="selectUserIdByProvider" resultType="long">
+        SELECT user_id
+        FROM users
+        WHERE provider = #{provider}
+          AND provider_id = #{providerId}
+    </select>
+
+    <!-- 이 사용자에게 이 소셜 계정이 연결돼 있는지 -->
+    <select id="selectSocialAccountCount" resultType="int">
+        SELECT COUNT(*)
+        FROM user_social_accounts
+        WHERE user_id = #{userId}
+          AND provider = #{provider}
+    </select>
+
+    <!-- 소셜 계정 연결 -->
+    <insert id="insertSocialAccount">
+        INSERT INTO user_social_accounts (user_id, provider, provider_id)
+        VALUES (#{userId}, #{provider}, #{providerId})
+    </insert>
+
 </mapper>

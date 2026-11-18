@@ -51,7 +51,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 workspace.setColor(request.color());
                 workspace.setIcon(normalizeIcon(request.icon()));
 
-                saveNewWorkspace(workspace, user);
+                saveNewWorkspace(workspace, user.getUserId());
 
                 return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
         }
@@ -87,36 +87,34 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 return WorkspaceResponse.from(workspace, role);
         }
 
-        // 개인 워크스페이스 생성 (회원가입 전용)
+        // 개인 워크스페이스 생성 (회원가입 전용). 새 워크스페이스 번호를 돌려줘요.
         @Override
-        public Workspace createPersonalWorkspace(User user) {
+        public Long createPersonalWorkspace(Long userId, String nickname) {
 
                 WorkspaceVO workspace = new WorkspaceVO();
-                workspace.setName(user.getNickname() + "의 워크스페이스");
-                workspace.setInitials(user.getNickname().substring(0, 1));
+                workspace.setName(nickname + "의 워크스페이스");
+                workspace.setInitials(nickname.substring(0, 1));
                 workspace.setColor(WorkspaceColor.BLUE);
 
-                saveNewWorkspace(workspace, user);
+                saveNewWorkspace(workspace, userId);
 
-                // 회원가입 코드(AuthService)는 아직 JPA라 엔티티가 필요해요.
-                // getReferenceById는 DB를 읽지 않고 번호만 가진 엔티티(프록시)를 돌려줘요.
-                return workspaceRepository.getReferenceById(workspace.getWorkspaceId());
+                return workspace.getWorkspaceId();
         }
 
         // 새 워크스페이스 저장 공통 처리: 워크스페이스 INSERT → 소유자·기본 상태 연결 → 마지막으로 본 워크스페이스로 지정
-        private void saveNewWorkspace(WorkspaceVO workspace, User owner) {
+        private void saveNewWorkspace(WorkspaceVO workspace, Long ownerId) {
 
-                workspace.setOwnerId(owner.getUserId());
+                workspace.setOwnerId(ownerId);
 
                 // INSERT가 끝나면 DB가 만든 번호가 workspace.getWorkspaceId()에 들어 있어요
                 workspaceMapper.insertWorkspace(workspace);
 
                 // 소유자 멤버와 기본 상태 3개를 프로시저 한 번으로 연결해요
-                workspaceMapper.insertWorkspaceInit(workspace.getWorkspaceId(), owner.getUserId());
+                workspaceMapper.insertWorkspaceInit(workspace.getWorkspaceId(), ownerId);
 
-                // 사용자는 JPA 엔티티로 들고 있어서 JPA로 바꿔요.
-                // SQL로 바꾸면, 끝날 때 JPA가 이 엔티티의 옛날 값으로 사용자 행을 다시 덮어쓸 수 있어요.
-                owner.updateLastWorkspace(workspaceRepository.getReferenceById(workspace.getWorkspaceId()));
+                // 이제 회원가입(AuthService)이 사용자 엔티티를 들고 바꾸지 않아서 SQL로 바꿔도 덮어쓰이지 않아요.
+                // (워크스페이스 생성에서 읽는 사용자 엔티티도 값을 바꾸지 않아서 JPA가 다시 쓰지 않아요.)
+                workspaceMapper.updateUserLastWorkspace(ownerId, workspace.getWorkspaceId());
         }
 
         // 내 워크스페이스 목록 조회
