@@ -115,4 +115,55 @@
         {call sp_delete_task(#{taskId})}
     </delete>
 
+    <!-- 작업 담당자인지 확인 -->
+    <select id="selectTaskAssigneeCount" resultType="int">
+        SELECT COUNT(*)
+        FROM task_assignees
+        WHERE task_id = #{taskId}
+          AND user_id = #{userId}
+    </select>
+
+    <!-- 하위 작업 한 건 -->
+    <select id="selectSubTaskById" resultType="com.flowspace.task.service.SubTaskVO">
+        SELECT subtask_id, task_id, assignee_id, content, is_completed, position
+        FROM subtasks
+        WHERE subtask_id = #{subtaskId}
+    </select>
+
+    <!-- 작업의 하위 작업 수 -->
+    <select id="selectSubTaskCount" resultType="int">
+        SELECT COUNT(*)
+        FROM subtasks
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 하위 작업 등록. 완료 여부는 넣지 않아서 DB 기본값(FALSE)이 들어가요. -->
+    <insert id="insertSubTask" parameterType="com.flowspace.task.service.SubTaskVO"
+            useGeneratedKeys="true" keyProperty="subtaskId">
+        INSERT INTO subtasks (task_id, assignee_id, content, position)
+        VALUES (#{taskId}, #{assigneeId}, #{content}, #{position})
+    </insert>
+
+    <!-- 하위 작업 수정 -->
+    <update id="updateSubTask" parameterType="com.flowspace.task.service.SubTaskVO">
+        UPDATE subtasks
+           SET content      = #{content},
+               assignee_id  = #{assigneeId},
+               is_completed = #{isCompleted}
+         WHERE subtask_id = #{subtaskId}
+    </update>
+
+    <!-- 하위 작업 순서 변경 -->
+    <update id="updateSubTaskPosition">
+        UPDATE subtasks
+           SET position = #{position}
+         WHERE subtask_id = #{subtaskId}
+    </update>
+
+    <!-- 하위 작업 삭제 -->
+    <delete id="deleteSubTask">
+        DELETE FROM subtasks
+        WHERE subtask_id = #{subtaskId}
+    </delete>
+
 </mapper>

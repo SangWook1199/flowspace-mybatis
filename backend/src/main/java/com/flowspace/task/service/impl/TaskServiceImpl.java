@@ -38,7 +38,6 @@ import com.flowspace.task.dto.request.SubTaskUpdateRequest;
 import com.flowspace.entity.Comment;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
-import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskStatus;
@@ -55,7 +54,6 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.TaskAttachmentRepository;
 import com.flowspace.repository.SprintRepository;
-import com.flowspace.repository.SubTaskRepository;
 import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.TaskStatusRepository;
@@ -79,7 +77,6 @@ public class TaskServiceImpl implements TaskService {
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final SubTaskRepository subTaskRepository;
     private final CommentRepository commentRepository;
     private final TaskAttachmentRepository taskAttachmentRepository;
     private final FileService fileService;
@@ -547,30 +544,23 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        TaskVO task = findTask(taskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        validateTaskMember(task, user);
 
-        User assignee = null;
+        validateSubTaskAssignee(taskId, request.assigneeId());
 
-        if (request.assigneeId() != null) {
-            assignee = userRepository.findById(request.assigneeId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        SubTaskVO subTask = new SubTaskVO();
+        subTask.setTaskId(taskId);
+        subTask.setAssigneeId(request.assigneeId());
+        subTask.setContent(request.content());
+        // 하위 작업 수를 순서로 써서 맨 뒤에 놓여요
+        subTask.setPosition(taskMapper.selectSubTaskCount(taskId));
 
-            if (!taskAssigneeRepository.existsByTaskAndUser(task, assignee)) {
-                throw new FlowSpaceException(ErrorCode.INVALID_SUBTASK_ASSIGNEE);
-            }
-        }
+        taskMapper.insertSubTask(subTask);
 
-        int position = subTaskRepository.findByTaskOrderByPositionAsc(task).size();
-
-        SubTask subTask = SubTask.builder().task(task).assignee(assignee).content(request.content()).position(position)
-            .build();
-
-        subTaskRepository.save(subTask);
-
-        return SubTaskResponse.from(subTask);
+        // 완료 여부는 DB 기본값으로 들어가서 다시 조회해서 돌려줘요
+        return SubTaskResponse.from(findSubTask(subTask.getSubtaskId()));
     }
 
     // SubTask 목록 조회
@@ -581,12 +571,10 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        validateTaskMember(findTask(taskId), user);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return subTaskRepository.findByTaskOrderByPositionAsc(task).stream().map(SubTaskResponse::from).toList();
+        // 칸반 목록에서 쓰는 하위 작업 조회를 작업 하나로 불러요
+        return taskMapper.selectSubTaskList(List.of(taskId)).stream().map(SubTaskResponse::from).toList();
     }
 
     // SubTask 수정
@@ -596,26 +584,20 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        SubTask subTask = subTaskRepository.findById(subTaskId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SUBTASK_NOT_FOUND));
+        SubTaskVO subTask = findSubTask(subTaskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(subTask.getTask().getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        // 하위 작업에는 작업 번호만 있어서, 작업을 읽어 워크스페이스 멤버인지 확인해요
+        validateTaskMember(findTask(subTask.getTaskId()), user);
 
-        User assignee = null;
+        validateSubTaskAssignee(subTask.getTaskId(), request.assigneeId());
 
-        if (request.assigneeId() != null) {
-            assignee = userRepository.findById(request.assigneeId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        subTask.setContent(request.content());
+        subTask.setAssigneeId(request.assigneeId());
+        subTask.setIsCompleted(request.isCompleted());
 
-            if (!taskAssigneeRepository.existsByTaskAndUser(subTask.getTask(), assignee)) {
-                throw new FlowSpaceException(ErrorCode.INVALID_SUBTASK_ASSIGNEE);
-            }
-        }
+        taskMapper.updateSubTask(subTask);
 
-        subTask.update(request.content(), assignee);
-        subTask.updateCompleted(request.isCompleted());
-
+        // DB가 채우는 값이 없어서 다시 조회하지 않고 VO로 바로 응답해요
         return SubTaskResponse.from(subTask);
     }
 
@@ -628,13 +610,11 @@ public class TaskServiceImpl implements TaskService {
 
         for (SubTaskReorderRequest.Item item : request.subtasks()) {
 
-            SubTask subTask = subTaskRepository.findById(item.subtaskId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.SUBTASK_NOT_FOUND));
+            SubTaskVO subTask = findSubTask(item.subtaskId());
 
-            workspaceMemberRepository.findByWorkspaceAndUser(subTask.getTask().getWorkspace(), user)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+            validateTaskMember(findTask(subTask.getTaskId()), user);
 
-            subTask.updatePosition(item.position());
+            taskMapper.updateSubTaskPosition(item.subtaskId(), item.position());
         }
     }
 
@@ -645,13 +625,11 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        SubTask subTask = subTaskRepository.findById(subtaskId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SUBTASK_NOT_FOUND));
+        SubTaskVO subTask = findSubTask(subtaskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(subTask.getTask().getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        validateTaskMember(findTask(subTask.getTaskId()), user);
 
-        subTaskRepository.delete(subTask);
+        taskMapper.deleteSubTask(subtaskId);
     }
 
     // Task 스프린트 이동
@@ -841,6 +819,44 @@ public class TaskServiceImpl implements TaskService {
         }
 
         return task;
+    }
+
+    // 하위 작업 한 건 (없으면 예외)
+    private SubTaskVO findSubTask(Long subtaskId) {
+
+        SubTaskVO subTask = taskMapper.selectSubTaskById(subtaskId);
+
+        if (subTask == null) {
+            throw new FlowSpaceException(ErrorCode.SUBTASK_NOT_FOUND);
+        }
+
+        return subTask;
+    }
+
+    // 작업이 속한 워크스페이스의 멤버인지 확인하고, 그 워크스페이스를 돌려줘요
+    private Workspace validateTaskMember(TaskVO task, User user) {
+
+        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        return workspace;
+    }
+
+    // 하위 작업 담당자는 작업 담당자 중에서만 고를 수 있어요 (담당자가 없으면 확인하지 않아요)
+    private void validateSubTaskAssignee(Long taskId, Long assigneeId) {
+
+        if (assigneeId == null) {
+            return;
+        }
+
+        userRepository.findById(assigneeId).orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        if (taskMapper.selectTaskAssigneeCount(taskId, assigneeId) == 0) {
+            throw new FlowSpaceException(ErrorCode.INVALID_SUBTASK_ASSIGNEE);
+        }
     }
 
     // 작업 한 건을 응답으로 바꿔요 (목록과 같은 방식: 담당자는 프로시저, 하위 작업은 XML SQL, 댓글은 아직 JPA)

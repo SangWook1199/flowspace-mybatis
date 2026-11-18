@@ -55,4 +55,25 @@ public interface TaskMapper {
 
     // 작업 삭제. 같은 칸에 남은 작업의 순서를 다시 매기는 것까지 프로시저 sp_delete_task가 해요.
     void deleteTask(Long taskId);
+
+    // 작업 담당자인지 확인 (1이면 담당자, 0이면 아님)
+    int selectTaskAssigneeCount(@Param("taskId") Long taskId, @Param("userId") Long userId);
+
+    // 하위 작업 한 건 (없으면 null)
+    SubTaskVO selectSubTaskById(Long subtaskId);
+
+    // 작업의 하위 작업 수 (새 하위 작업을 맨 뒤에 놓을 때 써요)
+    int selectSubTaskCount(Long taskId);
+
+    // 하위 작업 등록. 실행 후 DB가 만든 번호가 subTask의 subtaskId에 들어가요.
+    int insertSubTask(SubTaskVO subTask);
+
+    // 하위 작업 수정 (내용·담당자·완료 여부)
+    int updateSubTask(SubTaskVO subTask);
+
+    // 하위 작업 순서 변경
+    int updateSubTaskPosition(@Param("subtaskId") Long subtaskId, @Param("position") Integer position);
+
+    // 하위 작업 삭제
+    int deleteSubTask(Long subtaskId);
 }
