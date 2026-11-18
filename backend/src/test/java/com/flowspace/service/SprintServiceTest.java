@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.activity.service.ActivityService;
+
 import com.flowspace.notification.service.NotificationService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -197,7 +199,7 @@ class SprintServiceTest {
         order.verify(retrospectiveRepository).save(any(Retrospective.class));
         order.verify(sprintMapper).updateSprintComplete(10L);
 
-        verify(activityService).log(eq(workspace), eq(user), eq(ActivityType.SPRINT_COMPLETED),
+        verify(activityService).log(eq(5L), eq(1L), eq(ActivityType.SPRINT_COMPLETED),
             eq(ActivityTargetType.SPRINT), eq(10L));
     }
 

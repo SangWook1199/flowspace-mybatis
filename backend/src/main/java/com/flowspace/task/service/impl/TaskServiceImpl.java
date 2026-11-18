@@ -1,6 +1,6 @@
 package com.flowspace.task.service.impl;
 
-import com.flowspace.service.ActivityService;
+import com.flowspace.activity.service.ActivityService;
 import com.flowspace.service.FileService;
 import com.flowspace.notification.service.NotificationService;
 import com.flowspace.task.service.SubTaskVO;
@@ -277,7 +277,8 @@ public class TaskServiceImpl implements TaskService {
         taskMapper.insertTask(task);
 
         // INSERT가 끝나면 DB가 만든 번호가 task.getTaskId()에 들어 있어요
-        activityService.log(workspace, user, ActivityType.TASK_CREATED, ActivityTargetType.TASK, task.getTaskId());
+        activityService.log(workspace.getWorkspaceId(), user.getUserId(), ActivityType.TASK_CREATED,
+            ActivityTargetType.TASK, task.getTaskId());
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
 
@@ -475,7 +476,8 @@ public class TaskServiceImpl implements TaskService {
         taskMapper.updateTask(task);
 
         if (status.getCategory() == TaskStatusCategory.DONE) {
-            activityService.log(workspace, user, ActivityType.TASK_COMPLETED, ActivityTargetType.TASK, taskId);
+            activityService.log(workspace.getWorkspaceId(), user.getUserId(), ActivityType.TASK_COMPLETED,
+                ActivityTargetType.TASK, taskId);
         }
 
         notifyStatusChanged(task, workspace, status, user, findAssigneeUsers(taskId));

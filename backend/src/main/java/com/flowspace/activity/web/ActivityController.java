@@ -1,8 +1,8 @@
-package com.flowspace.controller;
+package com.flowspace.activity.web;
 
-import com.flowspace.dto.activity.ActivityPageResponse;
-import com.flowspace.dto.activity.ActivityResponse;
-import com.flowspace.service.ActivityService;
+import com.flowspace.activity.dto.response.ActivityPageResponse;
+import com.flowspace.activity.dto.response.ActivityResponse;
+import com.flowspace.activity.service.ActivityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;

@@ -58,7 +58,7 @@ import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.repository.WorkspaceTaskStatusRepository;
-import com.flowspace.service.ActivityService;
+import com.flowspace.activity.service.ActivityService;
 
 // AI 초안 만들기: 관리자만 쓸 수 있는지, 스프린트·작업·이벤트가 올바르게 이어서 만들어지는지,
 // 잘못된 초안은 아무것도 저장하지 않는지 확인해요.

@@ -39,7 +39,7 @@ import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.repository.WorkspaceTaskStatusRepository;
-import com.flowspace.service.ActivityService;
+import com.flowspace.activity.service.ActivityService;
 
 import lombok.RequiredArgsConstructor;
 

@@ -43,3 +43,6 @@ source /database/procedures/user/sp_user_lookup.sql
 source /database/procedures/notification/sp_notification_list.sql
 source /database/procedures/notification/sp_notification.sql
 source /database/procedures/notification/sp_due_soon_target_list.sql
+
+-- 활동 기록
+source /database/procedures/activity/sp_activity_list.sql

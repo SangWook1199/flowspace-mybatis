@@ -59,7 +59,7 @@ import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.repository.WorkspaceTaskStatusRepository;
-import com.flowspace.service.ActivityService;
+import com.flowspace.activity.service.ActivityService;
 import com.flowspace.notification.service.NotificationService;
 import com.flowspace.sprint.service.SprintService;
 import com.flowspace.sprint.service.SprintProgressVO;
@@ -138,7 +138,7 @@ public class SprintServiceImpl implements SprintService {
         sprintMapper.insertSprint(sprint);
 
         // INSERT가 끝나면 DB가 만든 번호가 sprint.getSprintId()에 들어 있어요
-        activityService.log(workspace, user, ActivityType.SPRINT_CREATED, ActivityTargetType.SPRINT,
+        activityService.log(workspaceId, user.getUserId(), ActivityType.SPRINT_CREATED, ActivityTargetType.SPRINT,
             sprint.getSprintId());
 
         // 만든 날짜는 DB가 채웠기 때문에 다시 조회해서 돌려줘요
@@ -287,7 +287,8 @@ public class SprintServiceImpl implements SprintService {
 
         sprintMapper.updateSprintComplete(sprintId);
 
-        activityService.log(workspace, user, ActivityType.SPRINT_COMPLETED, ActivityTargetType.SPRINT, sprintId);
+        activityService.log(workspace.getWorkspaceId(), user.getUserId(), ActivityType.SPRINT_COMPLETED,
+            ActivityTargetType.SPRINT, sprintId);
     }
 
     private boolean isAllowedStatusChange(SprintStatus from, SprintStatus to) {

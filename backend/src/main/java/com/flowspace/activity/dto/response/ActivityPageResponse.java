@@ -1,4 +1,4 @@
-package com.flowspace.dto.activity;
+package com.flowspace.activity.dto.response;
 
 import java.util.List;
 

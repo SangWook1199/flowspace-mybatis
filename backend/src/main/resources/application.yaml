@@ -82,3 +82,4 @@ logging:
     com.flowspace.workspace.service.impl.WorkspaceMapper: debug
     com.flowspace.user.service.impl.UserMapper: debug
     com.flowspace.notification.service.impl.NotificationMapper: debug
+    com.flowspace.activity.service.impl.ActivityMapper: debug

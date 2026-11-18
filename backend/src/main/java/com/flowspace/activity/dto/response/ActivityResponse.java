@@ -1,10 +1,11 @@
-package com.flowspace.dto.activity;
+package com.flowspace.activity.dto.response;
 
 import java.time.LocalDateTime;
 
 import com.flowspace.entity.Activity;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.activity.service.ActivityVO;
 
 // @formatter:off
 
@@ -57,6 +58,22 @@ public record ActivityResponse(
         );
     }
 
+    // MyBatis 조회 결과(ActivityVO)로 응답을 만들어요 (대상 이름·경로는 서비스가 정해서 넘겨요)
+    public static ActivityResponse from(ActivityVO activity, String targetName, String targetLink) {
+        return new ActivityResponse(
+            activity.getActivityId(),
+            activity.getUserId(),
+            activity.getUserName(),
+            activity.getProfileFileId(),
+            activity.getProfileImageUrl(),
+            activity.getType(),
+            activity.getTargetType(),
+            activity.getTargetId(),
+            targetName,
+            targetLink,
+            activity.getCreatedAt()
+        );
+    }
 }
 
 // @formatter:on

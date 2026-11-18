@@ -18,7 +18,8 @@ database/
     ├── task/               작업(칸반)
     ├── workspace/          워크스페이스
     ├── user/               사용자·로그인
-    └── notification/       알림
+    ├── notification/       알림
+    └── activity/           활동 기록
 ```
 
 ## 규칙
@@ -96,6 +97,14 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_notification_list` | 조인 | 받는 사람 번호, 건너뛸 개수, 가져올 개수 | 내 알림 목록과 워크스페이스·보낸 사람 이름 (최신순) | `NotificationMapper.selectNotificationList` |
 | `sp_notification` | 조인 | 알림 번호 | 위와 같은데 한 건 | `NotificationMapper.selectNotificationById` |
 | `sp_due_soon_target_list` | 조인 | 마감일, 기준 시각 | 마감이 다가온 작업의 담당자 (오늘 이미 받은 사람은 빼고) | `NotificationMapper.selectDueSoonTargetList` |
+
+### 활동 기록 (`procedures/activity`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_activity_list` | 조인 | 워크스페이스, 사람(선택), 종류 목록(쉼표 문자열, 선택), 건너뛸·가져올 개수 | 활동 기록과 한 사람·대상의 지금 이름 (최신순) | `ActivityMapper.selectActivityList` |
+
+같은 조건으로 개수를 세는 SQL(`selectActivityCount`)은 테이블 하나라서 `Activity_SQL.xml`에 있어요. 조건을 바꾸면 둘을 함께 고쳐요.
 
 ## 함께 고쳐야 하는 쌍
 
