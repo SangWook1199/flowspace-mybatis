@@ -2,6 +2,7 @@ package com.flowspace.workspace.service.impl;
 
 import com.flowspace.service.NotificationService;
 import com.flowspace.service.PresenceService;
+import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.MemberTaskCountVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceService;
@@ -32,7 +33,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         private final WorkspaceRepository workspaceRepository;
         private final WorkspaceMemberRepository workspaceMemberRepository;
         private final UserRepository userRepository;
-        private final WorkspaceInviteRepository workspaceInviteRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
 
@@ -156,37 +156,37 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User inviter = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-                WorkspaceMember inviterMember = workspaceMemberRepository.findByWorkspaceAndUser(workspace, inviter)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+                WorkspaceVO workspace = findWorkspace(workspaceId);
 
                 // 멤버 초대는 관리자 이상만 할 수 있어요.
-                if (!inviterMember.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
+                if (!findMemberRole(workspaceId, inviter).isAtLeast(WorkspaceRole.ADMIN)) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
                 User invitee = userRepository.findByEmail(request.email())
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                if (workspaceMemberRepository.existsByWorkspaceAndUser(workspace, invitee)) {
+                // 멤버 확인 SQL을 그대로 써요: 역할이 있으면 이미 멤버예요
+                if (workspaceMapper.selectMemberRole(workspaceId, invitee.getUserId()) != null) {
                         throw new FlowSpaceException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
                 }
 
-                workspaceInviteRepository
-                        .findByWorkspaceAndEmailAndStatus(workspace, request.email(), InviteStatus.PENDING)
-                        .ifPresent(invite -> {
-                                throw new FlowSpaceException(ErrorCode.ALREADY_INVITED);
-                        });
+                if (workspaceMapper.selectPendingInviteCount(workspaceId, request.email()) > 0) {
+                        throw new FlowSpaceException(ErrorCode.ALREADY_INVITED);
+                }
 
-                WorkspaceInvite invite = WorkspaceInvite.builder().workspace(workspace).inviter(inviter)
-                        .email(request.email()).status(InviteStatus.PENDING).build();
+                InviteVO invite = new InviteVO();
+                invite.setWorkspaceId(workspaceId);
+                invite.setInviterId(inviter.getUserId());
+                invite.setEmail(request.email());
+                invite.setStatus(InviteStatus.PENDING);
 
-                workspaceInviteRepository.save(invite);
+                workspaceMapper.insertInvite(invite);
 
                 // 초대받은 사람에게 알림 (알림창에서 바로 수락/거절할 수 있어요)
-                notificationService.send(invitee, inviter, workspace, NotificationType.WORKSPACE_INVITE,
+                // 알림 기능은 아직 JPA라서 워크스페이스를 번호만 가진 엔티티로 넘겨요
+                notificationService.send(invitee, inviter, workspaceRepository.getReferenceById(workspaceId),
+                        NotificationType.WORKSPACE_INVITE,
                         inviter.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스에 초대했어요.",
                         invite.getInviteId(), null);
 
@@ -201,8 +201,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                return workspaceInviteRepository.findByEmailAndStatus(user.getEmail(), InviteStatus.PENDING).stream()
-                        .map(InviteResponse::from).toList();
+                return workspaceMapper.selectMyInviteList(user.getEmail()).stream().map(InviteResponse::from).toList();
         }
 
         // 워크스페이스 초대 수락
@@ -212,31 +211,23 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                WorkspaceInvite invite = workspaceInviteRepository.findById(inviteId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVITE_NOT_FOUND));
+                InviteVO invite = findMyPendingInvite(inviteId, user);
 
-                if (!invite.getEmail().equals(user.getEmail())) {
-                        throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
-                }
+                // 멤버 추가와 초대 상태 변경은 각각 테이블 하나라서 XML SQL 두 번이에요.
+                // 같은 트랜잭션이라 둘 중 하나가 실패하면 둘 다 취소돼요.
+                workspaceMapper.insertWorkspaceMember(invite.getWorkspaceId(), user.getUserId(), WorkspaceRole.MEMBER);
+                workspaceMapper.updateInviteStatus(inviteId, InviteStatus.ACCEPTED);
 
-                if (invite.getStatus() != InviteStatus.PENDING) {
-                        throw new FlowSpaceException(ErrorCode.INVALID_INVITE_STATUS);
-                }
-
-                WorkspaceMember member = WorkspaceMember.builder().workspace(invite.getWorkspace()).user(user)
-                        .role(WorkspaceRole.MEMBER).build();
-
-                workspaceMemberRepository.save(member);
-
-                invite.accept();
-                user.updateLastWorkspace(invite.getWorkspace());
+                // 사용자는 JPA 엔티티로 들고 있어서 JPA로 바꿔요(6-3단계와 같은 이유)
+                Workspace workspaceRef = workspaceRepository.getReferenceById(invite.getWorkspaceId());
+                user.updateLastWorkspace(workspaceRef);
 
                 // 받은 초대 알림은 읽음 처리하고, 초대한 사람에게 수락했다고 알려요.
-                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, invite.getInviteId());
-                notificationService.send(invite.getInviter(), user, invite.getWorkspace(),
-                        NotificationType.INVITE_ACCEPTED,
-                        user.getNickname() + "님이 '" + invite.getWorkspace().getName() + "' 초대를 수락했어요.",
-                        invite.getInviteId(), null);
+                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, inviteId);
+                notificationService.send(findInviter(invite), user, workspaceRef, NotificationType.INVITE_ACCEPTED,
+                        user.getNickname() + "님이 '" + findWorkspace(invite.getWorkspaceId()).getName()
+                                + "' 초대를 수락했어요.",
+                        inviteId, null);
         }
 
         // 워크스페이스 초대 거절
@@ -246,8 +237,26 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                WorkspaceInvite invite = workspaceInviteRepository.findById(inviteId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVITE_NOT_FOUND));
+                InviteVO invite = findMyPendingInvite(inviteId, user);
+
+                workspaceMapper.updateInviteStatus(inviteId, InviteStatus.DECLINED);
+
+                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, inviteId);
+                notificationService.send(findInviter(invite), user,
+                        workspaceRepository.getReferenceById(invite.getWorkspaceId()), NotificationType.INVITE_DECLINED,
+                        user.getNickname() + "님이 '" + findWorkspace(invite.getWorkspaceId()).getName()
+                                + "' 초대를 거절했어요.",
+                        inviteId, null);
+        }
+
+        // 나에게 온, 아직 답하지 않은 초대 (아니면 예외)
+        private InviteVO findMyPendingInvite(Long inviteId, User user) {
+
+                InviteVO invite = workspaceMapper.selectInviteById(inviteId);
+
+                if (invite == null) {
+                        throw new FlowSpaceException(ErrorCode.INVITE_NOT_FOUND);
+                }
 
                 if (!invite.getEmail().equals(user.getEmail())) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
@@ -257,13 +266,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.INVALID_INVITE_STATUS);
                 }
 
-                invite.decline();
+                return invite;
+        }
 
-                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, invite.getInviteId());
-                notificationService.send(invite.getInviter(), user, invite.getWorkspace(),
-                        NotificationType.INVITE_DECLINED,
-                        user.getNickname() + "님이 '" + invite.getWorkspace().getName() + "' 초대를 거절했어요.",
-                        invite.getInviteId(), null);
+        // 초대한 사람 (알림을 받을 사람이라 엔티티로 읽어요)
+        private User findInviter(InviteVO invite) {
+                return userRepository.findById(invite.getInviterId())
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
         }
 
         // 워크스페이스 멤버 목록 조회

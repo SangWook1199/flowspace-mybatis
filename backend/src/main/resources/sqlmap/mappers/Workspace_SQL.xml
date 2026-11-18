@@ -81,4 +81,46 @@
         {call sp_delete_workspace(#{workspaceId})}
     </delete>
 
+    <!-- 아직 답하지 않은 초대 수 -->
+    <select id="selectPendingInviteCount" resultType="int">
+        SELECT COUNT(*)
+        FROM workspace_invites
+        WHERE workspace_id = #{workspaceId}
+          AND email = #{email}
+          AND status = 'PENDING'
+    </select>
+
+    <!-- 초대 등록. 보낸 시각은 DB 기본값을 써요. -->
+    <insert id="insertInvite" parameterType="com.flowspace.workspace.service.InviteVO"
+            useGeneratedKeys="true" keyProperty="inviteId">
+        INSERT INTO workspace_invites (workspace_id, inviter_id, email, status)
+        VALUES (#{workspaceId}, #{inviterId}, #{email}, #{status})
+    </insert>
+
+    <!-- 내가 받은 초대. 조인은 프로시저 안에서 해요. -->
+    <select id="selectMyInviteList" statementType="CALLABLE" resultType="com.flowspace.workspace.service.InviteVO">
+        {call sp_my_invite_list(#{email})}
+    </select>
+
+    <!-- 초대 한 건 -->
+    <select id="selectInviteById" resultType="com.flowspace.workspace.service.InviteVO">
+        SELECT invite_id, workspace_id, inviter_id, email, status, created_at
+        FROM workspace_invites
+        WHERE invite_id = #{inviteId}
+    </select>
+
+    <!-- 초대에 답하기 -->
+    <update id="updateInviteStatus">
+        UPDATE workspace_invites
+           SET status       = #{status},
+               responded_at = NOW()
+         WHERE invite_id = #{inviteId}
+    </update>
+
+    <!-- 멤버 추가. 들어온 시각은 DB 기본값을 써요. -->
+    <insert id="insertWorkspaceMember">
+        INSERT INTO workspace_members (workspace_id, user_id, role)
+        VALUES (#{workspaceId}, #{userId}, #{role})
+    </insert>
+
 </mapper>

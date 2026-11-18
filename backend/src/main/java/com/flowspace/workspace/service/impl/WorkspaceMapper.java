@@ -6,6 +6,8 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.entity.enums.InviteStatus;
+import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.MemberTaskCountVO;
 import com.flowspace.workspace.service.MemberTaskVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
@@ -51,4 +53,23 @@ public interface WorkspaceMapper {
 
     // 워크스페이스 삭제 (프로시저 sp_delete_workspace)
     void deleteWorkspace(Long workspaceId);
+
+    // 이 워크스페이스에 이 이메일로 보낸, 아직 답하지 않은 초대 수
+    int selectPendingInviteCount(@Param("workspaceId") Long workspaceId, @Param("email") String email);
+
+    // 초대 등록. 실행 후 DB가 만든 번호가 invite의 inviteId에 들어가요.
+    int insertInvite(InviteVO invite);
+
+    // 내가 받은, 아직 답하지 않은 초대 (프로시저 sp_my_invite_list)
+    List<InviteVO> selectMyInviteList(String email);
+
+    // 초대 한 건 (없으면 null)
+    InviteVO selectInviteById(Long inviteId);
+
+    // 초대에 답하기 (상태와 답한 시각)
+    int updateInviteStatus(@Param("inviteId") Long inviteId, @Param("status") InviteStatus status);
+
+    // 멤버 추가
+    int insertWorkspaceMember(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId,
+        @Param("role") WorkspaceRole role);
 }

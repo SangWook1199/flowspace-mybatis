@@ -1,5 +1,8 @@
 package com.flowspace.service;
 
+import com.flowspace.workspace.service.InviteVO;
+import com.flowspace.workspace.service.WorkspaceVO;
+import com.flowspace.workspace.service.impl.WorkspaceMapper;
 import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,7 +28,6 @@ import com.flowspace.workspace.dto.request.WorkspaceRoleChangeRequest;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceMember;
-import com.flowspace.entity.WorkspaceInvite;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
@@ -62,6 +64,8 @@ class WorkspaceServiceRoleTest {
     private TaskAssigneeRepository taskAssigneeRepository;
     @Mock
     private TaskRepository taskRepository;
+    @Mock
+    private WorkspaceMapper workspaceMapper;
 
     @InjectMocks
     private WorkspaceServiceImpl workspaceService;
@@ -88,6 +92,16 @@ class WorkspaceServiceRoleTest {
         return member;
     }
 
+    // MyBatis로 바꾼 기능(초대)에서 쓰는 준비: 워크스페이스와 로그인한 사람의 역할
+    private void actorRoleInMapper(WorkspaceRole role) {
+        WorkspaceVO row = new WorkspaceVO();
+        row.setWorkspaceId(5L);
+        row.setName("w");
+
+        lenient().when(workspaceMapper.selectWorkspaceById(5L)).thenReturn(row);
+        lenient().when(workspaceMapper.selectMemberRole(5L, 1L)).thenReturn(role);
+    }
+
     private WorkspaceMember targetWithRole(WorkspaceRole role) {
         WorkspaceMember member = WorkspaceMember.builder().workspace(workspace).user(target).role(role).build();
         lenient().when(workspaceMemberRepository.findByWorkspaceAndUser(workspace, target))
@@ -100,27 +114,25 @@ class WorkspaceServiceRoleTest {
     @Test
     @DisplayName("일반 멤버는 초대할 수 없다")
     void memberCannotInvite() {
-        actorWithRole(WorkspaceRole.MEMBER);
+        actorRoleInMapper(WorkspaceRole.MEMBER);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> workspaceService.inviteMember(5L, new WorkspaceInviteRequest("target@a.com"), "actor@a.com"));
 
         assertEquals(ErrorCode.ACCESS_DENIED, e.getErrorCode());
-        verify(workspaceInviteRepository, never()).save(any(WorkspaceInvite.class));
+        verify(workspaceMapper, never()).insertInvite(any());
     }
 
     @Test
     @DisplayName("관리자는 초대할 수 있다")
     void adminCanInvite() {
-        actorWithRole(WorkspaceRole.ADMIN);
+        actorRoleInMapper(WorkspaceRole.ADMIN);
         lenient().when(userRepository.findByEmail("target@a.com")).thenReturn(Optional.of(target));
-        lenient().when(workspaceMemberRepository.existsByWorkspaceAndUser(workspace, target)).thenReturn(false);
-        lenient().when(workspaceInviteRepository.findByWorkspaceAndEmailAndStatus(any(), any(), any()))
-            .thenReturn(Optional.empty());
+        // 대상은 아직 멤버가 아니고(역할 null), 보낸 초대도 없어요(0) — Mockito 기본값이라 따로 정하지 않아요
 
         workspaceService.inviteMember(5L, new WorkspaceInviteRequest("target@a.com"), "actor@a.com");
 
-        verify(workspaceInviteRepository).save(any(WorkspaceInvite.class));
+        verify(workspaceMapper).insertInvite(any(InviteVO.class));
     }
 
     // ───── 추방 ─────

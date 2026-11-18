@@ -2,6 +2,7 @@ package com.flowspace.workspace.dto.response;
 
 import com.flowspace.entity.WorkspaceInvite;
 import com.flowspace.entity.enums.InviteStatus;
+import com.flowspace.workspace.service.InviteVO;
 
 // @formatter:off
 
@@ -20,6 +21,17 @@ public record WorkspaceInviteResponse(
                 invite.getInviteId(),
                 invite.getWorkspace().getWorkspaceId(),
                 invite.getInviter().getUserId(),
+                invite.getEmail(),
+                invite.getStatus()
+        );
+    }
+
+    // MyBatis 조회 결과(InviteVO)로 응답을 만들어요
+    public static WorkspaceInviteResponse from(InviteVO invite) {
+        return new WorkspaceInviteResponse(
+                invite.getInviteId(),
+                invite.getWorkspaceId(),
+                invite.getInviterId(),
                 invite.getEmail(),
                 invite.getStatus()
         );

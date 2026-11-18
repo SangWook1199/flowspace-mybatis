@@ -30,3 +30,4 @@ source /database/procedures/workspace/sp_member_open_task_list.sql
 source /database/procedures/workspace/sp_member_task_count.sql
 source /database/procedures/workspace/sp_init_workspace.sql
 source /database/procedures/workspace/sp_delete_workspace.sql
+source /database/procedures/workspace/sp_my_invite_list.sql
