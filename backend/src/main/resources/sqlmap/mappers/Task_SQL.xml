@@ -67,4 +67,47 @@
         VALUES (#{taskId}, #{userId})
     </insert>
 
+    <!-- 작업 수정 -->
+    <update id="updateTask" parameterType="com.flowspace.task.service.TaskVO">
+        UPDATE tasks
+           SET sprint_id    = #{sprintId},
+               status_id    = #{statusId},
+               position     = #{position},
+               title        = #{title},
+               description  = #{description},
+               start_date   = #{startDate},
+               end_date     = #{endDate},
+               priority     = #{priority},
+               completed_at = #{completedAt}
+         WHERE task_id = #{taskId}
+    </update>
+
+    <!-- 작업 담당자의 사용자 번호 목록 -->
+    <select id="selectTaskAssigneeUserIds" resultType="long">
+        SELECT user_id
+        FROM task_assignees
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 작업 담당자 모두 삭제 -->
+    <delete id="deleteTaskAssignees">
+        DELETE FROM task_assignees
+        WHERE task_id = #{taskId}
+    </delete>
+
+    <!-- 작업 담당자에서 빠진 사람이 맡은 하위 작업의 담당자를 비워요.
+         if: 남은 담당자가 있을 때만 NOT IN 조건을 붙여요(없으면 하위 작업 담당자를 모두 비워요). -->
+    <update id="updateSubTaskAssigneeClear">
+        UPDATE subtasks
+           SET assignee_id = NULL
+         WHERE task_id = #{taskId}
+           AND assignee_id IS NOT NULL
+        <if test="assigneeIds != null and assigneeIds.size() > 0">
+           AND assignee_id NOT IN
+           <foreach collection="assigneeIds" item="userId" open="(" separator="," close=")">
+               #{userId}
+           </foreach>
+        </if>
+    </update>
+
 </mapper>

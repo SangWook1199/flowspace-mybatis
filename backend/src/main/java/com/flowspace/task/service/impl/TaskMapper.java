@@ -40,4 +40,16 @@ public interface TaskMapper {
 
     // 작업 담당자 등록
     int insertTaskAssignee(@Param("taskId") Long taskId, @Param("userId") Long userId);
+
+    // 작업 수정 (순서·완료 시각까지 VO에 담긴 값으로 바꿔요)
+    int updateTask(TaskVO task);
+
+    // 작업 담당자의 사용자 번호 목록
+    List<Long> selectTaskAssigneeUserIds(Long taskId);
+
+    // 작업 담당자 모두 삭제
+    int deleteTaskAssignees(Long taskId);
+
+    // 작업 담당자가 아닌 사람이 맡은 하위 작업의 담당자를 비워요 (assigneeIds가 비어 있으면 모두 비워요)
+    int updateSubTaskAssigneeClear(@Param("taskId") Long taskId, @Param("assigneeIds") List<Long> assigneeIds);
 }

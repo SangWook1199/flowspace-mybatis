@@ -10,13 +10,13 @@ import com.flowspace.task.service.TaskVO;
 import com.flowspace.task.dto.response.AssigneeItem;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.flowspace.task.dto.request.TaskCreateRequest;
 import com.flowspace.task.dto.request.TaskReorderRequest;
@@ -374,85 +374,93 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+        TaskVO task = findTask(taskId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        Sprint sprint = null;
-
+        // 옮겨 갈 스프린트가 같은 워크스페이스인지 확인해요
         if (request.sprintId() != null) {
-            sprint = sprintRepository.findById(request.sprintId())
+            Sprint sprint = sprintRepository.findById(request.sprintId())
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
 
-            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
+            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspaceId())) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
         }
 
-        TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), request.statusId());
+        TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
 
-        BigDecimal position = task.getPosition();
+        boolean sprintChanged = !Objects.equals(task.getSprintId(), request.sprintId());
 
-        boolean sprintChanged = !Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(),
-            request.sprintId());
+        boolean statusChanged = !task.getStatusId().equals(request.statusId());
 
-        boolean statusChanged = !task.getStatus().getStatusId().equals(request.statusId());
-
+        // 스프린트나 상태가 바뀌면 새 상태의 맨 뒤로 보내요
         if (sprintChanged || statusChanged) {
-            position = BigDecimal
-                .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
+            task.setPosition(BigDecimal
+                .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), status.getStatusId())));
         }
 
-        task.update(sprint, status, request.title(), request.description(), request.startDate(), request.endDate(),
-            request.priority());
+        // 완료 시각: 완료 상태가 되면 처음 한 번만 기록하고, 완료가 아니면 비워요(엔티티의 syncCompletedAt과 같은 규칙)
+        if (status.getCategory() != TaskStatusCategory.DONE) {
+            task.setCompletedAt(null);
+        } else if (task.getCompletedAt() == null) {
+            task.setCompletedAt(LocalDateTime.now());
+        }
 
-        task.updatePosition(position);
+        task.setSprintId(request.sprintId());
+        task.setStatusId(status.getStatusId());
+        task.setTitle(request.title());
+        task.setDescription(request.description());
+        task.setStartDate(request.startDate());
+        task.setEndDate(request.endDate());
+        task.setPriority(request.priority());
+
+        // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
+        taskMapper.updateTask(task);
 
         // 새로 담당자가 된 사람에게만 알리려고, 바꾸기 전 담당자를 기억해둬요.
-        Set<Long> previousAssigneeIds = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task).stream()
-            .map(assignee -> assignee.getUser().getUserId()).collect(Collectors.toSet());
+        Set<Long> previousAssigneeIds = Set.copyOf(taskMapper.selectTaskAssigneeUserIds(taskId));
 
-        taskAssigneeRepository.deleteByTask(task);
-        // 같은 담당자를 다시 넣을 때 (작업, 담당자) 중복으로 걸리지 않게, 지운 것을 먼저 DB에 반영해요.
-        taskAssigneeRepository.flush();
+        // 담당자는 모두 지우고 요청대로 다시 넣어요.
+        // JPA 때는 지운 것을 먼저 DB에 보내려고 flush()가 필요했지만, MyBatis는 호출하는 순간 실행돼서 필요 없어요.
+        taskMapper.deleteTaskAssignees(taskId);
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
+
+        // 원래부터 담당자였던 사람 (상태 변경 알림을 받을 사람)
+        List<User> keptAssignees = new ArrayList<>();
 
         for (Long assigneeId : assigneeIds) {
 
             User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-            workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), assignee)
+            workspaceMemberRepository.findByWorkspaceAndUser(workspace, assignee)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-            taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
+            taskMapper.insertTaskAssignee(taskId, assignee.getUserId());
 
-            if (!previousAssigneeIds.contains(assignee.getUserId())) {
-                notifyAssigned(task, assignee, user);
+            if (previousAssigneeIds.contains(assignee.getUserId())) {
+                keptAssignees.add(assignee);
+            } else {
+                notifyAssigned(task, workspace, assignee, user);
             }
         }
-
-        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
 
         // 하위 작업 담당자는 작업 담당자 중에서만 고를 수 있어서, 작업 담당자에서 빠진 사람은 하위 작업에서도 비워요.
-        for (SubTask subtask : subtasks) {
-            if (subtask.getAssignee() != null && !assigneeIds.contains(subtask.getAssignee().getUserId())) {
-                subtask.update(subtask.getContent(), null);
-            }
-        }
-
-        List<CommentResponse> comments = getTaskCommentResponses(task);
-        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+        // 하위 작업마다 반복하던 것을 UPDATE 한 번으로 해요.
+        taskMapper.updateSubTaskAssigneeClear(taskId, assigneeIds);
 
         // 상태가 바뀌었으면 (이번에 새로 담당자가 된 사람을 뺀) 담당자들에게 알려요.
         if (statusChanged) {
-            notifyStatusChanged(task, status, user,
-                assignees.stream().filter(a -> previousAssigneeIds.contains(a.getUser().getUserId())).toList());
+            notifyStatusChanged(task, workspace, status, user, keptAssignees);
         }
 
-        return TaskResponse.from(task, assignees, subtasks, comments);
+        return toTaskResponse(findTask(taskId));
     }
 
     // Backlog Task 목록 조회
@@ -756,13 +764,6 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 담당자로 지정된 사람에게 알림
-    private void notifyAssigned(Task task, User assignee, User actor) {
-        notificationService.send(assignee, actor, task.getWorkspace(), NotificationType.TASK_ASSIGNED,
-            actor.getNickname() + "님이 '" + task.getTitle() + "' 작업의 담당자로 지정했어요.", task.getTaskId(),
-            NotificationService.taskLink(task));
-    }
-
-    // 담당자로 지정된 사람에게 알림 (MyBatis로 읽은 작업용)
     private void notifyAssigned(TaskVO task, Workspace workspace, User assignee, User actor) {
         notificationService.send(assignee, actor, workspace, NotificationType.TASK_ASSIGNED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업의 담당자로 지정했어요.", task.getTaskId(),
@@ -775,6 +776,14 @@ public class TaskServiceImpl implements TaskService {
             task.getWorkspace(), NotificationType.TASK_STATUS_CHANGED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
             task.getTaskId(), NotificationService.taskLink(task));
+    }
+
+    // 작업 상태가 바뀌었음을 담당자들에게 알림 (MyBatis로 읽은 작업용, 바꾼 본인은 제외돼요)
+    private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatus status, User actor,
+        List<User> targets) {
+        notificationService.sendAll(targets, actor, workspace, NotificationType.TASK_STATUS_CHANGED,
+            actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
+            task.getTaskId(), NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
     }
 
     // 공통 검증 메서드
