@@ -2,7 +2,10 @@ package com.flowspace.workspace.service.impl;
 
 import com.flowspace.service.NotificationService;
 import com.flowspace.service.PresenceService;
+import com.flowspace.workspace.service.MemberTaskCountVO;
+import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceService;
+import com.flowspace.workspace.service.WorkspaceVO;
 
 import com.flowspace.workspace.dto.request.*;
 import com.flowspace.workspace.dto.response.*;
@@ -14,7 +17,6 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,8 +38,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
-        private final TaskAssigneeRepository taskAssigneeRepository;
         private final TaskRepository taskRepository;
+
+        // 워크스페이스 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
+        private final WorkspaceMapper workspaceMapper;
 
         // 워크스페이스 생성
         @Override
@@ -143,8 +147,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                return workspaceMemberRepository.findByUser(user).stream()
-                        .map(member -> WorkspaceResponse.from(member.getWorkspace(), member.getRole())).toList();
+                // 워크스페이스와 내 역할을 프로시저 한 번으로 가져와요
+                return workspaceMapper.selectMyWorkspaceList(user.getUserId()).stream()
+                        .map(workspace -> WorkspaceResponse.from(workspace, workspace.getRole())).toList();
         }
 
         // 워크스페이스 단건 조회
@@ -155,13 +160,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+                // 테이블 하나씩만 읽으면 돼서 프로시저 없이 XML SQL 두 번으로 해요
+                WorkspaceRole role = findMemberRole(workspaceId, user);
 
-                return WorkspaceResponse.from(workspace, member.getRole());
+                return WorkspaceResponse.from(workspace, role);
         }
 
         // 워크스페이스 멤버 초대
@@ -289,15 +293,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                findWorkspace(workspaceId);
+                findMemberRole(workspaceId, user);
 
-                workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-                return workspaceMemberRepository.findByWorkspace(workspace).stream()
-                        .map(member -> WorkspaceMemberResponse.from(member,
-                                presenceService.isOnline(member.getUser().getUserId())))
+                // 접속 중인지는 DB가 아니라 서버 메모리(PresenceService)에 있어서 자바에서 붙여요
+                return workspaceMapper.selectWorkspaceMemberList(workspaceId).stream()
+                        .map(member -> WorkspaceMemberResponse.from(member, presenceService.isOnline(member.getUserId())))
                         .toList();
         }
 
@@ -309,29 +310,30 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User viewer = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                Workspace workspace = workspaceRepository.findById(workspaceId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+                findWorkspace(workspaceId);
+                findMemberRole(workspaceId, viewer);
 
-                workspaceMemberRepository.findByWorkspaceAndUser(workspace, viewer)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+                if (!userRepository.existsById(userId)) {
+                        throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+                }
 
-                User target = userRepository.findById(userId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                WorkspaceMemberVO member = workspaceMapper.selectWorkspaceMember(workspaceId, userId);
 
-                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, target)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND));
+                if (member == null) {
+                        throw new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND);
+                }
 
-                List<MemberProfileResponse.TaskItem> tasks = taskAssigneeRepository
-                        .findOpenTasks(target, workspace, TaskStatusCategory.DONE, PageRequest.of(0, PROFILE_TASK_LIMIT))
-                        .stream().map(MemberProfileResponse.TaskItem::from).toList();
+                List<MemberProfileResponse.TaskItem> tasks = workspaceMapper
+                        .selectMemberOpenTaskList(workspaceId, userId, PROFILE_TASK_LIMIT).stream()
+                        .map(MemberProfileResponse.TaskItem::from).toList();
 
-                return new MemberProfileResponse(target.getUserId(), target.getNickname(), target.getEmail(),
-                        target.getBio(),
-                        target.getProfileFile() == null ? null : target.getProfileFile().getFileUrl(),
-                        member.getRole(), member.getJoinedAt(), presenceService.isOnline(target.getUserId()),
-                        target.getLastActiveAt(),
-                        taskAssigneeRepository.countOpen(target, workspace, TaskStatusCategory.DONE),
-                        taskAssigneeRepository.countDone(target, workspace, TaskStatusCategory.DONE), tasks);
+                // 진행 중·완료 수를 따로 세던 것을 프로시저 한 번으로 세요
+                MemberTaskCountVO count = workspaceMapper.selectMemberTaskCount(workspaceId, userId);
+
+                return new MemberProfileResponse(member.getUserId(), member.getNickname(), member.getEmail(),
+                        member.getBio(), member.getProfileImageUrl(), member.getRole(), member.getJoinedAt(),
+                        presenceService.isOnline(userId), member.getLastActiveAt(), count.getOpenTaskCount(),
+                        count.getDoneTaskCount(), tasks);
         }
 
         // 워크스페이스 소유권 이전
@@ -502,5 +504,30 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 if (user.getLastWorkspace() != null && user.getLastWorkspace().getWorkspaceId().equals(workspaceId)) {
                         user.updateLastWorkspace(null);
                 }
+        }
+
+        // 워크스페이스 한 건 (없으면 예외)
+        private WorkspaceVO findWorkspace(Long workspaceId) {
+
+                // MyBatis는 결과가 없으면 null을 돌려줘서 직접 확인해요
+                WorkspaceVO workspace = workspaceMapper.selectWorkspaceById(workspaceId);
+
+                if (workspace == null) {
+                        throw new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND);
+                }
+
+                return workspace;
+        }
+
+        // 로그인한 사람의 그 워크스페이스 역할 (멤버가 아니면 예외)
+        private WorkspaceRole findMemberRole(Long workspaceId, User user) {
+
+                WorkspaceRole role = workspaceMapper.selectMemberRole(workspaceId, user.getUserId());
+
+                if (role == null) {
+                        throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+                }
+
+                return role;
         }
 }

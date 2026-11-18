@@ -15,7 +15,8 @@ database/
 ├── apply_procedures.sql    모든 프로시저를 DB에 적용하는 목록
 └── procedures/
     ├── sprint/             스프린트
-    └── task/               작업(칸반)
+    ├── task/               작업(칸반)
+    └── workspace/          워크스페이스
 ```
 
 ## 규칙
@@ -63,6 +64,16 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_search` | 조인 | 워크스페이스 번호, 검색어 | 제목으로 작업 검색 (상태 이름 포함) | `TaskMapper.selectTaskSearchList` |
 | `sp_delete_task_status` | 일괄 변경 | 워크스페이스 번호, 삭제할·옮길 상태 번호 | 작업을 다른 상태로 옮기고 상태 삭제 (기본 상태는 연결만 끊음) | `TaskMapper.deleteTaskStatus` |
 
+### 워크스페이스 (`procedures/workspace`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_my_workspace_list` | 조인 | 사용자 번호 | 내가 속한 워크스페이스와 내 역할 | `WorkspaceMapper.selectMyWorkspaceList` |
+| `sp_workspace_member_list` | 조인 | 워크스페이스 번호 | 멤버 목록과 이름·프로필 이미지·역할 | `WorkspaceMapper.selectWorkspaceMemberList` |
+| `sp_workspace_member` | 조인 | 워크스페이스 번호, 사용자 번호 | 위와 같은데 한 명 (멤버가 아니면 없음) | `WorkspaceMapper.selectWorkspaceMember` |
+| `sp_member_open_task_list` | 조인 | 워크스페이스 번호, 사용자 번호, 개수 | 맡은 작업 중 끝나지 않은 것 (마감일 순) | `WorkspaceMapper.selectMemberOpenTaskList` |
+| `sp_member_task_count` | 조인·집계 | 워크스페이스 번호, 사용자 번호 | 맡은 작업의 진행 중·완료 수 | `WorkspaceMapper.selectMemberTaskCount` |
+
 ## 함께 고쳐야 하는 쌍
 
 아래 쌍은 결과 컬럼이 같고 `WHERE`만 달라요. 컬럼을 바꾸면 **두 파일을 함께** 고쳐야 해요(VO 하나가 두 결과를 함께 받아요).
@@ -73,6 +84,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_list` | `sp_task` | `TaskVO` |
 | `sp_task_assignee_list` | `sp_task_assignee` | `TaskAssigneeVO` |
 | `sp_task_status_list` | `sp_task_status` | `TaskStatusVO` |
+| `sp_workspace_member_list` | `sp_workspace_member` | `WorkspaceMemberVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
 작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요. 담당자 컬럼을 바꾸면 이 세 곳을 함께 고쳐요.

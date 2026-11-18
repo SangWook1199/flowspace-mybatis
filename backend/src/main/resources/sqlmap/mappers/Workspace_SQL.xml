@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.workspace.service.impl.WorkspaceMapper">
+
+    <!-- 워크스페이스 한 건 -->
+    <select id="selectWorkspaceById" resultType="com.flowspace.workspace.service.WorkspaceVO">
+        SELECT workspace_id, owner_id, name, initials, color, icon, created_at
+        FROM workspaces
+        WHERE workspace_id = #{workspaceId}
+    </select>
+
+    <!-- 그 워크스페이스에서 사용자의 역할. 컬럼 하나를 enum으로 바로 받아요(행이 없으면 null). -->
+    <select id="selectMemberRole" resultType="com.flowspace.entity.enums.WorkspaceRole">
+        SELECT role
+        FROM workspace_members
+        WHERE workspace_id = #{workspaceId}
+          AND user_id = #{userId}
+    </select>
+
+    <!-- 내가 속한 워크스페이스와 내 역할. 조인은 프로시저 안에서 해요(backend/database/procedures/workspace). -->
+    <select id="selectMyWorkspaceList" statementType="CALLABLE"
+            resultType="com.flowspace.workspace.service.WorkspaceVO">
+        {call sp_my_workspace_list(#{userId})}
+    </select>
+
+    <!-- 멤버 목록 -->
+    <select id="selectWorkspaceMemberList" statementType="CALLABLE"
+            resultType="com.flowspace.workspace.service.WorkspaceMemberVO">
+        {call sp_workspace_member_list(#{workspaceId})}
+    </select>
+
+    <!-- 멤버 한 명 -->
+    <select id="selectWorkspaceMember" statementType="CALLABLE"
+            resultType="com.flowspace.workspace.service.WorkspaceMemberVO">
+        {call sp_workspace_member(#{workspaceId}, #{userId})}
+    </select>
+
+    <!-- 멤버가 맡은, 끝나지 않은 작업 -->
+    <select id="selectMemberOpenTaskList" statementType="CALLABLE"
+            resultType="com.flowspace.workspace.service.MemberTaskVO">
+        {call sp_member_open_task_list(#{workspaceId}, #{userId}, #{limit})}
+    </select>
+
+    <!-- 멤버가 맡은 작업의 진행 중·완료 수 -->
+    <select id="selectMemberTaskCount" statementType="CALLABLE"
+            resultType="com.flowspace.workspace.service.MemberTaskCountVO">
+        {call sp_member_task_count(#{workspaceId}, #{userId})}
+    </select>
+
+</mapper>

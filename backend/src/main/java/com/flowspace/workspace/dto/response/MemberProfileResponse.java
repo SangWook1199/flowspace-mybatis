@@ -8,6 +8,7 @@ import com.flowspace.entity.Task;
 import com.flowspace.entity.enums.TaskPriority;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.service.NotificationService;
+import com.flowspace.workspace.service.MemberTaskVO;
 
 // @formatter:off
 
@@ -49,6 +50,18 @@ public record MemberProfileResponse(
                 task.getPriority(),
                 task.getStatus().getName(),
                 NotificationService.taskLink(task)
+            );
+        }
+
+        // MyBatis 조회 결과(MemberTaskVO)로 만들어요
+        public static TaskItem from(MemberTaskVO task) {
+            return new TaskItem(
+                task.getTaskId(),
+                task.getTitle(),
+                task.getEndDate(),
+                task.getPriority(),
+                task.getStatusName(),
+                NotificationService.taskLink(task.getSprintId(), task.getTaskId())
             );
         }
     }

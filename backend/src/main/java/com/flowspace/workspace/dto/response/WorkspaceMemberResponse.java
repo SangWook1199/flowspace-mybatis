@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.workspace.service.WorkspaceMemberVO;
 
 // @formatter:off
 
@@ -38,6 +39,19 @@ public record WorkspaceMemberResponse(
         );
     }
 
+    // MyBatis 조회 결과(WorkspaceMemberVO)로 응답을 만들어요 (조인으로 이름·이미지가 이미 들어 있어요)
+    public static WorkspaceMemberResponse from(WorkspaceMemberVO member, boolean online) {
+        return new WorkspaceMemberResponse(
+            member.getUserId(),
+            member.getNickname(),
+            member.getNickname(),
+            member.getProfileFileId(),
+            member.getProfileImageUrl(),
+            member.getRole(),
+            online,
+            member.getLastActiveAt()
+        );
+    }
 }
 
 // @formatter:on

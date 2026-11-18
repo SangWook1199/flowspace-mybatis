@@ -3,6 +3,7 @@ package com.flowspace.workspace.dto.response;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.WorkspaceColor;
 import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.workspace.service.WorkspaceVO;
 
 // @formatter:off
 
@@ -29,6 +30,22 @@ public record WorkspaceResponse(
                 workspace.getColor(),
                 workspace.getIcon(),
                 workspace.getOwner().getUserId(),
+                role
+        );
+    }
+
+    // MyBatis 조회 결과(WorkspaceVO)로 응답을 만들어요
+    public static WorkspaceResponse from(
+            WorkspaceVO workspace,
+            WorkspaceRole role
+    ) {
+        return new WorkspaceResponse(
+                workspace.getWorkspaceId(),
+                workspace.getName(),
+                workspace.getInitials(),
+                workspace.getColor(),
+                workspace.getIcon(),
+                workspace.getOwnerId(),
                 role
         );
     }
