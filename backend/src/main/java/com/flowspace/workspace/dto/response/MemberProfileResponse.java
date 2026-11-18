@@ -1,4 +1,4 @@
-package com.flowspace.dto.workspace;
+package com.flowspace.workspace.dto.response;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

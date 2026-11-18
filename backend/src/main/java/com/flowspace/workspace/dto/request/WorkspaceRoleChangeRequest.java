@@ -1,4 +1,4 @@
-package com.flowspace.dto.workspace;
+package com.flowspace.workspace.dto.request;
 
 import com.flowspace.entity.enums.WorkspaceRole;
 

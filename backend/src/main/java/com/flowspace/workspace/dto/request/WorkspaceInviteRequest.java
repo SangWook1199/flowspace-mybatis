@@ -1,4 +1,4 @@
-package com.flowspace.dto.workspace;
+package com.flowspace.workspace.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.workspace.service.WorkspaceService;
+
 import com.flowspace.dto.auth.GoogleLoginRequest;
 import com.flowspace.dto.auth.GoogleUserInfo;
 import com.flowspace.dto.auth.LoginRequest;

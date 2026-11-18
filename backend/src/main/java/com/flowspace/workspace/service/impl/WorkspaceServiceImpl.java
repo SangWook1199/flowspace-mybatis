@@ -1,6 +1,11 @@
-package com.flowspace.service;
+package com.flowspace.workspace.service.impl;
 
-import com.flowspace.dto.workspace.*;
+import com.flowspace.service.NotificationService;
+import com.flowspace.service.PresenceService;
+import com.flowspace.workspace.service.WorkspaceService;
+
+import com.flowspace.workspace.dto.request.*;
+import com.flowspace.workspace.dto.response.*;
 import com.flowspace.entity.*;
 import com.flowspace.entity.enums.*;
 import com.flowspace.entity.id.WorkspaceTaskStatusId;
@@ -18,7 +23,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class WorkspaceService {
+public class WorkspaceServiceImpl implements WorkspaceService {
 
         // 프로필 카드에 보여줄 담당 작업 최대 개수
         private static final int PROFILE_TASK_LIMIT = 5;
@@ -35,6 +40,7 @@ public class WorkspaceService {
         private final TaskRepository taskRepository;
 
         // 워크스페이스 생성
+        @Override
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -64,6 +70,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 수정 (소유자만 가능)
+        @Override
         public WorkspaceResponse updateWorkspace(Long workspaceId, WorkspaceUpdateRequest request, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -86,6 +93,7 @@ public class WorkspaceService {
         }
 
         // 개인 워크스페이스 생성 (회원가입 전용)
+        @Override
         public Workspace createPersonalWorkspace(User user) {
 
                 Workspace workspace = Workspace.builder().owner(user).name(user.getNickname() + "의 워크스페이스")
@@ -129,6 +137,7 @@ public class WorkspaceService {
 
         // 내 워크스페이스 목록 조회
         @Transactional(readOnly = true)
+        @Override
         public List<WorkspaceResponse> getMyWorkspaces(String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -140,6 +149,7 @@ public class WorkspaceService {
 
         // 워크스페이스 단건 조회
         @Transactional(readOnly = true)
+        @Override
         public WorkspaceResponse getWorkspace(Long workspaceId, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -155,6 +165,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 멤버 초대
+        @Override
         public WorkspaceInviteResponse inviteMember(Long workspaceId, WorkspaceInviteRequest request, String email) {
 
                 User inviter = userRepository.findByEmail(email)
@@ -199,6 +210,7 @@ public class WorkspaceService {
 
         // 내가 받은 초대 목록 조회
         @Transactional(readOnly = true)
+        @Override
         public List<InviteResponse> getMyInvites(String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -209,6 +221,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 초대 수락
+        @Override
         public void acceptInvite(Long inviteId, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -242,6 +255,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 초대 거절
+        @Override
         public void declineInvite(Long inviteId, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -269,6 +283,7 @@ public class WorkspaceService {
 
         // 워크스페이스 멤버 목록 조회
         @Transactional(readOnly = true)
+        @Override
         public List<WorkspaceMemberResponse> getMembers(Long workspaceId, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -288,6 +303,7 @@ public class WorkspaceService {
 
         // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버끼리만 볼 수 있고, 이 워크스페이스 안의 정보만 보여줘요)
         @Transactional(readOnly = true)
+        @Override
         public MemberProfileResponse getMemberProfile(Long workspaceId, Long userId, String email) {
 
                 User viewer = userRepository.findByEmail(email)
@@ -319,6 +335,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 소유권 이전
+        @Override
         public void transferOwnership(Long workspaceId, WorkspaceOwnerTransferRequest request, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -351,6 +368,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 삭제
+        @Override
         public void deleteWorkspace(Long workspaceId, String email) {
 
                 User user = userRepository.findByEmail(email)
@@ -378,6 +396,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 멤버 추방 (관리자는 일반 멤버만, 소유자는 관리자·멤버를 내보낼 수 있어요)
+        @Override
         public void removeMember(Long workspaceId, Long userId, String email) {
 
                 User loginUser = userRepository.findByEmail(email)
@@ -415,6 +434,7 @@ public class WorkspaceService {
         }
 
         // 멤버 역할 변경 (소유자만 가능, ADMIN ↔ MEMBER)
+        @Override
         public WorkspaceMemberResponse changeMemberRole(Long workspaceId, Long userId,
                 WorkspaceRoleChangeRequest request, String email) {
 
@@ -452,6 +472,7 @@ public class WorkspaceService {
         }
 
         // 워크스페이스 나가기
+        @Override
         public void leaveWorkspace(Long workspaceId, String email) {
 
                 User user = userRepository.findByEmail(email)

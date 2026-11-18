@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,9 +19,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.flowspace.dto.workspace.WorkspaceInviteRequest;
-import com.flowspace.dto.workspace.WorkspaceMemberResponse;
-import com.flowspace.dto.workspace.WorkspaceRoleChangeRequest;
+import com.flowspace.workspace.dto.request.WorkspaceInviteRequest;
+import com.flowspace.workspace.dto.response.WorkspaceMemberResponse;
+import com.flowspace.workspace.dto.request.WorkspaceRoleChangeRequest;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceMember;
@@ -62,7 +64,7 @@ class WorkspaceServiceRoleTest {
     private TaskRepository taskRepository;
 
     @InjectMocks
-    private WorkspaceService workspaceService;
+    private WorkspaceServiceImpl workspaceService;
 
     private Workspace workspace;
     private User actor;

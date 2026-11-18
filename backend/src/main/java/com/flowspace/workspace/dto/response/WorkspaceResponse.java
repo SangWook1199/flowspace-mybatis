@@ -1,4 +1,4 @@
-package com.flowspace.dto.workspace;
+package com.flowspace.workspace.dto.response;
 
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.WorkspaceColor;
