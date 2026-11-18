@@ -1,7 +1,7 @@
-package com.flowspace.controller;
+package com.flowspace.calendar.web;
 
-import com.flowspace.dto.calendar.CalendarItemResponse;
-import com.flowspace.service.CalendarService;
+import com.flowspace.calendar.dto.response.CalendarItemResponse;
+import com.flowspace.calendar.service.CalendarService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;

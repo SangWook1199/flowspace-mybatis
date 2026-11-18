@@ -19,7 +19,8 @@ database/
     ├── workspace/          워크스페이스
     ├── user/               사용자·로그인
     ├── notification/       알림
-    └── activity/           활동 기록
+    ├── activity/           활동 기록
+    └── calendar/           캘린더·일정
 ```
 
 ## 규칙
@@ -106,6 +107,15 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 
 같은 조건으로 개수를 세는 SQL(`selectActivityCount`)은 테이블 하나라서 `Activity_SQL.xml`에 있어요. 조건을 바꾸면 둘을 함께 고쳐요.
 
+### 캘린더·일정 (`procedures/calendar`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_event` | 조인 | 일정 | 일정 한 건과 만든 사람 이름 | `CalendarMapper.selectEventById` |
+| `sp_calendar_task_list` | 조인 | 워크스페이스, 스프린트(NULL이면 백로그), 그 달 첫날·마지막 날 | 그 달에 시작하는 작업과 상태 색 | `CalendarMapper.selectCalendarTaskList` |
+
+일정 등록·수정·삭제·검색, 한 달 일정 목록, 기본 스프린트 고르기는 테이블 하나라서 `Calendar_SQL.xml`에 있어요.
+
 ## 함께 고쳐야 하는 쌍
 
 아래 쌍은 결과 컬럼이 같고 `WHERE`만 달라요. 컬럼을 바꾸면 **두 파일을 함께** 고쳐야 해요(VO 하나가 두 결과를 함께 받아요).
@@ -121,4 +131,6 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_notification_list` | `sp_notification` | `NotificationVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
-작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요. 담당자 컬럼을 바꾸면 이 세 곳을 함께 고쳐요.
+작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요.
+캘린더도 같은 담당자 조회가 필요한데, 다른 도메인의 Mapper는 쓰지 않는 규칙이라 `Calendar_SQL.xml`의 `selectCalendarAssigneeList`에 같은 SQL을 뒀어요.
+담당자 컬럼을 바꾸면 이 네 곳을 함께 고쳐요.

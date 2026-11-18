@@ -1,4 +1,4 @@
-package com.flowspace.dto.event;
+package com.flowspace.calendar.dto.request;
 
 import com.flowspace.entity.enums.WorkspaceColor;
 import jakarta.validation.constraints.NotBlank;
@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 // @formatter:off
 
-public record EventUpdateRequest(
+public record EventCreateRequest(
 
     @NotBlank
     String title,

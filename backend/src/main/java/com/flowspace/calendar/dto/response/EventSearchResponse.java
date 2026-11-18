@@ -1,8 +1,8 @@
-package com.flowspace.dto.event;
+package com.flowspace.calendar.dto.response;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.Event;
+import com.flowspace.calendar.service.EventVO;
 
 // @formatter:off
 
@@ -16,7 +16,7 @@ public record EventSearchResponse(
 
 ) {
 
-    public static EventSearchResponse from(Event event) {
+    public static EventSearchResponse from(EventVO event) {
         return new EventSearchResponse(
             event.getEventId(),
             event.getTitle(),
@@ -24,7 +24,6 @@ public record EventSearchResponse(
             event.getEndDatetime()
         );
     }
-
 }
 
 // @formatter:on

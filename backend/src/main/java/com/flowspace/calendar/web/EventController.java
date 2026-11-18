@@ -1,10 +1,10 @@
-package com.flowspace.controller;
+package com.flowspace.calendar.web;
 
-import com.flowspace.dto.event.EventCreateRequest;
-import com.flowspace.dto.event.EventResponse;
-import com.flowspace.dto.event.EventSearchResponse;
-import com.flowspace.dto.event.EventUpdateRequest;
-import com.flowspace.service.EventService;
+import com.flowspace.calendar.dto.request.EventCreateRequest;
+import com.flowspace.calendar.dto.response.EventResponse;
+import com.flowspace.calendar.dto.response.EventSearchResponse;
+import com.flowspace.calendar.dto.request.EventUpdateRequest;
+import com.flowspace.calendar.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
