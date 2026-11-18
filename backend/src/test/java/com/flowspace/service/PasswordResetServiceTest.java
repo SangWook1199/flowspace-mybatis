@@ -1,5 +1,8 @@
 package com.flowspace.service;
 
+import com.flowspace.user.service.impl.PasswordResetServiceImpl;
+
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -30,8 +33,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.flowspace.dto.auth.PasswordForgotRequest;
-import com.flowspace.dto.auth.PasswordResetRequest;
+import com.flowspace.user.dto.request.PasswordForgotRequest;
+import com.flowspace.user.dto.request.PasswordResetRequest;
 import com.flowspace.entity.PasswordResetToken;
 import com.flowspace.entity.User;
 import com.flowspace.exception.ErrorCode;
@@ -60,7 +63,7 @@ class PasswordResetServiceTest {
     private MailService mailService;
 
     @InjectMocks
-    private PasswordResetService service;
+    private PasswordResetServiceImpl service;
 
     private User user;
 

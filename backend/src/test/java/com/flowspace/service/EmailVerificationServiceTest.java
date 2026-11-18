@@ -1,5 +1,8 @@
 package com.flowspace.service;
 
+import com.flowspace.user.service.impl.EmailVerificationServiceImpl;
+
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,8 +31,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.flowspace.dto.auth.EmailResendRequest;
-import com.flowspace.dto.auth.EmailVerifyRequest;
+import com.flowspace.user.dto.request.EmailResendRequest;
+import com.flowspace.user.dto.request.EmailVerifyRequest;
 import com.flowspace.entity.EmailVerificationToken;
 import com.flowspace.entity.User;
 import com.flowspace.exception.ErrorCode;
@@ -51,7 +54,7 @@ class EmailVerificationServiceTest {
     private MailService mailService;
 
     @InjectMocks
-    private EmailVerificationService service;
+    private EmailVerificationServiceImpl service;
 
     private User user;
 
