@@ -7,7 +7,7 @@ import java.util.List;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.enums.TaskPriority;
 import com.flowspace.entity.enums.WorkspaceRole;
-import com.flowspace.service.NotificationService;
+import com.flowspace.notification.service.NotificationService;
 import com.flowspace.workspace.service.MemberTaskVO;
 
 // @formatter:off

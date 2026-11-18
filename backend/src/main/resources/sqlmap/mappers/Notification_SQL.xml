@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.notification.service.impl.NotificationMapper">
+
+    <!-- 이메일로 사용자 번호 -->
+    <select id="selectUserIdByEmail" resultType="long">
+        SELECT user_id
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- 알림 등록. 읽음 여부와 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertNotification" parameterType="com.flowspace.notification.service.NotificationVO"
+            useGeneratedKeys="true" keyProperty="notificationId">
+        INSERT INTO notifications (user_id, actor_id, workspace_id, type, message, ref_id, link_path)
+        VALUES (#{userId}, #{actorId}, #{workspaceId}, #{type}, #{message}, #{refId}, #{linkPath})
+    </insert>
+
+    <!-- 알림 한 건. 워크스페이스·보낸 사람 이름 조인은 프로시저 안에서 해요(backend/database/procedures/notification). -->
+    <select id="selectNotificationById" statementType="CALLABLE"
+            resultType="com.flowspace.notification.service.NotificationVO">
+        {call sp_notification(#{notificationId})}
+    </select>
+
+    <!-- 내 알림 목록 -->
+    <select id="selectNotificationList" statementType="CALLABLE"
+            resultType="com.flowspace.notification.service.NotificationVO">
+        {call sp_notification_list(#{userId}, #{offset}, #{limit})}
+    </select>
+
+    <!-- 읽지 않은 알림 수 -->
+    <select id="selectUnreadNotificationCount" resultType="long">
+        SELECT COUNT(*)
+        FROM notifications
+        WHERE user_id = #{userId}
+          AND is_read = FALSE
+    </select>
+
+    <!-- 알림을 받은 사람 번호 -->
+    <select id="selectNotificationUserId" resultType="long">
+        SELECT user_id
+        FROM notifications
+        WHERE notification_id = #{notificationId}
+    </select>
+
+    <!-- 알림 한 건 읽음 -->
+    <update id="updateNotificationRead">
+        UPDATE notifications
+           SET is_read = TRUE
+         WHERE notification_id = #{notificationId}
+    </update>
+
+    <!-- 내 알림 모두 읽음 -->
+    <update id="updateAllNotificationsRead">
+        UPDATE notifications
+           SET is_read = TRUE
+         WHERE user_id = #{userId}
+           AND is_read = FALSE
+    </update>
+
+    <!-- 특정 대상에 대한 내 알림 읽음 -->
+    <update id="updateNotificationReadByRef">
+        UPDATE notifications
+           SET is_read = TRUE
+         WHERE user_id = #{userId}
+           AND type = #{type}
+           AND ref_id = #{refId}
+           AND is_read = FALSE
+    </update>
+
+    <!-- 알림 한 건 삭제 -->
+    <delete id="deleteNotification">
+        DELETE FROM notifications
+        WHERE notification_id = #{notificationId}
+    </delete>
+
+    <!-- 보관 기간이 지난 알림 삭제 -->
+    <delete id="deleteOldNotifications">
+        DELETE FROM notifications
+        WHERE created_at <![CDATA[ < ]]> #{before}
+    </delete>
+
+    <!-- 마감 임박 알림을 보낼 대상 -->
+    <select id="selectDueSoonTargetList" statementType="CALLABLE"
+            resultType="com.flowspace.notification.service.DueSoonTargetVO">
+        {call sp_due_soon_target_list(#{endDate}, #{since})}
+    </select>
+
+</mapper>

@@ -1,4 +1,4 @@
-package com.flowspace.dto.notification;
+package com.flowspace.notification.dto.response;
 
 // @formatter:off
 

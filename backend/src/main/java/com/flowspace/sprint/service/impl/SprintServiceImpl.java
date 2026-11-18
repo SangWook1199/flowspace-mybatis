@@ -60,7 +60,7 @@ import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.repository.WorkspaceTaskStatusRepository;
 import com.flowspace.service.ActivityService;
-import com.flowspace.service.NotificationService;
+import com.flowspace.notification.service.NotificationService;
 import com.flowspace.sprint.service.SprintService;
 import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;

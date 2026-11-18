@@ -85,4 +85,7 @@ public interface WorkspaceMapper {
 
     // 사용자가 마지막으로 본 워크스페이스 지정
     int updateUserLastWorkspace(@Param("userId") Long userId, @Param("workspaceId") Long workspaceId);
+
+    // 마지막으로 본 워크스페이스가 이곳이면 비우기 (나갈 때)
+    int clearUserLastWorkspace(@Param("userId") Long userId, @Param("workspaceId") Long workspaceId);
 }

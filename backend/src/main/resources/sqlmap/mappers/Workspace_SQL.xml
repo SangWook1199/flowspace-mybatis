@@ -152,4 +152,12 @@
          WHERE user_id = #{userId}
     </update>
 
+    <!-- 마지막으로 본 워크스페이스가 이곳이면 비우기. 조건에 맞지 않으면 아무 행도 바뀌지 않아요. -->
+    <update id="clearUserLastWorkspace">
+        UPDATE users
+           SET last_workspace_id = NULL
+         WHERE user_id = #{userId}
+           AND last_workspace_id = #{workspaceId}
+    </update>
+
 </mapper>

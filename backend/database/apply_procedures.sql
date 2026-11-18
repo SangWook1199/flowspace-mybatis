@@ -38,3 +38,8 @@ source /database/procedures/user/sp_user.sql
 source /database/procedures/user/sp_withdraw_check.sql
 source /database/procedures/user/sp_withdraw_user.sql
 source /database/procedures/user/sp_user_lookup.sql
+
+-- 알림
+source /database/procedures/notification/sp_notification_list.sql
+source /database/procedures/notification/sp_notification.sql
+source /database/procedures/notification/sp_due_soon_target_list.sql

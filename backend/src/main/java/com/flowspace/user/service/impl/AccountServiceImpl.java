@@ -1,7 +1,7 @@
 package com.flowspace.user.service.impl;
 
 import com.flowspace.service.FileService;
-import com.flowspace.service.NotificationService;
+import com.flowspace.notification.service.NotificationService;
 import com.flowspace.user.service.AccountService;
 import com.flowspace.user.service.UserVO;
 import com.flowspace.user.service.WithdrawWorkspaceVO;
@@ -24,8 +24,6 @@ import com.flowspace.entity.enums.Provider;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.websocket.NotificationWebSocketHandler;
 
 import lombok.RequiredArgsConstructor;
@@ -38,9 +36,6 @@ import lombok.RequiredArgsConstructor;
 public class AccountServiceImpl implements AccountService {
 
     private final UserMapper userMapper;
-    // 알림 기능(NotificationService)이 아직 JPA라 엔티티를 넘길 때만 써요 (DB를 읽지 않는 getReferenceById)
-    private final UserRepository userRepository;
-    private final WorkspaceRepository workspaceRepository;
     private final PasswordEncoder passwordEncoder;
     private final FileService fileService;
     private final NotificationService notificationService;
@@ -80,12 +75,8 @@ public class AccountServiceImpl implements AccountService {
         }
 
         // 내가 멤버로 있던 다른 사람의 워크스페이스 소유자에게 알려요. (멤버에서 빠지는 일은 프로시저가 해요)
-        User actor = userRepository.getReferenceById(user.getUserId());
-
         for (WithdrawWorkspaceVO workspace : classified.leaving) {
-            User owner = userRepository.findById(workspace.getOwnerId()).orElse(null);
-
-            notificationService.send(owner, actor, workspaceRepository.getReferenceById(workspace.getWorkspaceId()),
+            notificationService.send(workspace.getOwnerId(), user.getUserId(), workspace.getWorkspaceId(),
                 NotificationType.MEMBER_LEFT,
                 user.getNickname() + "님이 탈퇴하면서 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
         }

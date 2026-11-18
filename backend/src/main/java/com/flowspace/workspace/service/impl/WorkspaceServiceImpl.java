@@ -1,6 +1,6 @@
 package com.flowspace.workspace.service.impl;
 
-import com.flowspace.service.NotificationService;
+import com.flowspace.notification.service.NotificationService;
 import com.flowspace.service.PresenceService;
 import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.MemberTaskCountVO;
@@ -30,7 +30,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         // 프로필 카드에 보여줄 담당 작업 최대 개수
         private static final int PROFILE_TASK_LIMIT = 5;
 
-        private final WorkspaceRepository workspaceRepository;
         private final UserRepository userRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
@@ -182,7 +181,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 // 초대받은 사람에게 알림 (알림창에서 바로 수락/거절할 수 있어요)
                 // 알림 기능은 아직 JPA라서 워크스페이스를 번호만 가진 엔티티로 넘겨요
-                notificationService.send(invitee, inviter, workspaceRepository.getReferenceById(workspaceId),
+                notificationService.send(invitee.getUserId(), inviter.getUserId(), workspaceId,
                         NotificationType.WORKSPACE_INVITE,
                         inviter.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스에 초대했어요.",
                         invite.getInviteId(), null);
@@ -215,13 +214,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 workspaceMapper.insertWorkspaceMember(invite.getWorkspaceId(), user.getUserId(), WorkspaceRole.MEMBER);
                 workspaceMapper.updateInviteStatus(inviteId, InviteStatus.ACCEPTED);
 
-                // 사용자는 JPA 엔티티로 들고 있어서 JPA로 바꿔요(6-3단계와 같은 이유)
-                Workspace workspaceRef = workspaceRepository.getReferenceById(invite.getWorkspaceId());
-                user.updateLastWorkspace(workspaceRef);
+                // 읽어 둔 사용자 엔티티는 값을 바꾸지 않아서, SQL로 바꿔도 JPA가 덮어쓰지 않아요(7-3단계와 같은 이유)
+                workspaceMapper.updateUserLastWorkspace(user.getUserId(), invite.getWorkspaceId());
 
                 // 받은 초대 알림은 읽음 처리하고, 초대한 사람에게 수락했다고 알려요.
-                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, inviteId);
-                notificationService.send(findInviter(invite), user, workspaceRef, NotificationType.INVITE_ACCEPTED,
+                notificationService.markReadByRef(user.getUserId(), NotificationType.WORKSPACE_INVITE, inviteId);
+                notificationService.send(invite.getInviterId(), user.getUserId(), invite.getWorkspaceId(),
+                        NotificationType.INVITE_ACCEPTED,
                         user.getNickname() + "님이 '" + findWorkspace(invite.getWorkspaceId()).getName()
                                 + "' 초대를 수락했어요.",
                         inviteId, null);
@@ -238,9 +237,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 workspaceMapper.updateInviteStatus(inviteId, InviteStatus.DECLINED);
 
-                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, inviteId);
-                notificationService.send(findInviter(invite), user,
-                        workspaceRepository.getReferenceById(invite.getWorkspaceId()), NotificationType.INVITE_DECLINED,
+                notificationService.markReadByRef(user.getUserId(), NotificationType.WORKSPACE_INVITE, inviteId);
+                notificationService.send(invite.getInviterId(), user.getUserId(), invite.getWorkspaceId(),
+                        NotificationType.INVITE_DECLINED,
                         user.getNickname() + "님이 '" + findWorkspace(invite.getWorkspaceId()).getName()
                                 + "' 초대를 거절했어요.",
                         inviteId, null);
@@ -264,12 +263,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 }
 
                 return invite;
-        }
-
-        // 초대한 사람 (알림을 받을 사람이라 엔티티로 읽어요)
-        private User findInviter(InviteVO invite) {
-                return userRepository.findById(invite.getInviterId())
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
         }
 
         // 워크스페이스 멤버 목록 조회
@@ -349,7 +342,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 workspaceMapper.updateMemberRole(workspaceId, targetUser.getUserId(), WorkspaceRole.OWNER);
                 workspaceMapper.updateWorkspaceOwner(workspaceId, targetUser.getUserId());
 
-                notificationService.send(targetUser, user, workspaceRepository.getReferenceById(workspaceId),
+                notificationService.send(targetUser.getUserId(), user.getUserId(), workspaceId,
                         NotificationType.OWNERSHIP_TRANSFERRED,
                         user.getNickname() + "님이 '" + workspace.getName() + "'의 소유권을 넘겼어요. 이제 내가 소유자예요.", null,
                         null);
@@ -412,7 +405,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 workspaceMapper.deleteWorkspaceMember(workspaceId, userId);
 
-                notificationService.send(targetUser, loginUser, workspaceRepository.getReferenceById(workspaceId),
+                notificationService.send(targetUser.getUserId(), loginUser.getUserId(), workspaceId,
                         NotificationType.MEMBER_REMOVED, "'" + workspace.getName() + "' 워크스페이스에서 내보내졌어요.", null,
                         null);
         }
@@ -479,18 +472,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 workspaceMapper.deleteWorkspaceMember(workspaceId, user.getUserId());
 
-                // 소유자에게 멤버가 나갔다고 알려요. (알림 기능이 엔티티를 받아서 소유자를 엔티티로 읽어요)
-                User owner = userRepository.findById(workspace.getOwnerId())
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-                notificationService.send(owner, user, workspaceRepository.getReferenceById(workspaceId),
+                // 소유자에게 멤버가 나갔다고 알려요.
+                notificationService.send(workspace.getOwnerId(), user.getUserId(), workspaceId,
                         NotificationType.MEMBER_LEFT,
                         user.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
 
-                // 사용자는 JPA 엔티티로 들고 있어서 JPA로 바꿔요(6-3단계와 같은 이유)
-                if (user.getLastWorkspace() != null && user.getLastWorkspace().getWorkspaceId().equals(workspaceId)) {
-                        user.updateLastWorkspace(null);
-                }
+                // 나간 곳이 마지막으로 보던 워크스페이스였다면 비워요 (SQL 조건으로 확인해요)
+                workspaceMapper.clearUserLastWorkspace(user.getUserId(), workspaceId);
         }
 
         // 워크스페이스 한 건 (없으면 예외)

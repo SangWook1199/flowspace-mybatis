@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.notification.service.NotificationService;
+
 import com.flowspace.dto.activity.ActivityPageResponse;
 import com.flowspace.dto.activity.ActivityResponse;
 import com.flowspace.entity.Activity;

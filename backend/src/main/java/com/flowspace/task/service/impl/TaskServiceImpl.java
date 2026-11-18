@@ -2,7 +2,7 @@ package com.flowspace.task.service.impl;
 
 import com.flowspace.service.ActivityService;
 import com.flowspace.service.FileService;
-import com.flowspace.service.NotificationService;
+import com.flowspace.notification.service.NotificationService;
 import com.flowspace.task.service.SubTaskVO;
 import com.flowspace.task.service.TaskAssigneeVO;
 import com.flowspace.task.service.TaskService;
@@ -681,7 +681,8 @@ public class TaskServiceImpl implements TaskService {
 
     // 담당자로 지정된 사람에게 알림
     private void notifyAssigned(TaskVO task, Workspace workspace, User assignee, User actor) {
-        notificationService.send(assignee, actor, workspace, NotificationType.TASK_ASSIGNED,
+        notificationService.send(assignee.getUserId(), actor.getUserId(), workspace.getWorkspaceId(),
+            NotificationType.TASK_ASSIGNED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업의 담당자로 지정했어요.", task.getTaskId(),
             NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
     }
@@ -689,7 +690,8 @@ public class TaskServiceImpl implements TaskService {
     // 작업 상태가 바뀌었음을 담당자들에게 알림 (바꾼 본인은 제외돼요)
     private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatusVO status, User actor,
         List<User> targets) {
-        notificationService.sendAll(targets, actor, workspace, NotificationType.TASK_STATUS_CHANGED,
+        notificationService.sendAll(targets.stream().map(User::getUserId).toList(), actor.getUserId(),
+            workspace.getWorkspaceId(), NotificationType.TASK_STATUS_CHANGED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
             task.getTaskId(), NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
     }

@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.notification.service.NotificationService;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

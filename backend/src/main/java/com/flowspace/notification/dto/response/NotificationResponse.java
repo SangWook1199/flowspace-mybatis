@@ -1,7 +1,8 @@
-package com.flowspace.dto.notification;
+package com.flowspace.notification.dto.response;
 
 import com.flowspace.entity.Notification;
 import com.flowspace.entity.enums.NotificationType;
+import com.flowspace.notification.service.NotificationVO;
 
 // @formatter:off
 
@@ -46,6 +47,22 @@ public record NotificationResponse(
         );
     }
 
+    // MyBatis 조회 결과(NotificationVO)로 응답을 만들어요 (조인으로 워크스페이스·보낸 사람 이름이 들어 있어요)
+    public static NotificationResponse from(NotificationVO notification) {
+        return new NotificationResponse(
+            notification.getNotificationId(),
+            notification.getType(),
+            notification.getMessage(),
+            notification.getWorkspaceId(),
+            notification.getWorkspaceName(),
+            notification.getActorId(),
+            notification.getActorName(),
+            notification.getRefId(),
+            notification.getLinkPath(),
+            Boolean.TRUE.equals(notification.getIsRead()),
+            notification.getCreatedAt() == null ? null : notification.getCreatedAt().toString()
+        );
+    }
 }
 
 // @formatter:on

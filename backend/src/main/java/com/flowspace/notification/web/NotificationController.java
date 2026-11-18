@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.notification.web;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.flowspace.dto.notification.NotificationPageResponse;
-import com.flowspace.dto.notification.UnreadCountResponse;
-import com.flowspace.service.NotificationService;
+import com.flowspace.notification.dto.response.NotificationPageResponse;
+import com.flowspace.notification.dto.response.UnreadCountResponse;
+import com.flowspace.notification.service.NotificationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

@@ -17,7 +17,8 @@ database/
     ├── sprint/             스프린트
     ├── task/               작업(칸반)
     ├── workspace/          워크스페이스
-    └── user/               사용자·로그인
+    ├── user/               사용자·로그인
+    └── notification/       알림
 ```
 
 ## 규칙
@@ -88,6 +89,14 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_withdraw_user` | 일괄 변경 | 사용자 번호, 탈퇴 후 이름 | 다른 워크스페이스에서 나가기, 내 워크스페이스 삭제, 연결 기록 삭제, 개인정보 지우기 | `UserMapper.updateUserWithdraw` |
 | `sp_user_lookup` | 조인 | 이메일, 워크스페이스 번호 | 사용자 한 명과 그 워크스페이스의 멤버·초대 여부 | `UserMapper.selectUserLookup` |
 
+### 알림 (`procedures/notification`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_notification_list` | 조인 | 받는 사람 번호, 건너뛸 개수, 가져올 개수 | 내 알림 목록과 워크스페이스·보낸 사람 이름 (최신순) | `NotificationMapper.selectNotificationList` |
+| `sp_notification` | 조인 | 알림 번호 | 위와 같은데 한 건 | `NotificationMapper.selectNotificationById` |
+| `sp_due_soon_target_list` | 조인 | 마감일, 기준 시각 | 마감이 다가온 작업의 담당자 (오늘 이미 받은 사람은 빼고) | `NotificationMapper.selectDueSoonTargetList` |
+
 ## 함께 고쳐야 하는 쌍
 
 아래 쌍은 결과 컬럼이 같고 `WHERE`만 달라요. 컬럼을 바꾸면 **두 파일을 함께** 고쳐야 해요(VO 하나가 두 결과를 함께 받아요).
@@ -100,6 +109,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_status_list` | `sp_task_status` | `TaskStatusVO` |
 | `sp_workspace_member_list` | `sp_workspace_member` | `WorkspaceMemberVO` |
 | `sp_user_by_email` | `sp_user` (둘 다 한 건, 찾는 기준만 달라요) | `UserVO` |
+| `sp_notification_list` | `sp_notification` | `NotificationVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
 작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요. 담당자 컬럼을 바꾸면 이 세 곳을 함께 고쳐요.
