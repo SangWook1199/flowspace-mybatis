@@ -308,15 +308,20 @@ public class SprintServiceImpl implements SprintService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+        SprintVO sprint = sprintMapper.selectSprintById(sprintId);
+
+        if (sprint == null) {
+            throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
+        }
+
+        Workspace workspace = workspaceRepository.findById(sprint.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
         // 스프린트 삭제는 관리자 이상만 할 수 있어요.
-        validateAdmin(sprint.getWorkspace(), user);
+        validateAdmin(workspace, user);
 
-        moveTasksToBacklog(sprint);
-
-        sprintRepository.delete(sprint);
+        // 작업을 백로그로 옮기고 스프린트를 지우는 일을 프로시저 한 번으로 해요
+        sprintMapper.deleteSprint(sprintId);
     }
 
     // 워크스페이스 멤버 확인
@@ -397,20 +402,6 @@ public class SprintServiceImpl implements SprintService {
                 continue;
             }
 
-            task.updateSprint(null);
-            task.updatePosition(BigDecimal.valueOf(position));
-            position++;
-        }
-    }
-
-    // 스프린트 Task를 Backlog로 이동
-    private void moveTasksToBacklog(Sprint sprint) {
-
-        int position = taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(sprint.getWorkspace()).size();
-
-        List<Task> sprintTasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
-
-        for (Task task : sprintTasks) {
             task.updateSprint(null);
             task.updatePosition(BigDecimal.valueOf(position));
             position++;

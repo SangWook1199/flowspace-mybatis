@@ -58,4 +58,9 @@
          WHERE sprint_id = #{sprintId}
     </update>
 
+    <!-- 스프린트 삭제. 작업을 백로그로 옮기고 스프린트를 지우는 일을 프로시저 안에서 한 번에 해요. -->
+    <delete id="deleteSprint" statementType="CALLABLE">
+        {call sp_delete_sprint(#{sprintId})}
+    </delete>
+
 </mapper>

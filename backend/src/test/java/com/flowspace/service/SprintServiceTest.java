@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
+import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.sprint.service.SprintVO;
+import com.flowspace.sprint.service.impl.SprintMapper;
 import com.flowspace.sprint.service.impl.SprintServiceImpl;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.Retrospective;
@@ -103,6 +107,10 @@ class SprintServiceTest {
     private ActivityService activityService;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private WorkspaceRepository workspaceRepository;
+    @Mock
+    private SprintMapper sprintMapper;
 
     @InjectMocks
     private SprintServiceImpl sprintService;
@@ -119,7 +127,17 @@ class SprintServiceTest {
             .endDate(LocalDate.now().plusDays(7)).status(SprintStatus.ACTIVE).build();
 
         when(userRepository.findByEmail("a@a.com")).thenReturn(Optional.of(user));
-        when(sprintRepository.findById(10L)).thenReturn(Optional.of(sprint));
+        lenient().when(sprintRepository.findById(10L)).thenReturn(Optional.of(sprint));
+    }
+
+    // 삭제할 스프린트 한 건 (MyBatis 조회 결과)
+    private void sprintRow() {
+        SprintVO row = new SprintVO();
+        row.setSprintId(10L);
+        row.setWorkspaceId(5L);
+
+        when(sprintMapper.selectSprintById(10L)).thenReturn(row);
+        when(workspaceRepository.findById(5L)).thenReturn(Optional.of(workspace));
     }
 
     private void memberWithRole(WorkspaceRole role) {
@@ -241,20 +259,22 @@ class SprintServiceTest {
     @DisplayName("일반 멤버는 스프린트를 삭제할 수 없다")
     void memberCannotDeleteSprint() {
         memberWithRole(WorkspaceRole.MEMBER);
+        sprintRow();
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class, () -> sprintService.deleteSprint(10L, "a@a.com"));
 
         assertEquals(ErrorCode.ACCESS_DENIED, e.getErrorCode());
-        verify(sprintRepository, never()).delete(any(Sprint.class));
+        verify(sprintMapper, never()).deleteSprint(any());
     }
 
     @Test
     @DisplayName("관리자는 스프린트를 삭제할 수 있다")
     void adminCanDeleteSprint() {
         memberWithRole(WorkspaceRole.ADMIN);
+        sprintRow();
 
         sprintService.deleteSprint(10L, "a@a.com");
 
-        verify(sprintRepository).delete(sprint);
+        verify(sprintMapper).deleteSprint(10L);
     }
 }

@@ -32,4 +32,7 @@ public interface SprintMapper {
 
     // 스프린트 수정. 바뀐 행 수를 돌려줘요.
     int updateSprint(SprintVO sprint);
+
+    // 스프린트 삭제. 작업을 백로그로 옮기는 것까지 프로시저 sp_delete_sprint가 해요.
+    void deleteSprint(Long sprintId);
 }

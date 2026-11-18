@@ -4,3 +4,4 @@
 
 source /database/procedures/sp_sprint_progress_list.sql
 source /database/procedures/sp_sprint_progress.sql
+source /database/procedures/sp_delete_sprint.sql
