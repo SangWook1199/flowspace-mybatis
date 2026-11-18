@@ -1,6 +1,7 @@
 package com.flowspace.task.dto.response;
 
 import com.flowspace.entity.SubTask;
+import com.flowspace.task.service.SubTaskVO;
 
 // @formatter:off
 
@@ -25,6 +26,18 @@ public record SubTaskResponse(
             subTask.getSubtaskId(),
             subTask.getTask().getTaskId(),
             subTask.getAssignee() == null ? null : subTask.getAssignee().getUserId(),
+            subTask.getContent(),
+            subTask.getIsCompleted(),
+            subTask.getPosition()
+        );
+    }
+
+    // MyBatis 조회 결과(SubTaskVO)로 만들어요
+    public static SubTaskResponse from(SubTaskVO subTask) {
+        return new SubTaskResponse(
+            subTask.getSubtaskId(),
+            subTask.getTaskId(),
+            subTask.getAssigneeId(),
             subTask.getContent(),
             subTask.getIsCompleted(),
             subTask.getPosition()

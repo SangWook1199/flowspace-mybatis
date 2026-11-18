@@ -3,7 +3,11 @@ package com.flowspace.task.service.impl;
 import com.flowspace.service.ActivityService;
 import com.flowspace.service.FileService;
 import com.flowspace.service.NotificationService;
+import com.flowspace.task.service.SubTaskVO;
+import com.flowspace.task.service.TaskAssigneeVO;
 import com.flowspace.task.service.TaskService;
+import com.flowspace.task.service.TaskVO;
+import com.flowspace.task.dto.response.AssigneeItem;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -85,6 +89,9 @@ public class TaskServiceImpl implements TaskService {
 
     private final ActivityService activityService;
     private final NotificationService notificationService;
+
+    // 작업 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
+    private final TaskMapper taskMapper;
 
     // Task 상태 생성
     @Override
@@ -328,7 +335,7 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return toTaskResponses(taskRepository.findBySprintOrderByPositionAsc(sprint));
+        return toTaskResponses(sprint.getWorkspace().getWorkspaceId(), sprintId);
     }
 
     // Task 단건 조회
@@ -453,7 +460,8 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return toTaskResponses(taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(workspace));
+        // 스프린트 번호를 null로 넘기면 백로그 작업을 읽어요
+        return toTaskResponses(workspaceId, null);
     }
 
     // Task 상태 변경
@@ -788,22 +796,34 @@ public class TaskServiceImpl implements TaskService {
             .toList();
     }
 
-    // 작업 목록을 응답으로 바꿔요. 하위 작업·담당자·댓글을 작업마다 따로 읽지 않고 한 번에 읽어서 나눠 담아요.
-    private List<TaskResponse> toTaskResponses(List<Task> tasks) {
+    // 작업 목록을 응답으로 바꿔요. sprintId가 null이면 백로그예요.
+    // 작업과 담당자는 프로시저로, 하위 작업은 XML SQL로, 댓글은 아직 JPA로 한 번씩 읽어서 작업별로 나눠 담아요.
+    private List<TaskResponse> toTaskResponses(Long workspaceId, Long sprintId) {
 
+        List<TaskVO> tasks = taskMapper.selectTaskList(workspaceId, sprintId);
+
+        // 작업이 없으면 IN ()이 되어 SQL 오류가 나서 여기서 끝내요
         if (tasks.isEmpty()) {
             return List.of();
         }
 
-        Map<Long, List<SubTask>> subtasksByTask = new HashMap<>();
+        List<Long> taskIds = tasks.stream().map(TaskVO::getTaskId).toList();
 
-        for (SubTask subTask : subTaskRepository.findByTaskInOrderByPositionAsc(tasks)) {
-            subtasksByTask.computeIfAbsent(subTask.getTask().getTaskId(), key -> new ArrayList<>()).add(subTask);
+        Map<Long, List<AssigneeItem>> assigneesByTask = new HashMap<>();
+
+        for (TaskAssigneeVO assignee : taskMapper.selectTaskAssigneeList(workspaceId, sprintId)) {
+            assigneesByTask.computeIfAbsent(assignee.getTaskId(), key -> new ArrayList<>())
+                .add(AssigneeItem.from(assignee));
         }
 
-        Map<Long, List<TaskAssignee>> assigneesByTask = groupAssignees(tasks);
+        Map<Long, List<SubTaskResponse>> subtasksByTask = new HashMap<>();
 
-        Map<Long, List<CommentResponse>> commentsByTask = getTaskCommentResponses(tasks);
+        for (SubTaskVO subTask : taskMapper.selectSubTaskList(taskIds)) {
+            subtasksByTask.computeIfAbsent(subTask.getTaskId(), key -> new ArrayList<>())
+                .add(SubTaskResponse.from(subTask));
+        }
+
+        Map<Long, List<CommentResponse>> commentsByTask = getTaskCommentResponses(taskIds);
 
         return tasks.stream()
             .map(task -> TaskResponse.from(task, assigneesByTask.getOrDefault(task.getTaskId(), List.of()),
@@ -829,11 +849,11 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 여러 작업의 댓글(대댓글 포함)을 한 번에 읽어서 작업 id별로 나눠 담아요.
-    private Map<Long, List<CommentResponse>> getTaskCommentResponses(List<Task> tasks) {
+    private Map<Long, List<CommentResponse>> getTaskCommentResponses(List<Long> taskIds) {
 
         Map<Long, List<CommentResponse>> result = new HashMap<>();
 
-        List<Comment> roots = commentRepository.findByTaskInAndParentCommentIsNullOrderByCreatedAtAsc(tasks);
+        List<Comment> roots = commentRepository.findByTask_TaskIdInAndParentCommentIsNullOrderByCreatedAtAsc(taskIds);
 
         if (roots.isEmpty()) {
             return result;

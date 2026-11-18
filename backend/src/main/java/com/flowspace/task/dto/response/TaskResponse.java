@@ -5,6 +5,7 @@ import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.task.service.TaskVO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -75,6 +76,33 @@ public record TaskResponse(
         );
     }
 
+    // MyBatis 조회 결과(TaskVO)로 응답을 만들어요
+    public static TaskResponse from(
+        TaskVO task,
+        List<AssigneeItem> assignees,
+        List<SubTaskResponse> subtasks,
+        List<CommentResponse> comments
+    ) {
+        return new TaskResponse(
+            task.getTaskId(),
+            task.getTaskNumber(),
+            task.getWorkspaceId(),
+            task.getSprintId(),
+            task.getStatusId(),
+            task.getStatusName(),
+            task.getPosition(),
+            assignees,
+            task.getTitle(),
+            task.getDescription(),
+            task.getStartDate(),
+            task.getEndDate(),
+            task.getPriority(),
+            task.getCompletedAt(),
+            task.getCreatedAt(),
+            subtasks,
+            comments
+        );
+    }
 }
 
 // @formatter:on
