@@ -1,6 +1,5 @@
 package com.flowspace.user.service;
 
-import com.flowspace.entity.User;
 import com.flowspace.user.dto.request.EmailResendRequest;
 import com.flowspace.user.dto.request.EmailVerifyRequest;
 
@@ -8,7 +7,7 @@ import com.flowspace.user.dto.request.EmailVerifyRequest;
 public interface EmailVerificationService {
 
     // 방금 보냈으면 건너뛰어요 — 남의 이메일로 메일이 쏟아지게 하는 데 쓰이지 않게요.
-    void sendVerification(User user);
+    void sendVerification(Long userId, String email);
 
     // 가입 여부를 알아내는 데 쓰이지 않게, 없는 이메일이나 이미 인증한 계정이어도 똑같이 성공으로 답해요(아무것도 보내지 않을 뿐이에요).
     void resend(EmailResendRequest request);

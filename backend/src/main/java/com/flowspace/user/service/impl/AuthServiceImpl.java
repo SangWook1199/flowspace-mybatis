@@ -105,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
             // (인증 전에는 로그인할 수 없어서, 남의 이메일로 먼저 가입해 두어도 그 주소의 주인이 다시 가입하면 되돌릴 수 있어요.)
             userMapper.updateUserSignupRestart(existing.getUserId(), request.nickname(),
                 passwordEncoder.encode(request.password()));
-            emailVerificationService.sendVerification(userRepository.getReferenceById(existing.getUserId()));
+            emailVerificationService.sendVerification(existing.getUserId(), existing.getEmail());
 
             return new SignupResponse(existing.getEmail());
         }
@@ -123,8 +123,7 @@ public class AuthServiceImpl implements AuthService {
         // 개인 워크스페이스 자동 생성
         workspaceService.createPersonalWorkspace(user.getUserId(), user.getNickname());
 
-        // 인증 메일 기능(EmailVerificationService)은 아직 JPA라 번호만 가진 엔티티를 넘겨요 (7-4단계에서 바꿔요)
-        emailVerificationService.sendVerification(userRepository.getReferenceById(user.getUserId()));
+        emailVerificationService.sendVerification(user.getUserId(), user.getEmail());
 
         return new SignupResponse(user.getEmail());
     }

@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.flowspace.entity.enums.Provider;
+import com.flowspace.user.service.MailTokenVO;
 import com.flowspace.user.service.RefreshTokenVO;
 import com.flowspace.user.service.UserVO;
 
@@ -69,4 +70,37 @@ public interface UserMapper {
     // 소셜 계정 연결
     int insertSocialAccount(@Param("userId") Long userId, @Param("provider") Provider provider,
         @Param("providerId") String providerId);
+
+    // ───── 이메일 인증 토큰 (email_verification_tokens) ─────
+
+    // 가장 최근에 보낸 인증 메일 시각 (보낸 적 없으면 null)
+    LocalDateTime selectLastEmailTokenCreatedAt(Long userId);
+
+    // 사용자의 인증 토큰 모두 지우기
+    int deleteEmailTokens(Long userId);
+
+    // 인증 토큰 저장 (해시만)
+    int insertEmailToken(@Param("userId") Long userId, @Param("tokenHash") String tokenHash,
+        @Param("expiresAt") LocalDateTime expiresAt);
+
+    // 해시로 인증 토큰 찾기 (없으면 null)
+    MailTokenVO selectEmailTokenByHash(String tokenHash);
+
+    // ───── 비밀번호 재설정 토큰 (password_reset_tokens) ─────
+
+    // 가장 최근에 보낸 재설정 메일 시각 (보낸 적 없으면 null)
+    LocalDateTime selectLastPasswordTokenCreatedAt(Long userId);
+
+    // 사용자의 재설정 토큰 모두 지우기
+    int deletePasswordTokens(Long userId);
+
+    // 재설정 토큰 한 개 지우기 (만료된 링크를 눌렀을 때)
+    int deletePasswordTokenByHash(String tokenHash);
+
+    // 재설정 토큰 저장 (해시만)
+    int insertPasswordToken(@Param("userId") Long userId, @Param("tokenHash") String tokenHash,
+        @Param("expiresAt") LocalDateTime expiresAt);
+
+    // 해시로 재설정 토큰 찾기 (없으면 null)
+    MailTokenVO selectPasswordTokenByHash(String tokenHash);
 }

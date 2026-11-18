@@ -130,4 +130,62 @@
         VALUES (#{userId}, #{provider}, #{providerId})
     </insert>
 
+    <!-- 가장 최근에 보낸 메일 시각 (email_verification_tokens) -->
+    <select id="selectLastEmailTokenCreatedAt" resultType="java.time.LocalDateTime">
+        SELECT MAX(created_at)
+        FROM email_verification_tokens
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 사용자의 토큰 모두 지우기 -->
+    <delete id="deleteEmailTokens">
+        DELETE FROM email_verification_tokens
+        WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 토큰 저장. 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertEmailToken">
+        INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
+        VALUES (#{userId}, #{tokenHash}, #{expiresAt})
+    </insert>
+
+    <!-- 해시로 토큰 찾기 -->
+    <select id="selectEmailTokenByHash" resultType="com.flowspace.user.service.MailTokenVO">
+        SELECT user_id, token_hash, expires_at, created_at
+        FROM email_verification_tokens
+        WHERE token_hash = #{tokenHash}
+    </select>
+
+    <!-- 가장 최근에 보낸 메일 시각 (password_reset_tokens) -->
+    <select id="selectLastPasswordTokenCreatedAt" resultType="java.time.LocalDateTime">
+        SELECT MAX(created_at)
+        FROM password_reset_tokens
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 사용자의 토큰 모두 지우기 -->
+    <delete id="deletePasswordTokens">
+        DELETE FROM password_reset_tokens
+        WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 토큰 저장. 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertPasswordToken">
+        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+        VALUES (#{userId}, #{tokenHash}, #{expiresAt})
+    </insert>
+
+    <!-- 해시로 토큰 찾기 -->
+    <select id="selectPasswordTokenByHash" resultType="com.flowspace.user.service.MailTokenVO">
+        SELECT user_id, token_hash, expires_at, created_at
+        FROM password_reset_tokens
+        WHERE token_hash = #{tokenHash}
+    </select>
+
+    <!-- 재설정 토큰 한 개 지우기 -->
+    <delete id="deletePasswordTokenByHash">
+        DELETE FROM password_reset_tokens
+        WHERE token_hash = #{tokenHash}
+    </delete>
+
 </mapper>

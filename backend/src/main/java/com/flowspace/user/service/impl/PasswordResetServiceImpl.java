@@ -1,7 +1,9 @@
 package com.flowspace.user.service.impl;
 
 import com.flowspace.service.MailService;
+import com.flowspace.user.service.MailTokenVO;
 import com.flowspace.user.service.PasswordResetService;
+import com.flowspace.user.service.UserVO;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,13 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.flowspace.user.dto.request.PasswordForgotRequest;
 import com.flowspace.user.dto.request.PasswordResetRequest;
-import com.flowspace.entity.PasswordResetToken;
-import com.flowspace.entity.User;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.PasswordResetTokenRepository;
-import com.flowspace.repository.RefreshTokenRepository;
-import com.flowspace.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,9 +41,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final UserRepository userRepository;
-    private final PasswordResetTokenRepository tokenRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    // 사용자와 토큰 SQL을 같이 써요 (같은 패키지라 import가 없어요)
+    private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
 
@@ -60,33 +56,30 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     @Override
     public void requestReset(PasswordForgotRequest request) {
 
-        User user = userRepository.findByEmail(request.email().trim()).orElse(null);
+        UserVO user = userMapper.selectUserByEmail(request.email().trim());
 
         // 화면에는 이유를 알리지 않지만(가입 여부 노출 방지), 개발할 때 원인을 찾을 수 있게 서버 로그에는 남겨요.
-        if (user == null || user.isWithdrawn() || user.getPassword() == null) {
+        if (user == null || user.getDeletedAt() != null || user.getPassword() == null) {
             log.info("비밀번호 재설정 메일을 보내지 않았어요(가입된 이메일이 아니거나 비밀번호가 없는 소셜 전용 계정). email={}", request.email());
             return;
         }
 
         // 연달아 눌러 메일이 쏟아지지 않게, 방금 보냈으면 건너뛰어요.
-        boolean tooSoon = tokenRepository.findTopByUserOrderByCreatedAtDesc(user)
-            .map(last -> last.getCreatedAt().plus(RESEND_INTERVAL).isAfter(LocalDateTime.now())).orElse(false);
+        LocalDateTime lastSentAt = userMapper.selectLastPasswordTokenCreatedAt(user.getUserId());
 
-        if (tooSoon) {
+        if (lastSentAt != null && lastSentAt.plus(RESEND_INTERVAL).isAfter(LocalDateTime.now())) {
             log.info("비밀번호 재설정 메일을 방금 보내서 건너뛰었어요. email={}", user.getEmail());
             return;
         }
 
         // 이전에 보낸 링크는 더 쓸 수 없게 지우고 새로 만들어요.
-        tokenRepository.deleteByUser(user);
-        tokenRepository.flush();
+        userMapper.deletePasswordTokens(user.getUserId());
 
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
 
-        tokenRepository.save(PasswordResetToken.builder().user(user).tokenHash(hash(rawToken))
-            .expiresAt(LocalDateTime.now().plusMinutes(VALID_MINUTES)).build());
+        userMapper.insertPasswordToken(user.getUserId(), hash(rawToken), LocalDateTime.now().plusMinutes(VALID_MINUTES));
 
         String link = frontendUrl.replaceAll("/+$", "") + "/reset-password?token=" + rawToken;
 
@@ -98,13 +91,16 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     @Override
     public void reset(PasswordResetRequest request) {
 
-        PasswordResetToken saved = tokenRepository.findByTokenHash(hash(request.token().trim()))
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_RESET_TOKEN));
+        MailTokenVO saved = userMapper.selectPasswordTokenByHash(hash(request.token().trim()));
 
-        User user = saved.getUser();
+        if (saved == null) {
+            throw new FlowSpaceException(ErrorCode.INVALID_RESET_TOKEN);
+        }
 
-        if (saved.isExpired() || user.isWithdrawn()) {
-            tokenRepository.delete(saved);
+        UserVO user = userMapper.selectUserById(saved.getUserId());
+
+        if (saved.getExpiresAt().isBefore(LocalDateTime.now()) || user == null || user.getDeletedAt() != null) {
+            userMapper.deletePasswordTokenByHash(saved.getTokenHash());
             throw new FlowSpaceException(ErrorCode.INVALID_RESET_TOKEN);
         }
 
@@ -113,12 +109,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             throw new FlowSpaceException(ErrorCode.SAME_PASSWORD);
         }
 
-        user.changePassword(passwordEncoder.encode(request.newPassword()));
+        userMapper.updateUserPassword(user.getUserId(), passwordEncoder.encode(request.newPassword()));
         // 메일로 받은 링크를 눌렀다는 건 이메일 주인이라는 뜻이라, 인증 전이던 계정이면 인증으로 봐요.
-        user.verifyEmail();
+        userMapper.updateUserEmailVerified(user.getUserId());
 
-        tokenRepository.deleteByUser(user);
-        refreshTokenRepository.deleteByUser(user);
+        userMapper.deletePasswordTokens(user.getUserId());
+        userMapper.deleteRefreshToken(user.getUserId());
     }
 
     private static String hash(String rawToken) {
