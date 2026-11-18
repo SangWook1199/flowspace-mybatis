@@ -33,6 +33,12 @@ public interface SprintMapper {
     // 스프린트 수정. 바뀐 행 수를 돌려줘요.
     int updateSprint(SprintVO sprint);
 
+    // 스프린트 시작. 진행 중이던 다른 스프린트를 계획됨으로 돌리는 것까지 프로시저 sp_start_sprint가 해요.
+    void updateSprintStart(Long sprintId);
+
+    // 스프린트 완료. 끝나지 않은 작업을 백로그로 옮기는 것까지 프로시저 sp_complete_sprint가 해요.
+    void updateSprintComplete(Long sprintId);
+
     // 스프린트 삭제. 작업을 백로그로 옮기는 것까지 프로시저 sp_delete_sprint가 해요.
     void deleteSprint(Long sprintId);
 }

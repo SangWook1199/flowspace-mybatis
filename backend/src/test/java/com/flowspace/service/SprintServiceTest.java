@@ -1,11 +1,11 @@
 package com.flowspace.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,12 +20,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
 import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;
 import com.flowspace.sprint.service.impl.SprintMapper;
 import com.flowspace.sprint.service.impl.SprintServiceImpl;
@@ -130,14 +132,25 @@ class SprintServiceTest {
         lenient().when(sprintRepository.findById(10L)).thenReturn(Optional.of(sprint));
     }
 
-    // 삭제할 스프린트 한 건 (MyBatis 조회 결과)
-    private void sprintRow() {
+    // 스프린트 한 건 (MyBatis 조회 결과)
+    private void sprintRow(SprintStatus status) {
         SprintVO row = new SprintVO();
         row.setSprintId(10L);
         row.setWorkspaceId(5L);
+        row.setName("스프린트 1");
+        row.setStatus(status);
 
         when(sprintMapper.selectSprintById(10L)).thenReturn(row);
         when(workspaceRepository.findById(5L)).thenReturn(Optional.of(workspace));
+
+        // 상태 변경이 끝난 뒤 응답을 만들 때 쓰는 조회 결과 (실패하는 테스트에서는 쓰이지 않아요)
+        SprintProgressVO progress = new SprintProgressVO();
+        progress.setSprintId(10L);
+        progress.setWorkspaceId(5L);
+        progress.setName("스프린트 1");
+        progress.setStatus(status);
+
+        lenient().when(sprintMapper.selectSprintProgressById(10L)).thenReturn(progress);
     }
 
     private void memberWithRole(WorkspaceRole role) {
@@ -146,9 +159,10 @@ class SprintServiceTest {
     }
 
     @Test
-    @DisplayName("스프린트를 완료하면 회고가 만들어지고, 끝나지 않은 작업만 백로그로 간다")
+    @DisplayName("스프린트를 완료하면 회고를 먼저 만들고, 그다음 완료 프로시저를 호출한다")
     void completingSprintCreatesRetrospective() {
         memberWithRole(WorkspaceRole.MEMBER);
+        sprintRow(SprintStatus.ACTIVE);
 
         TaskStatus doneStatus = TaskStatus.builder().statusId(3L).name("DONE").category(TaskStatusCategory.DONE).build();
         TaskStatus todoStatus = TaskStatus.builder().statusId(1L).name("TODO").category(TaskStatusCategory.TODO).build();
@@ -163,8 +177,6 @@ class SprintServiceTest {
 
         sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com");
 
-        assertEquals(SprintStatus.COMPLETED, sprint.getStatus());
-
         // 회고 페이지 제목과 회고-스프린트 연결
         ArgumentCaptor<Page> page = ArgumentCaptor.forClass(Page.class);
         verify(pageRepository).save(page.capture());
@@ -175,10 +187,13 @@ class SprintServiceTest {
         assertSame(sprint, retrospective.getValue().getSprint());
         assertSame(page.getValue(), retrospective.getValue().getPage());
 
-        // 작업 두 개 모두 스냅샷으로 남고, 끝난 작업은 스프린트에 남고 끝나지 않은 작업만 백로그로 가요.
+        // 작업 두 개 모두 스냅샷으로 남아요
         verify(taskSnapshotRepository, org.mockito.Mockito.times(2)).save(any());
-        assertSame(sprint, done.getSprint());
-        assertNull(todo.getSprint());
+
+        // 회고(스냅샷)를 먼저 만들고, 그다음 프로시저가 끝나지 않은 작업을 옮겨요
+        InOrder order = inOrder(retrospectiveRepository, sprintMapper);
+        order.verify(retrospectiveRepository).save(any(Retrospective.class));
+        order.verify(sprintMapper).updateSprintComplete(10L);
 
         verify(activityService).log(eq(workspace), eq(user), eq(ActivityType.SPRINT_COMPLETED),
             eq(ActivityTargetType.SPRINT), eq(10L));
@@ -188,78 +203,61 @@ class SprintServiceTest {
     @DisplayName("완료된 스프린트는 다시 진행 중으로 되돌릴 수 없다")
     void completedSprintCannotBeReactivated() {
         memberWithRole(WorkspaceRole.MEMBER);
-        sprint.updateStatus(SprintStatus.COMPLETED);
+        sprintRow(SprintStatus.COMPLETED);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com"));
 
         assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
-        assertEquals(SprintStatus.COMPLETED, sprint.getStatus());
+        verify(sprintMapper, never()).updateSprintStart(any());
     }
 
     @Test
-    @DisplayName("다른 스프린트가 진행 중일 때 시작하면 그 스프린트는 계획됨으로 돌아가고 새 스프린트가 진행 중이 된다")
-    void startingSprintPausesOtherActiveSprint() {
+    @DisplayName("계획된 스프린트를 시작하면 시작 프로시저를 호출한다")
+    void startingSprintCallsProcedure() {
         memberWithRole(WorkspaceRole.MEMBER);
-        sprint.updateStatus(SprintStatus.PLANNING);
-
-        Sprint running = Sprint.builder().sprintId(11L).workspace(workspace).createdBy(user).name("스프린트 0")
-            .startDate(LocalDate.now()).endDate(LocalDate.now().plusDays(7)).status(SprintStatus.ACTIVE).build();
-        when(sprintRepository.findByWorkspaceAndStatusOrderByStartDateDesc(workspace, SprintStatus.ACTIVE))
-            .thenReturn(List.of(running));
+        sprintRow(SprintStatus.PLANNING);
 
         sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com");
 
-        assertEquals(SprintStatus.ACTIVE, sprint.getStatus());
-        assertEquals(SprintStatus.PLANNING, running.getStatus());
-    }
-
-    @Test
-    @DisplayName("진행 중인 스프린트가 없으면 그대로 시작한다")
-    void startingSprintWithoutOtherActive() {
-        memberWithRole(WorkspaceRole.MEMBER);
-        sprint.updateStatus(SprintStatus.PLANNING);
-        when(sprintRepository.findByWorkspaceAndStatusOrderByStartDateDesc(workspace, SprintStatus.ACTIVE))
-            .thenReturn(List.of());
-
-        sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com");
-
-        assertEquals(SprintStatus.ACTIVE, sprint.getStatus());
+        // 진행 중이던 다른 스프린트를 계획됨으로 돌리는 일은 프로시저 안에서 해요
+        verify(sprintMapper).updateSprintStart(10L);
     }
 
     @Test
     @DisplayName("시작하지 않은 스프린트는 바로 완료할 수 없다")
     void planningSprintCannotBeCompletedDirectly() {
         memberWithRole(WorkspaceRole.MEMBER);
-        sprint.updateStatus(SprintStatus.PLANNING);
+        sprintRow(SprintStatus.PLANNING);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com"));
 
         assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
-        assertEquals(SprintStatus.PLANNING, sprint.getStatus());
         verify(retrospectiveRepository, never()).save(any(Retrospective.class));
+        verify(sprintMapper, never()).updateSprintComplete(any());
     }
 
     @Test
     @DisplayName("이미 회고가 있는 스프린트는 다시 완료할 수 없다")
     void alreadyHasRetrospective() {
         memberWithRole(WorkspaceRole.MEMBER);
+        sprintRow(SprintStatus.ACTIVE);
         when(retrospectiveRepository.existsBySprint(sprint)).thenReturn(true);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class,
             () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com"));
 
         assertEquals(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS, e.getErrorCode());
-        assertEquals(SprintStatus.ACTIVE, sprint.getStatus());
         verify(retrospectiveRepository, never()).save(any(Retrospective.class));
+        verify(sprintMapper, never()).updateSprintComplete(any());
     }
 
     @Test
     @DisplayName("일반 멤버는 스프린트를 삭제할 수 없다")
     void memberCannotDeleteSprint() {
         memberWithRole(WorkspaceRole.MEMBER);
-        sprintRow();
+        sprintRow(SprintStatus.ACTIVE);
 
         FlowSpaceException e = assertThrows(FlowSpaceException.class, () -> sprintService.deleteSprint(10L, "a@a.com"));
 
@@ -271,7 +269,7 @@ class SprintServiceTest {
     @DisplayName("관리자는 스프린트를 삭제할 수 있다")
     void adminCanDeleteSprint() {
         memberWithRole(WorkspaceRole.ADMIN);
-        sprintRow();
+        sprintRow(SprintStatus.ACTIVE);
 
         sprintService.deleteSprint(10L, "a@a.com");
 

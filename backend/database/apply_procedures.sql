@@ -5,3 +5,5 @@
 source /database/procedures/sp_sprint_progress_list.sql
 source /database/procedures/sp_sprint_progress.sql
 source /database/procedures/sp_delete_sprint.sql
+source /database/procedures/sp_start_sprint.sql
+source /database/procedures/sp_complete_sprint.sql

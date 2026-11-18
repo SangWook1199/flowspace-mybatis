@@ -58,6 +58,16 @@
          WHERE sprint_id = #{sprintId}
     </update>
 
+    <!-- 스프린트 시작. 진행 중이던 다른 스프린트를 계획됨으로 돌리는 것까지 프로시저 안에서 해요. -->
+    <update id="updateSprintStart" statementType="CALLABLE">
+        {call sp_start_sprint(#{sprintId})}
+    </update>
+
+    <!-- 스프린트 완료. 끝나지 않은 작업을 백로그로 옮기는 것까지 프로시저 안에서 해요. -->
+    <update id="updateSprintComplete" statementType="CALLABLE">
+        {call sp_complete_sprint(#{sprintId})}
+    </update>
+
     <!-- 스프린트 삭제. 작업을 백로그로 옮기고 스프린트를 지우는 일을 프로시저 안에서 한 번에 해요. -->
     <delete id="deleteSprint" statementType="CALLABLE">
         {call sp_delete_sprint(#{sprintId})}

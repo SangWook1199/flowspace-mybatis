@@ -35,7 +35,6 @@ import com.flowspace.entity.enums.DatabaseColumnType;
 import com.flowspace.entity.enums.DatabaseViewType;
 import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.SprintStatus;
-import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.entity.BlockDatabaseRow;
 import com.flowspace.entity.BlockDatabaseCell;
@@ -236,42 +235,59 @@ public class SprintServiceImpl implements SprintService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+        SprintVO sprint = sprintMapper.selectSprintById(sprintId);
 
-        validateMember(sprint.getWorkspace(), user);
+        if (sprint == null) {
+            throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
+        }
+
+        Workspace workspace = workspaceRepository.findById(sprint.getWorkspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        validateMember(workspace, user);
+
+        SprintStatus before = sprint.getStatus();
+        SprintStatus after = request.status();
+
+        // 같은 상태로 바꾸는 요청은 아무것도 바꾸지 않아요
+        if (before == after) {
+            return toSprintResponse(sprintMapper.selectSprintProgressById(sprintId));
+        }
 
         // 계획 → 진행 중 → 완료 순서로만 바꿀 수 있어요(완료된 스프린트를 되살리거나, 시작 없이 완료하면 회고·Task 정리가 어긋나요).
-        if (request.status() != sprint.getStatus() && !isAllowedStatusChange(sprint.getStatus(), request.status())) {
+        if (!isAllowedStatusChange(before, after)) {
             throw new FlowSpaceException(ErrorCode.INVALID_SPRINT_STATUS_CHANGE);
         }
 
-        // 이미 진행 중인 다른 스프린트가 있으면 그 스프린트는 계획됨으로 돌려요(진행 중인 스프린트는 항상 하나만 둬요).
-        if (request.status() == SprintStatus.ACTIVE && sprint.getStatus() != SprintStatus.ACTIVE) {
-            pauseOtherActiveSprints(sprint);
+        if (after == SprintStatus.ACTIVE) {
+            // 진행 중이던 다른 스프린트를 계획됨으로 돌리고 이 스프린트를 시작하는 일을 프로시저 한 번으로 해요
+            sprintMapper.updateSprintStart(sprintId);
+        } else {
+            completeSprint(sprintId, workspace, user);
         }
 
-        if (request.status() == SprintStatus.COMPLETED && sprint.getStatus() != SprintStatus.COMPLETED) {
+        notifySprintStatus(sprint, workspace, after, user);
 
-            if (retrospectiveRepository.existsBySprint(sprint)) {
-                throw new FlowSpaceException(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS);
-            }
+        return toSprintResponse(sprintMapper.selectSprintProgressById(sprintId));
+    }
 
-            createRetrospective(sprint, user);
+    // 스프린트 완료: 회고를 만든 뒤, 끝나지 않은 작업 이동과 완료 처리를 프로시저로 해요
+    private void completeSprint(Long sprintId, Workspace workspace, User user) {
 
-            moveUnfinishedTasksToBacklog(sprint);
+        // 회고 생성은 아직 JPA 엔티티로 해요(회고 코드를 바꿀 때 함께 정리해요)
+        Sprint sprint = sprintRepository.findById(sprintId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
 
-            activityService.log(sprint.getWorkspace(), user, ActivityType.SPRINT_COMPLETED, ActivityTargetType.SPRINT,
-                sprint.getSprintId());
+        if (retrospectiveRepository.existsBySprint(sprint)) {
+            throw new FlowSpaceException(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS);
         }
 
-        SprintStatus before = sprint.getStatus();
+        // 회고에는 스프린트의 모든 작업이 기록돼야 해서, 작업을 옮기기 전에 먼저 만들어요
+        createRetrospective(sprint, user);
 
-        sprint.updateStatus(request.status());
+        sprintMapper.updateSprintComplete(sprintId);
 
-        notifySprintStatus(sprint, before, user);
-
-        return toSprintResponse(sprint);
+        activityService.log(workspace, user, ActivityType.SPRINT_COMPLETED, ActivityTargetType.SPRINT, sprintId);
     }
 
     private boolean isAllowedStatusChange(SprintStatus from, SprintStatus to) {
@@ -281,21 +297,17 @@ public class SprintServiceImpl implements SprintService {
     }
 
     // 스프린트 시작/완료를 워크스페이스 멤버에게 알림
-    private void notifySprintStatus(Sprint sprint, SprintStatus before, User actor) {
+    private void notifySprintStatus(SprintVO sprint, Workspace workspace, SprintStatus after, User actor) {
 
-        if (before == sprint.getStatus()) {
-            return;
-        }
-
-        List<User> members = workspaceMemberRepository.findByWorkspace(sprint.getWorkspace()).stream()
+        List<User> members = workspaceMemberRepository.findByWorkspace(workspace).stream()
             .map(m -> m.getUser()).toList();
 
-        if (sprint.getStatus() == SprintStatus.ACTIVE) {
-            notificationService.sendAll(members, actor, sprint.getWorkspace(), NotificationType.SPRINT_STARTED,
+        if (after == SprintStatus.ACTIVE) {
+            notificationService.sendAll(members, actor, workspace, NotificationType.SPRINT_STARTED,
                 actor.getNickname() + "님이 '" + sprint.getName() + "' 스프린트를 시작했어요.", sprint.getSprintId(),
                 "/sprints/" + sprint.getSprintId() + "/tasks");
-        } else if (sprint.getStatus() == SprintStatus.COMPLETED) {
-            notificationService.sendAll(members, actor, sprint.getWorkspace(), NotificationType.SPRINT_COMPLETED,
+        } else if (after == SprintStatus.COMPLETED) {
+            notificationService.sendAll(members, actor, workspace, NotificationType.SPRINT_COMPLETED,
                 "'" + sprint.getName() + "' 스프린트가 완료되어 회고가 만들어졌어요.", sprint.getSprintId(),
                 "/retrospectives/" + sprint.getSprintId());
         }
@@ -347,19 +359,7 @@ public class SprintServiceImpl implements SprintService {
         }
     }
 
-    // 스프린트 진행률 계산
-    private SprintResponse toSprintResponse(Sprint sprint) {
-
-        int taskCount = (int) taskRepository.countBySprint(sprint);
-
-        int completedTaskCount = (int) taskRepository.countBySprintAndStatus_Category(sprint, TaskStatusCategory.DONE);
-
-        int progress = taskCount == 0 ? 0 : (completedTaskCount * 100) / taskCount;
-
-        return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
-    }
-
-    // 스프린트 진행률 계산 (프로시저 조회 결과용: 작업 수와 완료 수가 이미 들어 있어요)
+    // 스프린트 진행률 계산 (작업 수와 완료 수는 프로시저가 세어 와요)
     private SprintResponse toSprintResponse(SprintProgressVO sprint) {
 
         int taskCount = sprint.getTaskCount();
@@ -371,40 +371,11 @@ public class SprintServiceImpl implements SprintService {
         return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
     }
 
-    // 새로 시작하는 스프린트 말고 진행 중이던 스프린트를 계획됨으로 되돌려요(작업은 그대로 그 스프린트에 남아요).
-    private void pauseOtherActiveSprints(Sprint starting) {
-
-        for (Sprint other : sprintRepository.findByWorkspaceAndStatusOrderByStartDateDesc(starting.getWorkspace(),
-            SprintStatus.ACTIVE)) {
-            if (!other.getSprintId().equals(starting.getSprintId())) {
-                other.updateStatus(SprintStatus.PLANNING);
-            }
-        }
-    }
-
     // 진행 중인 스프린트가 이미 있으면 막아요(스프린트를 처음 만들 때만 써요)
     private void validateNoActiveSprint(Long workspaceId) {
 
         if (sprintMapper.selectSprintCountByStatus(workspaceId, SprintStatus.ACTIVE) > 0) {
             throw new FlowSpaceException(ErrorCode.SPRINT_ALREADY_ACTIVE);
-        }
-    }
-
-    // 스프린트 완료 시: 끝나지 않은 Task만 Backlog로 보내고, 완료된 Task는 스프린트에 남겨요
-    private void moveUnfinishedTasksToBacklog(Sprint sprint) {
-
-        int position = taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(sprint.getWorkspace()).size();
-
-        List<Task> sprintTasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
-
-        for (Task task : sprintTasks) {
-            if (task.getStatus().getCategory() == TaskStatusCategory.DONE) {
-                continue;
-            }
-
-            task.updateSprint(null);
-            task.updatePosition(BigDecimal.valueOf(position));
-            position++;
         }
     }
 
