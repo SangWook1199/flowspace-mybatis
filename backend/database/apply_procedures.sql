@@ -21,6 +21,8 @@ source /database/procedures/task/sp_task_status.sql
 source /database/procedures/task/sp_replace_default_task_status.sql
 source /database/procedures/task/sp_delete_task_status.sql
 source /database/procedures/task/sp_task_search.sql
+source /database/procedures/task/sp_task_attachment_list.sql
+source /database/procedures/task/sp_task_attachment.sql
 
 -- 워크스페이스
 source /database/procedures/workspace/sp_my_workspace_list.sql

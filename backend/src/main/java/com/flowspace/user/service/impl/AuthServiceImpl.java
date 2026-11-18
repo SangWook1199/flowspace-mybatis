@@ -1,6 +1,7 @@
 package com.flowspace.user.service.impl;
 
-import com.flowspace.service.FileService;
+import com.flowspace.file.service.FileService;
+import com.flowspace.file.service.FileVO;
 import com.flowspace.user.service.EmailVerificationService;
 import com.flowspace.user.service.AuthService;
 import com.flowspace.user.service.RefreshTokenVO;
@@ -23,13 +24,9 @@ import com.flowspace.user.dto.request.SocialLinkRequest;
 import com.flowspace.user.dto.response.UserResponse;
 import com.flowspace.user.dto.response.TokenResponse;
 import com.flowspace.user.dto.request.TokenRequest;
-import com.flowspace.entity.File;
-import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.security.JwtProvider;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -63,13 +60,11 @@ import java.util.List;
 @Transactional
 public class AuthServiceImpl implements AuthService {
 
-    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
     private final EmailVerificationService emailVerificationService;
-    private final WorkspaceRepository workspaceRepository;
 
     // 사용자 조회·수정용 MyBatis Mapper (같은 패키지라 import가 없어요)
     private final UserMapper userMapper;
@@ -213,8 +208,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserVO user = findUser(email);
 
-        // 파일 저장은 아직 JPA(FileService)라서 엔티티로 받아요
-        File file = fileService.uploadImage(image, profileWorkspace(user), email);
+        FileVO file = fileService.uploadImage(image, profileWorkspaceId(user), email);
 
         userMapper.updateUserProfileFile(user.getUserId(), file.getFileId());
 
@@ -229,7 +223,7 @@ public class AuthServiceImpl implements AuthService {
         UserVO user = findUser(email);
 
         if (image != null && !image.isEmpty()) {
-            user.setProfileFileId(fileService.uploadImage(image, profileWorkspace(user), email).getFileId());
+            user.setProfileFileId(fileService.uploadImage(image, profileWorkspaceId(user), email).getFileId());
         }
 
         // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.
@@ -282,13 +276,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // 프로필 이미지를 저장할 워크스페이스: 마지막으로 보던 곳, 없으면 참여 중인 첫 워크스페이스예요(파일은 워크스페이스에 속해야 해요).
-    private Workspace profileWorkspace(UserVO user) {
+    private Long profileWorkspaceId(UserVO user) {
 
-        Long workspaceId = user.getLastWorkspaceId() != null ? user.getLastWorkspaceId()
+        return user.getLastWorkspaceId() != null ? user.getLastWorkspaceId()
             : userMapper.selectFirstWorkspaceId(user.getUserId());
-
-        // 파일 저장(FileService)이 아직 JPA라 엔티티가 필요해요. getReferenceById는 DB를 읽지 않아요.
-        return workspaceId == null ? null : workspaceRepository.getReferenceById(workspaceId);
     }
 
     // 이메일로 사용자 한 명 (없으면 예외)
@@ -459,9 +450,7 @@ public class AuthServiceImpl implements AuthService {
     // 소셜 프로필 사진 저장 공통 처리: 파일로 저장하고 사용자 프로필로 지정해요
     private void saveSocialProfileImage(UserVO user, Long workspaceId, byte[] imageBytes) {
 
-        // 파일 저장(FileService)은 아직 JPA라 번호만 가진 엔티티를 넘겨요. getReferenceById는 DB를 읽지 않아요.
-        File profile = fileService.uploadProfileImage(imageBytes, workspaceRepository.getReferenceById(workspaceId),
-            userRepository.getReferenceById(user.getUserId()));
+        FileVO profile = fileService.uploadProfileImage(imageBytes, workspaceId, user.getUserId());
 
         userMapper.updateUserProfileFile(user.getUserId(), profile.getFileId());
     }

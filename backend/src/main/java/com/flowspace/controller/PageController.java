@@ -7,7 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.flowspace.dto.file.CoverResponse;
+import com.flowspace.file.dto.response.CoverResponse;
 import com.flowspace.dto.page.PageCoverUpdateRequest;
 import com.flowspace.dto.page.PageCreateRequest;
 import com.flowspace.dto.page.PageDetailResponse;
@@ -15,7 +15,7 @@ import com.flowspace.dto.page.PageDuplicateRequest;
 import com.flowspace.dto.page.PageReorderRequest;
 import com.flowspace.dto.page.PageResponse;
 import com.flowspace.dto.page.PageUpdateRequest;
-import com.flowspace.service.FileService;
+import com.flowspace.file.service.FileService;
 import com.flowspace.service.PageService;
 
 import io.swagger.v3.oas.annotations.Operation;

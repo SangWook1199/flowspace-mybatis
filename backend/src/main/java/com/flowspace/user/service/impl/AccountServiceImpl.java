@@ -1,6 +1,6 @@
 package com.flowspace.user.service.impl;
 
-import com.flowspace.service.FileService;
+import com.flowspace.file.service.FileService;
 import com.flowspace.notification.service.NotificationService;
 import com.flowspace.user.service.AccountService;
 import com.flowspace.user.service.UserVO;

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.task.service.impl.TaskAttachmentMapper">
+
+    <!-- 이메일로 사용자 번호 -->
+    <select id="selectUserIdByEmail" resultType="long">
+        SELECT user_id
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- 관련 문서 목록. 페이지·파일·사용자 조인은 프로시저 안에서 해요(backend/database/procedures/task). -->
+    <select id="selectTaskAttachmentList" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskAttachmentVO">
+        {call sp_task_attachment_list(#{taskId})}
+    </select>
+
+    <!-- 관련 문서 한 건 -->
+    <select id="selectTaskAttachmentById" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskAttachmentVO">
+        {call sp_task_attachment(#{attachmentId})}
+    </select>
+
+    <!-- 작업에 붙은 관련 문서 수 -->
+    <select id="selectTaskAttachmentCount" resultType="int">
+        SELECT COUNT(*)
+        FROM task_attachments
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 이 페이지가 이미 연결돼 있는지 -->
+    <select id="selectTaskAttachmentPageCount" resultType="int">
+        SELECT COUNT(*)
+        FROM task_attachments
+        WHERE task_id = #{taskId}
+          AND page_id = #{pageId}
+    </select>
+
+    <!-- 작업에 올린 파일 번호들 (페이지 연결은 file_id가 NULL이라 빼요) -->
+    <select id="selectTaskAttachmentFileIds" resultType="long">
+        SELECT file_id
+        FROM task_attachments
+        WHERE task_id = #{taskId}
+          AND file_id IS NOT NULL
+    </select>
+
+    <!-- 연결할 페이지의 워크스페이스. 휴지통에 있는 페이지는 없는 것으로 봐요. -->
+    <select id="selectActivePageWorkspaceId" resultType="long">
+        SELECT workspace_id
+        FROM pages
+        WHERE page_id = #{pageId}
+          AND is_deleted = FALSE
+    </select>
+
+    <!-- 관련 문서 등록. 페이지 연결이면 fileId, 파일이면 pageId가 null이에요. -->
+    <insert id="insertTaskAttachment" parameterType="com.flowspace.task.service.TaskAttachmentVO"
+            useGeneratedKeys="true" keyProperty="attachmentId">
+        INSERT INTO task_attachments (task_id, page_id, file_id, created_by)
+        VALUES (#{taskId}, #{pageId}, #{fileId}, #{createdBy})
+    </insert>
+
+    <!-- 관련 문서 삭제 -->
+    <delete id="deleteTaskAttachment">
+        DELETE FROM task_attachments
+        WHERE attachment_id = #{attachmentId}
+    </delete>
+
+</mapper>

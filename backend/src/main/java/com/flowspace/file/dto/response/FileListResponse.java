@@ -1,4 +1,4 @@
-package com.flowspace.dto.file;
+package com.flowspace.file.dto.response;
 
 import java.util.List;
 

@@ -1,6 +1,6 @@
-package com.flowspace.dto.file;
+package com.flowspace.file.dto.response;
 
-import com.flowspace.entity.File;
+import com.flowspace.file.service.FileVO;
 
 // @formatter:off
 
@@ -17,7 +17,7 @@ public record FileResponse(
 
 ) {
 
-    public static FileResponse from(File file) {
+    public static FileResponse from(FileVO file) {
         return new FileResponse(
             file.getFileId(),
             file.getOriginalName(),

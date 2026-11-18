@@ -67,6 +67,8 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_status` | 조인 | 워크스페이스 번호, 상태 번호 | 위와 같은데 한 개 (그 워크스페이스의 상태가 아니면 없음) | `TaskMapper.selectTaskStatusById` |
 | `sp_replace_default_task_status` | 일괄 변경 | 워크스페이스 번호, 기존·새 상태 번호, WIP 제한 | 기본 상태 대신 새 상태를 같은 자리에 연결하고 작업을 옮김 | `TaskMapper.updateDefaultTaskStatus` |
 | `sp_task_search` | 조인 | 워크스페이스 번호, 검색어 | 제목으로 작업 검색 (상태 이름 포함) | `TaskMapper.selectTaskSearchList` |
+| `sp_task_attachment_list` | 조인 | 작업 번호 | 관련 문서 목록과 페이지·파일 정보, 올린 사람 (휴지통 페이지 제외) | `TaskAttachmentMapper.selectTaskAttachmentList` |
+| `sp_task_attachment` | 조인 | 관련 문서 번호 | 위와 같은데 한 건 | `TaskAttachmentMapper.selectTaskAttachmentById` |
 | `sp_delete_task_status` | 일괄 변경 | 워크스페이스 번호, 삭제할·옮길 상태 번호 | 작업을 다른 상태로 옮기고 상태 삭제 (기본 상태는 연결만 끊음) | `TaskMapper.deleteTaskStatus` |
 
 ### 워크스페이스 (`procedures/workspace`)
@@ -137,6 +139,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_list` | `sp_task` | `TaskVO` |
 | `sp_task_assignee_list` | `sp_task_assignee` | `TaskAssigneeVO` |
 | `sp_task_status_list` | `sp_task_status` | `TaskStatusVO` |
+| `sp_task_attachment_list` | `sp_task_attachment` | `TaskAttachmentVO` |
 | `sp_workspace_member_list` | `sp_workspace_member` | `WorkspaceMemberVO` |
 | `sp_user_by_email` | `sp_user` (둘 다 한 건, 찾는 기준만 달라요) | `UserVO` |
 | `sp_notification_list` | `sp_notification` | `NotificationVO` |

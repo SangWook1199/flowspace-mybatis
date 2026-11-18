@@ -1,5 +1,8 @@
 package com.flowspace.service;
 
+import com.flowspace.file.service.FileService;
+import com.flowspace.file.service.FileVO;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +47,7 @@ import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 
 import lombok.RequiredArgsConstructor;
+import com.flowspace.repository.FileRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +62,7 @@ public class BlockService {
     private final EventRepository eventRepository;
     private final SprintRepository sprintRepository;
     private final FileService fileService;
+    private final FileRepository fileRepository;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -157,7 +162,7 @@ public class BlockService {
         PageGuard.requireActive(block.getPage());
 
         if (block.getImageFile() != null) {
-            fileService.delete(block.getImageFile());
+            fileService.delete(block.getImageFile().getFileId());
         }
 
         block.getPage().bumpVersion();
@@ -348,7 +353,7 @@ public class BlockService {
 
         for (Block block : removed) {
             if (block.getImageFile() != null) {
-                fileService.delete(block.getImageFile());
+                fileService.delete(block.getImageFile().getFileId());
             }
             blockRepository.delete(block);
         }
@@ -481,12 +486,17 @@ public class BlockService {
 
         // 이미지 블록은 이미지 파일만 허용하고(확장자·형식까지 확인), 파일 블록(FILE)은 위험한 확장자만 아니면 올릴 수 있어요.
         // 새 파일을 먼저 저장해서 성공한 뒤에 기존 파일을 지워요(실패해도 기존 이미지가 남아요).
-        File image = block.getType() == BlockType.FILE
-            ? fileService.upload(multipartFile, block.getPage().getWorkspace(), email)
-            : fileService.uploadImage(multipartFile, block.getPage().getWorkspace(), email);
+        Long workspaceId = block.getPage().getWorkspace().getWorkspaceId();
+
+        FileVO uploaded = block.getType() == BlockType.FILE
+            ? fileService.upload(multipartFile, workspaceId, email)
+            : fileService.uploadImage(multipartFile, workspaceId, email);
+
+        // 파일은 MyBatis로 저장해서 번호만 있어요. 블록은 아직 JPA라 그 번호를 가리키는 엔티티로 바꿔요(DB를 바로 읽지 않아요).
+        File image = fileRepository.getReferenceById(uploaded.getFileId());
 
         if (block.getImageFile() != null) {
-            fileService.delete(block.getImageFile());
+            fileService.delete(block.getImageFile().getFileId());
         }
 
         block.updateImage(image);
@@ -509,7 +519,7 @@ public class BlockService {
         PageGuard.requireActive(block.getPage());
 
         if (block.getImageFile() != null) {
-            fileService.delete(block.getImageFile());
+            fileService.delete(block.getImageFile().getFileId());
             block.updateImage(null);
         }
 

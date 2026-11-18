@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.task.web;
 
 import java.util.List;
 
@@ -7,9 +7,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.flowspace.dto.task.TaskAttachmentPageRequest;
-import com.flowspace.dto.task.TaskAttachmentResponse;
-import com.flowspace.service.TaskAttachmentService;
+import com.flowspace.task.dto.request.TaskAttachmentPageRequest;
+import com.flowspace.task.dto.response.TaskAttachmentResponse;
+import com.flowspace.task.service.TaskAttachmentService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

@@ -1,7 +1,7 @@
 package com.flowspace.task.service.impl;
 
 import com.flowspace.activity.service.ActivityService;
-import com.flowspace.service.FileService;
+import com.flowspace.file.service.FileService;
 import com.flowspace.notification.service.NotificationService;
 import com.flowspace.task.service.SubTaskVO;
 import com.flowspace.task.service.TaskAssigneeVO;
@@ -37,7 +37,6 @@ import com.flowspace.task.dto.request.SubTaskCreateRequest;
 import com.flowspace.task.dto.request.SubTaskReorderRequest;
 import com.flowspace.task.dto.response.SubTaskResponse;
 import com.flowspace.task.dto.request.SubTaskUpdateRequest;
-import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
@@ -47,7 +46,6 @@ import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.TaskAttachmentRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
@@ -65,7 +63,6 @@ public class TaskServiceImpl implements TaskService {
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final TaskAttachmentRepository taskAttachmentRepository;
     private final FileService fileService;
     private final UserRepository userRepository;
 
@@ -75,6 +72,9 @@ public class TaskServiceImpl implements TaskService {
 
     // 작업 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
     private final TaskMapper taskMapper;
+
+    // 작업을 지울 때 올려 둔 파일 번호를 읽어요
+    private final TaskAttachmentMapper taskAttachmentMapper;
 
     // Task 상태 생성
     @Override
@@ -500,13 +500,13 @@ public class TaskServiceImpl implements TaskService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         // 관련 문서로 올려 둔 파일은 서버에서도 같이 지워야 해서, 작업을 지우기 전에 먼저 읽어 둬요.
-        List<File> attachmentFiles = taskAttachmentRepository.findFilesByTaskId(taskId);
+        List<Long> attachmentFileIds = taskAttachmentMapper.selectTaskAttachmentFileIds(taskId);
 
         // 작업 삭제와 같은 칸에 남은 작업의 순서 정리를 프로시저 한 번으로 해요
         taskMapper.deleteTask(taskId);
 
-        for (File attachmentFile : attachmentFiles) {
-            fileService.delete(attachmentFile);
+        for (Long fileId : attachmentFileIds) {
+            fileService.delete(fileId);
         }
     }
 
@@ -783,7 +783,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 작업 목록을 응답으로 바꿔요. sprintId가 null이면 백로그예요.
-    // 작업과 담당자는 프로시저로, 하위 작업은 XML SQL로, 댓글은 아직 JPA로 한 번씩 읽어서 작업별로 나눠 담아요.
+    // 작업과 담당자는 프로시저로, 하위 작업은 XML SQL로, 댓글은 댓글 서비스로 한 번씩 읽어서 작업별로 나눠 담아요.
     private List<TaskResponse> toTaskResponses(Long workspaceId, Long sprintId) {
 
         List<TaskVO> tasks = taskMapper.selectTaskList(workspaceId, sprintId);
@@ -865,7 +865,7 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    // 작업 한 건을 응답으로 바꿔요 (목록과 같은 방식: 담당자는 프로시저, 하위 작업은 XML SQL, 댓글은 아직 JPA)
+    // 작업 한 건을 응답으로 바꿔요 (목록과 같은 방식: 담당자는 프로시저, 하위 작업은 XML SQL, 댓글은 댓글 서비스)
     private TaskResponse toTaskResponse(TaskVO task) {
 
         Long taskId = task.getTaskId();

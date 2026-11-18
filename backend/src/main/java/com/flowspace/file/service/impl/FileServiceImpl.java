@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.file.service.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,24 +20,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.flowspace.dto.file.CoverResponse;
-import com.flowspace.entity.File;
-import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.FileRepository;
-import com.flowspace.repository.UserRepository;
+import com.flowspace.file.dto.response.CoverResponse;
+import com.flowspace.file.service.FileService;
+import com.flowspace.file.service.FileVO;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class FileService {
+public class FileServiceImpl implements FileService {
 
-    private final FileRepository fileRepository;
-    private final UserRepository userRepository;
+    // 파일 SQL (같은 패키지라 import가 없어요)
+    private final FileMapper fileMapper;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -56,12 +53,14 @@ public class FileService {
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "avif");
 
     // 파일 업로드 (파일 블록처럼 종류를 가리지 않는 첨부)
-    public File upload(MultipartFile multipartFile, Workspace workspace, String email) {
-        return store(multipartFile, workspace, email, false);
+    @Override
+    public FileVO upload(MultipartFile multipartFile, Long workspaceId, String email) {
+        return store(multipartFile, workspaceId, email, false);
     }
 
     // 문서 업로드 (작업 관련 문서). 허용 목록에 있는 확장자만 받아요.
-    public File uploadDocument(MultipartFile multipartFile, Workspace workspace, String email) {
+    @Override
+    public FileVO uploadDocument(MultipartFile multipartFile, Long workspaceId, String email) {
 
         if (multipartFile.isEmpty()) {
             throw new FlowSpaceException(ErrorCode.EMPTY_FILE);
@@ -71,19 +70,23 @@ public class FileService {
             throw new FlowSpaceException(ErrorCode.UNSUPPORTED_FILE_TYPE);
         }
 
-        return store(multipartFile, workspace, email, false);
+        return store(multipartFile, workspaceId, email, false);
     }
 
     // 이미지 업로드 (커버·프로필·이미지 블록). 확장자·Content-Type·파일 첫 바이트가 모두 이미지여야 해요.
-    public File uploadImage(MultipartFile multipartFile, Workspace workspace, String email) {
-        return store(multipartFile, workspace, email, true);
+    @Override
+    public FileVO uploadImage(MultipartFile multipartFile, Long workspaceId, String email) {
+        return store(multipartFile, workspaceId, email, true);
     }
 
     // 실제 저장 처리: 확장자를 소문자 영숫자로 정리해서 쓰고, 막은 확장자·이미지가 아닌 파일은 거절해요.
-    private File store(MultipartFile multipartFile, Workspace workspace, String email, boolean imageOnly) {
+    private FileVO store(MultipartFile multipartFile, Long workspaceId, String email, boolean imageOnly) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        Long userId = fileMapper.selectUserIdByEmail(email);
+
+        if (userId == null) {
+            throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+        }
 
         String originalName = multipartFile.getOriginalFilename();
         String extension = extensionOf(originalName);
@@ -106,15 +109,32 @@ public class FileService {
             Path target = directory.resolve(storedName);
             multipartFile.transferTo(target);
 
-            File file = File.builder().workspace(workspace).uploadedBy(user).originalName(originalName)
-                .storedName(storedName).mimeType(multipartFile.getContentType()).size(multipartFile.getSize())
-                .width(null).height(null).fileUrl("/uploads/" + storedName).build();
+            FileVO file = newFile(workspaceId, userId, originalName, storedName, multipartFile.getContentType(),
+                multipartFile.getSize(), "/uploads/" + storedName);
 
-            return fileRepository.save(file);
+            fileMapper.insertFile(file);
+
+            return file;
 
         } catch (IOException e) {
             throw new FlowSpaceException(ErrorCode.FILE_UPLOAD_FAILED);
         }
+    }
+
+    // 저장할 파일 정보를 만들어요 (가로·세로 크기는 지금 쓰지 않아서 비워 둬요)
+    private FileVO newFile(Long workspaceId, Long userId, String originalName, String storedName, String mimeType,
+        Long size, String fileUrl) {
+
+        FileVO file = new FileVO();
+        file.setWorkspaceId(workspaceId);
+        file.setUploadedBy(userId);
+        file.setOriginalName(originalName);
+        file.setStoredName(storedName);
+        file.setMimeType(mimeType);
+        file.setSize(size);
+        file.setFileUrl(fileUrl);
+
+        return file;
     }
 
     // 파일 이름의 마지막 확장자를 소문자로 돌려줘요. 영숫자 10자 이하가 아니면(경로 문자 등) 확장자 없음으로 봐요.
@@ -167,19 +187,17 @@ public class FileService {
         return png || jpeg || gif || webp || bmp || avif;
     }
 
-    // 파일 삭제
-    // 파일 번호로 삭제해요 (MyBatis로 읽은 쪽은 엔티티 없이 번호만 있어요). 없으면 아무것도 하지 않아요.
+    // 파일 삭제 (없는 번호면 아무것도 하지 않아요)
+    @Override
     public void delete(Long fileId) {
-        fileRepository.findById(fileId).ifPresent(file -> {
-            delete(file);
-            // JPA는 지운 내용을 트랜잭션이 끝날 때 보내요. 같은 요청에서 뒤이어 MyBatis SQL이 그 행을 지우거나
-            // 바꾸면(예: 탈퇴 때 워크스페이스와 함께 파일이 지워짐) 순서가 어긋나서, 여기서 바로 DB에 보내요.
-            fileRepository.flush();
-        });
-    }
 
-    public void delete(File file) {
+        FileVO file = fileMapper.selectFileById(fileId);
 
+        if (file == null) {
+            return;
+        }
+
+        // 기본 커버는 실제 파일 없이 정적 리소스를 가리켜서, 서버 폴더에서 지울 파일이 없어요.
         if (!file.getFileUrl().startsWith("/covers/")) {
             try {
                 Path path = Paths.get(uploadDir).resolve(file.getStoredName());
@@ -189,20 +207,31 @@ public class FileService {
             }
         }
 
-        fileRepository.delete(file);
+        // 이 파일을 쓰던 곳(프로필·커버·이미지 블록)은 DB가 NULL로 바꾸고, 관련 문서는 함께 지워요(외래키 설정).
+        fileMapper.deleteFile(fileId);
     }
 
     // 파일 복사 (페이지 복제용, 원본 파일이 없으면 null)
-    public File copy(File source, Workspace workspace, User user) {
+    @Override
+    public FileVO copy(Long sourceFileId, Long workspaceId, Long userId) {
+
+        FileVO source = fileMapper.selectFileById(sourceFileId);
+
+        if (source == null) {
+            return null;
+        }
 
         // 기본 커버는 실제 파일 없이 정적 리소스를 가리키므로 행만 새로 만들어요.
         if (source.getFileUrl().startsWith("/covers/")) {
 
-            File cover = File.builder().workspace(workspace).uploadedBy(user).originalName(source.getOriginalName())
-                .storedName(source.getStoredName()).mimeType(source.getMimeType()).size(source.getSize())
-                .width(source.getWidth()).height(source.getHeight()).fileUrl(source.getFileUrl()).build();
+            FileVO cover = newFile(workspaceId, userId, source.getOriginalName(), source.getStoredName(),
+                source.getMimeType(), source.getSize(), source.getFileUrl());
+            cover.setWidth(source.getWidth());
+            cover.setHeight(source.getHeight());
 
-            return fileRepository.save(cover);
+            fileMapper.insertFile(cover);
+
+            return cover;
         }
 
         try {
@@ -220,19 +249,23 @@ public class FileService {
 
             Files.copy(sourcePath, directory.resolve(copiedName), StandardCopyOption.REPLACE_EXISTING);
 
-            File copied = File.builder().workspace(workspace).uploadedBy(user).originalName(source.getOriginalName())
-                .storedName(copiedName).mimeType(source.getMimeType()).size(source.getSize()).width(source.getWidth())
-                .height(source.getHeight()).fileUrl("/uploads/" + copiedName).build();
+            FileVO copied = newFile(workspaceId, userId, source.getOriginalName(), copiedName, source.getMimeType(),
+                source.getSize(), "/uploads/" + copiedName);
+            copied.setWidth(source.getWidth());
+            copied.setHeight(source.getHeight());
 
-            return fileRepository.save(copied);
+            fileMapper.insertFile(copied);
+
+            return copied;
 
         } catch (IOException e) {
             throw new FlowSpaceException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
 
-    // 기본 커버 File 생성
-    public File createDefaultCover(String coverName, Workspace workspace, User user) {
+    // 기본 커버 파일 정보 생성
+    @Override
+    public FileVO createDefaultCover(String coverName, Long workspaceId, Long userId) {
 
         // 커버 이름에 경로 문자가 섞여 있으면 static/covers 밖을 가리킬 수 있어서 막아요.
         if (coverName == null || coverName.isBlank() || coverName.contains("/") || coverName.contains("\\")
@@ -265,14 +298,16 @@ public class FileService {
             throw new FlowSpaceException(ErrorCode.FILE_NOT_FOUND);
         }
 
-        File file = File.builder().workspace(workspace).uploadedBy(user).originalName(fileName).storedName(fileName)
-            .mimeType(mimeType).size(0L).width(null).height(null).fileUrl("/covers/" + fileName).build();
+        FileVO file = newFile(workspaceId, userId, fileName, fileName, mimeType, 0L, "/covers/" + fileName);
 
-        return fileRepository.save(file);
+        fileMapper.insertFile(file);
+
+        return file;
     }
 
     // 기본 커버 갤러리 조회
     @Transactional(readOnly = true)
+    @Override
     public List<CoverResponse> getCoverGallery() {
 
         try {
@@ -292,7 +327,8 @@ public class FileService {
     }
 
     // 프로필 이미지 저장
-    public File uploadProfileImage(byte[] imageBytes, Workspace workspace, User user) {
+    @Override
+    public FileVO uploadProfileImage(byte[] imageBytes, Long workspaceId, Long userId) {
 
         try {
 
@@ -304,11 +340,12 @@ public class FileService {
             Path target = directory.resolve(storedName);
             Files.write(target, imageBytes);
 
-            File file = File.builder().workspace(workspace).uploadedBy(user).originalName("profile.jpg")
-                .storedName(storedName).mimeType("image/jpeg").size((long) imageBytes.length).width(null).height(null)
-                .fileUrl("/uploads/" + storedName).build();
+            FileVO file = newFile(workspaceId, userId, "profile.jpg", storedName, "image/jpeg",
+                (long) imageBytes.length, "/uploads/" + storedName);
 
-            return fileRepository.save(file);
+            fileMapper.insertFile(file);
+
+            return file;
 
         } catch (IOException e) {
             throw new FlowSpaceException(ErrorCode.FILE_UPLOAD_FAILED);

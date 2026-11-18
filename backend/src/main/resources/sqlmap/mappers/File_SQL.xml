@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.file.service.impl.FileMapper">
+
+    <!-- 이메일로 사용자 번호 -->
+    <select id="selectUserIdByEmail" resultType="long">
+        SELECT user_id
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- 파일 한 건 -->
+    <select id="selectFileById" resultType="com.flowspace.file.service.FileVO">
+        SELECT file_id,
+               workspace_id,
+               uploaded_by,
+               original_name,
+               stored_name,
+               mime_type,
+               size,
+               width,
+               height,
+               file_url,
+               created_at
+        FROM files
+        WHERE file_id = #{fileId}
+    </select>
+
+    <!-- 파일 등록. 만든 시각은 DB 기본값을 써요. -->
+    <insert id="insertFile" parameterType="com.flowspace.file.service.FileVO"
+            useGeneratedKeys="true" keyProperty="fileId">
+        INSERT INTO files (workspace_id, uploaded_by, original_name, stored_name, mime_type, size, width, height,
+                           file_url)
+        VALUES (#{workspaceId}, #{uploadedBy}, #{originalName}, #{storedName}, #{mimeType}, #{size}, #{width},
+                #{height}, #{fileUrl})
+    </insert>
+
+    <!-- 파일 삭제. 외래키 설정(ON DELETE SET NULL / CASCADE)에 따라 DB가 쓰던 곳을 정리해요. -->
+    <delete id="deleteFile">
+        DELETE FROM files
+        WHERE file_id = #{fileId}
+    </delete>
+
+</mapper>

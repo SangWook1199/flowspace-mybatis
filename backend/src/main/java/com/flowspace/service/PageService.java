@@ -1,5 +1,8 @@
 package com.flowspace.service;
 
+import com.flowspace.file.service.FileService;
+import com.flowspace.file.service.FileVO;
+
 import com.flowspace.activity.service.ActivityService;
 
 import java.time.LocalDateTime;
@@ -61,6 +64,7 @@ import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
 
 import lombok.RequiredArgsConstructor;
+import com.flowspace.repository.FileRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -73,6 +77,7 @@ public class PageService {
     private final BlockRepository blockRepository;
     private final UserRepository userRepository;
     private final FileService fileService;
+    private final FileRepository fileRepository;
     private final BlockDatabaseRowRepository blockDatabaseRowRepository;
     private final BlockDatabaseRepository blockDatabaseRepository;
     private final BlockDatabaseColumnRepository blockDatabaseColumnRepository;
@@ -389,7 +394,7 @@ public class PageService {
         pageRepository.flush();
 
         for (File file : files) {
-            fileService.delete(file);
+            fileService.delete(file.getFileId());
         }
     }
 
@@ -528,7 +533,8 @@ public class PageService {
             Page parent = isRoot ? newParent : copies.get(target.getParentPage().getPageId());
 
             File cover = target.getCoverFile() == null ? null
-                : fileService.copy(target.getCoverFile(), workspace, user);
+                : fileEntity(fileService.copy(target.getCoverFile().getFileId(), workspace.getWorkspaceId(),
+                    user.getUserId()));
 
             Page copy = Page.builder().workspace(workspace).parentPage(parent).title(target.getTitle())
                 .icon(target.getIcon()).coverFile(cover)
@@ -560,7 +566,8 @@ public class PageService {
         for (Block block : blocks) {
 
             File image = block.getImageFile() == null ? null
-                : fileService.copy(block.getImageFile(), target.getWorkspace(), user);
+                : fileEntity(fileService.copy(block.getImageFile().getFileId(), target.getWorkspace().getWorkspaceId(),
+                    user.getUserId()));
 
             Block copy = Block.builder().page(target).task(block.getTask()).event(block.getEvent())
                 .sprint(block.getSprint()).imageFile(image).type(block.getType()).position(block.getPosition())
@@ -718,10 +725,10 @@ public class PageService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         if (page.getCoverFile() != null) {
-            fileService.delete(page.getCoverFile());
+            fileService.delete(page.getCoverFile().getFileId());
         }
 
-        File cover = fileService.uploadImage(file, page.getWorkspace(), email);
+        File cover = fileEntity(fileService.uploadImage(file, page.getWorkspace().getWorkspaceId(), email));
 
         page.updateCover(cover);
 
@@ -741,7 +748,7 @@ public class PageService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         if (page.getCoverFile() != null) {
-            fileService.delete(page.getCoverFile());
+            fileService.delete(page.getCoverFile().getFileId());
             page.updateCover(null);
         }
 
@@ -761,14 +768,21 @@ public class PageService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         if (page.getCoverFile() != null) {
-            fileService.delete(page.getCoverFile());
+            fileService.delete(page.getCoverFile().getFileId());
         }
 
-        File cover = fileService.createDefaultCover(request.coverName(), page.getWorkspace(), user);
+        File cover = fileEntity(
+            fileService.createDefaultCover(request.coverName(), page.getWorkspace().getWorkspaceId(), user.getUserId()));
 
         page.updateCover(cover);
 
         return toResponse(page);
+    }
+
+    // 파일은 MyBatis(FileService)로 저장해서 번호만 있어요. 페이지·블록은 아직 JPA라 그 번호를 가리키는 엔티티로 바꿔요.
+    // getReferenceById는 DB를 바로 읽지 않고, 값을 쓸 때 읽어요. (원본이 없어 복사하지 못했으면 null)
+    private File fileEntity(FileVO file) {
+        return file == null ? null : fileRepository.getReferenceById(file.getFileId());
     }
 
     // 페이지 하나를 응답으로 바꿔요 (회고 페이지 여부를 함께 담아요)

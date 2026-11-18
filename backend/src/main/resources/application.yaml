@@ -85,3 +85,5 @@ logging:
     com.flowspace.activity.service.impl.ActivityMapper: debug
     com.flowspace.calendar.service.impl.CalendarMapper: debug
     com.flowspace.comment.service.impl.CommentMapper: debug
+    com.flowspace.file.service.impl.FileMapper: debug
+    com.flowspace.task.service.impl.TaskAttachmentMapper: debug
