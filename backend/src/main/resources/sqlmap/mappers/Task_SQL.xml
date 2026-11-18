@@ -166,4 +166,72 @@
         WHERE subtask_id = #{subtaskId}
     </delete>
 
+    <!-- 워크스페이스의 작업 상태 목록. 조인은 프로시저 안에서 해요. -->
+    <select id="selectTaskStatusList" statementType="CALLABLE"
+            resultType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_task_status_list(#{workspaceId})}
+    </select>
+
+    <!-- 워크스페이스의 작업 상태 한 개 -->
+    <select id="selectTaskStatusById" statementType="CALLABLE"
+            resultType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_task_status(#{workspaceId}, #{statusId})}
+    </select>
+
+    <!-- 워크스페이스의 작업 상태 수 -->
+    <select id="selectTaskStatusCount" resultType="int">
+        SELECT COUNT(*)
+        FROM workspace_task_statuses
+        WHERE workspace_id = #{workspaceId}
+    </select>
+
+    <!-- 상태 등록 -->
+    <insert id="insertTaskStatus" parameterType="com.flowspace.task.service.TaskStatusVO"
+            useGeneratedKeys="true" keyProperty="statusId">
+        INSERT INTO task_statuses (name, category, color)
+        VALUES (#{name}, #{category}, #{color})
+    </insert>
+
+    <!-- 워크스페이스에 상태 연결. is_default는 넣지 않아서 DB 기본값(FALSE)이 들어가요. -->
+    <insert id="insertWorkspaceTaskStatus" parameterType="com.flowspace.task.service.TaskStatusVO">
+        INSERT INTO workspace_task_statuses (workspace_id, status_id, position, wip_limit)
+        VALUES (#{workspaceId}, #{statusId}, #{position}, #{wipLimit})
+    </insert>
+
+    <!-- 상태 정보 수정 -->
+    <update id="updateTaskStatusInfo" parameterType="com.flowspace.task.service.TaskStatusVO">
+        UPDATE task_statuses
+           SET name     = #{name},
+               category = #{category},
+               color    = #{color}
+         WHERE status_id = #{statusId}
+    </update>
+
+    <!-- 워크스페이스별 WIP 제한 수정 -->
+    <update id="updateWorkspaceTaskStatusWipLimit" parameterType="com.flowspace.task.service.TaskStatusVO">
+        UPDATE workspace_task_statuses
+           SET wip_limit = #{wipLimit}
+         WHERE workspace_id = #{workspaceId}
+           AND status_id = #{statusId}
+    </update>
+
+    <!-- 칸반 열 순서 변경 -->
+    <update id="updateTaskStatusPosition">
+        UPDATE workspace_task_statuses
+           SET position = #{position}
+         WHERE workspace_id = #{workspaceId}
+           AND status_id = #{statusId}
+    </update>
+
+    <!-- 기본 상태를 새 상태로 바꿔 끼우기. wipLimit이 null일 수 있어서 jdbcType을 적어요. -->
+    <update id="updateDefaultTaskStatus" statementType="CALLABLE">
+        {call sp_replace_default_task_status(#{workspaceId}, #{oldStatusId}, #{newStatusId},
+                                             #{wipLimit, jdbcType=INTEGER})}
+    </update>
+
+    <!-- 상태 삭제와 작업 이동 -->
+    <delete id="deleteTaskStatus" statementType="CALLABLE">
+        {call sp_delete_task_status(#{workspaceId}, #{statusId}, #{targetStatusId})}
+    </delete>
+
 </mapper>

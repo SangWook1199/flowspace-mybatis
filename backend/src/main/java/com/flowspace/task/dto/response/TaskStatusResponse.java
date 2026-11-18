@@ -1,6 +1,7 @@
 package com.flowspace.task.dto.response;
 
 import com.flowspace.entity.WorkspaceTaskStatus;
+import com.flowspace.task.service.TaskStatusVO;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.enums.WorkspaceColor;
 
@@ -31,6 +32,18 @@ public record TaskStatusResponse(
         );
     }
 
+    // MyBatis 조회 결과(TaskStatusVO)로 응답을 만들어요
+    public static TaskStatusResponse from(TaskStatusVO status) {
+        return new TaskStatusResponse(
+            status.getStatusId(),
+            status.getName(),
+            status.getCategory(),
+            status.getColor(),
+            status.getPosition(),
+            status.getIsDefault(),
+            status.getWipLimit()
+        );
+    }
 }
 
 // @formatter:on

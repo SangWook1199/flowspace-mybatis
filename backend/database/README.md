@@ -57,6 +57,10 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_assignee_list` | 조인 | 워크스페이스 번호, 스프린트 번호(NULL이면 백로그) | 칸반 작업들의 담당자와 이름·프로필 이미지 | `TaskMapper.selectTaskAssigneeList` |
 | `sp_task_assignee` | 조인 | 작업 번호 | 위와 같은데 작업 한 건 | `TaskMapper.selectTaskAssigneeListByTaskId` |
 | `sp_delete_task` | 일괄 변경 | 작업 번호 | 작업 삭제, 같은 칸에 남은 작업 순서를 0부터 다시 매김 | `TaskMapper.deleteTask` |
+| `sp_task_status_list` | 조인 | 워크스페이스 번호 | 작업 상태(칸반 열) 목록과 순서·WIP 제한 | `TaskMapper.selectTaskStatusList` |
+| `sp_task_status` | 조인 | 워크스페이스 번호, 상태 번호 | 위와 같은데 한 개 (그 워크스페이스의 상태가 아니면 없음) | `TaskMapper.selectTaskStatusById` |
+| `sp_replace_default_task_status` | 일괄 변경 | 워크스페이스 번호, 기존·새 상태 번호, WIP 제한 | 기본 상태 대신 새 상태를 같은 자리에 연결하고 작업을 옮김 | `TaskMapper.updateDefaultTaskStatus` |
+| `sp_delete_task_status` | 일괄 변경 | 워크스페이스 번호, 삭제할·옮길 상태 번호 | 작업을 다른 상태로 옮기고 상태 삭제 (기본 상태는 연결만 끊음) | `TaskMapper.deleteTaskStatus` |
 
 ## 함께 고쳐야 하는 쌍
 
@@ -67,3 +71,4 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_sprint_progress_list` | `sp_sprint_progress` | `SprintProgressVO` |
 | `sp_task_list` | `sp_task` | `TaskVO` |
 | `sp_task_assignee_list` | `sp_task_assignee` | `TaskAssigneeVO` |
+| `sp_task_status_list` | `sp_task_status` | `TaskStatusVO` |

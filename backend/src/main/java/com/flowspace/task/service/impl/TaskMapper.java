@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 
 import com.flowspace.task.service.SubTaskVO;
 import com.flowspace.task.service.TaskAssigneeVO;
+import com.flowspace.task.service.TaskStatusVO;
 import com.flowspace.task.service.TaskVO;
 
 // 작업 DB 접근. 메서드 이름이 Task_SQL.xml의 id와 같아야 해요.
@@ -76,4 +77,37 @@ public interface TaskMapper {
 
     // 하위 작업 삭제
     int deleteSubTask(Long subtaskId);
+
+    // 워크스페이스의 작업 상태 목록 (프로시저 sp_task_status_list)
+    List<TaskStatusVO> selectTaskStatusList(Long workspaceId);
+
+    // 워크스페이스의 작업 상태 한 개 (프로시저 sp_task_status, 그 워크스페이스의 상태가 아니면 null)
+    TaskStatusVO selectTaskStatusById(@Param("workspaceId") Long workspaceId, @Param("statusId") Long statusId);
+
+    // 워크스페이스의 작업 상태 수
+    int selectTaskStatusCount(Long workspaceId);
+
+    // 상태 등록. 실행 후 DB가 만든 번호가 status의 statusId에 들어가요.
+    int insertTaskStatus(TaskStatusVO status);
+
+    // 워크스페이스에 상태 연결 (순서·WIP 제한)
+    int insertWorkspaceTaskStatus(TaskStatusVO status);
+
+    // 상태 정보 수정 (이름·분류·색)
+    int updateTaskStatusInfo(TaskStatusVO status);
+
+    // 워크스페이스별 WIP 제한 수정
+    int updateWorkspaceTaskStatusWipLimit(TaskStatusVO status);
+
+    // 칸반 열 순서 변경. 바뀐 행 수를 돌려줘요(0이면 그 워크스페이스의 상태가 아니에요).
+    int updateTaskStatusPosition(@Param("workspaceId") Long workspaceId, @Param("statusId") Long statusId,
+        @Param("position") Integer position);
+
+    // 기본 상태를 새 상태로 바꿔 끼우기 (프로시저 sp_replace_default_task_status)
+    void updateDefaultTaskStatus(@Param("workspaceId") Long workspaceId, @Param("oldStatusId") Long oldStatusId,
+        @Param("newStatusId") Long newStatusId, @Param("wipLimit") Integer wipLimit);
+
+    // 상태 삭제와 작업 이동 (프로시저 sp_delete_task_status)
+    void deleteTaskStatus(@Param("workspaceId") Long workspaceId, @Param("statusId") Long statusId,
+        @Param("targetStatusId") Long targetStatusId);
 }

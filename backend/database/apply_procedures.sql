@@ -16,3 +16,7 @@ source /database/procedures/task/sp_task.sql
 source /database/procedures/task/sp_task_assignee_list.sql
 source /database/procedures/task/sp_task_assignee.sql
 source /database/procedures/task/sp_delete_task.sql
+source /database/procedures/task/sp_task_status_list.sql
+source /database/procedures/task/sp_task_status.sql
+source /database/procedures/task/sp_replace_default_task_status.sql
+source /database/procedures/task/sp_delete_task_status.sql

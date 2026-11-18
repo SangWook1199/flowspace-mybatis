@@ -6,6 +6,7 @@ import com.flowspace.service.NotificationService;
 import com.flowspace.task.service.SubTaskVO;
 import com.flowspace.task.service.TaskAssigneeVO;
 import com.flowspace.task.service.TaskService;
+import com.flowspace.task.service.TaskStatusVO;
 import com.flowspace.task.service.TaskVO;
 import com.flowspace.task.dto.response.AssigneeItem;
 
@@ -40,15 +41,12 @@ import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
-import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
-import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.CommentRepository;
@@ -56,11 +54,9 @@ import com.flowspace.repository.TaskAttachmentRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
-import com.flowspace.repository.TaskStatusRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
-import com.flowspace.repository.WorkspaceTaskStatusRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -71,8 +67,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TaskServiceImpl implements TaskService {
 
-    private final TaskStatusRepository taskStatusRepository;
-    private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
     private final TaskRepository taskRepository;
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
@@ -102,18 +96,20 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        int position = (int) workspaceTaskStatusRepository.countByWorkspace(workspace);
+        TaskStatusVO status = new TaskStatusVO();
+        status.setWorkspaceId(workspaceId);
+        status.setName(request.name());
+        status.setCategory(request.category());
+        status.setColor(request.color());
+        status.setWipLimit(request.wipLimit());
+        // 상태 수를 순서로 써서 맨 오른쪽 열에 놓여요
+        status.setPosition(taskMapper.selectTaskStatusCount(workspaceId));
 
-        TaskStatus status = taskStatusRepository.save(
-            TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
+        // 상태를 먼저 만들어 번호를 받고, 그 번호로 워크스페이스에 연결해요
+        taskMapper.insertTaskStatus(status);
+        taskMapper.insertWorkspaceTaskStatus(status);
 
-        WorkspaceTaskStatus mapping = WorkspaceTaskStatus.builder()
-            .id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), status.getStatusId())).workspace(workspace)
-            .taskStatus(status).position(position).wipLimit(request.wipLimit()).build();
-
-        workspaceTaskStatusRepository.save(mapping);
-
-        return TaskStatusResponse.from(mapping);
+        return TaskStatusResponse.from(findTaskStatus(workspaceId, status.getStatusId()));
     }
 
     // Task 상태 목록 조회
@@ -130,8 +126,7 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return workspaceTaskStatusRepository.findByWorkspaceOrderByPositionAsc(workspace).stream()
-            .map(mapping -> TaskStatusResponse.from(mapping)).toList();
+        return taskMapper.selectTaskStatusList(workspaceId).stream().map(TaskStatusResponse::from).toList();
     }
 
     // Task 상태 수정
@@ -141,43 +136,38 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
-            .findById(new WorkspaceTaskStatusId(request.workspaceId(), statusId))
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+        Long workspaceId = request.workspaceId();
 
-        workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        TaskStatusVO status = findTaskStatus(workspaceId, statusId);
+
+        validateWorkspaceMember(workspaceId, user);
 
         // 기본 상태(1,2,3) 수정 → 공용 기본 상태는 그대로 두고, 이 워크스페이스 전용 새 상태로 바꿔 끼운다
-        if (mapping.getIsDefault()) {
+        if (status.getIsDefault()) {
 
-            Workspace workspace = mapping.getWorkspace();
+            TaskStatusVO newStatus = new TaskStatusVO();
+            newStatus.setName(request.name());
+            newStatus.setCategory(request.category());
+            newStatus.setColor(request.color());
 
-            TaskStatus newStatus = taskStatusRepository.save(
-                TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
+            taskMapper.insertTaskStatus(newStatus);
 
-            // 같은 자리(position)에 새 상태를 넣는다
-            WorkspaceTaskStatus newMapping = WorkspaceTaskStatus.builder()
-                .id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), newStatus.getStatusId()))
-                .workspace(workspace).taskStatus(newStatus).position(mapping.getPosition())
-                .wipLimit(request.wipLimit()).isDefault(false).build();
+            // 같은 자리에 연결, 작업 이동, 기존 연결 끊기를 프로시저 한 번으로 해요
+            taskMapper.updateDefaultTaskStatus(workspaceId, statusId, newStatus.getStatusId(), request.wipLimit());
 
-            workspaceTaskStatusRepository.save(newMapping);
-
-            // 이 워크스페이스의 작업만 새 상태로 옮기고, 이 워크스페이스에서는 기존 기본 상태 연결을 뺀다
-            taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(workspace, mapping.getTaskStatus())
-                .forEach(task -> task.replaceStatus(newStatus));
-
-            workspaceTaskStatusRepository.delete(mapping);
-
-            return TaskStatusResponse.from(newMapping);
+            return TaskStatusResponse.from(findTaskStatus(workspaceId, newStatus.getStatusId()));
         }
 
-        // 커스텀 상태 수정
-        mapping.getTaskStatus().update(request.name(), request.category(), request.color());
-        mapping.updateWipLimit(request.wipLimit());
+        // 커스텀 상태 수정: 상태 정보와 워크스페이스별 WIP 제한은 테이블이 달라서 UPDATE가 두 번이에요
+        status.setName(request.name());
+        status.setCategory(request.category());
+        status.setColor(request.color());
+        status.setWipLimit(request.wipLimit());
 
-        return TaskStatusResponse.from(mapping);
+        taskMapper.updateTaskStatusInfo(status);
+        taskMapper.updateWorkspaceTaskStatusWipLimit(status);
+
+        return TaskStatusResponse.from(status);
     }
 
     // Task 상태 순서 변경
@@ -187,19 +177,18 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Workspace workspace = workspaceRepository.findById(request.workspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+        Long workspaceId = request.workspaceId();
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        validateWorkspaceMember(workspaceId, user);
 
         for (TaskStatusReorderRequest.Item item : request.statuses()) {
 
-            WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
-                .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), item.statusId()))
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+            // 따로 조회하지 않고, 바뀐 행 수로 그 워크스페이스의 상태인지 확인해요
+            int updated = taskMapper.updateTaskStatusPosition(workspaceId, item.statusId(), item.position());
 
-            mapping.updatePosition(item.position());
+            if (updated == 0) {
+                throw new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND);
+            }
         }
     }
 
@@ -210,16 +199,15 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
-            .findById(new WorkspaceTaskStatusId(request.workspaceId(), statusId))
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+        Long workspaceId = request.workspaceId();
+
+        findTaskStatus(workspaceId, statusId);
 
         // 상태(컬럼) 삭제는 워크스페이스 멤버라면 누구나 할 수 있어요(삭제할 상태의 작업은 다른 상태로 옮겨져요).
-        workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        validateWorkspaceMember(workspaceId, user);
 
         // 마지막 남은 상태는 삭제할 수 없고, 작업을 옮길 대상이 삭제하는 상태 자신일 수도 없다
-        if (workspaceTaskStatusRepository.countByWorkspace(mapping.getWorkspace()) <= 1) {
+        if (taskMapper.selectTaskStatusCount(workspaceId) <= 1) {
             throw new FlowSpaceException(ErrorCode.LAST_TASK_STATUS_CANNOT_DELETE);
         }
 
@@ -227,21 +215,11 @@ public class TaskServiceImpl implements TaskService {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
-        WorkspaceTaskStatus targetMapping = workspaceTaskStatusRepository
-            .findById(new WorkspaceTaskStatusId(request.workspaceId(), request.targetStatusId()))
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+        // 옮길 상태도 같은 워크스페이스의 상태여야 해요
+        findTaskStatus(workspaceId, request.targetStatusId());
 
-        // 같은 워크스페이스 Task만 이동
-        taskRepository.findByStatusOrderByPositionAsc(mapping.getTaskStatus()).stream()
-            .filter(task -> task.getWorkspace().getWorkspaceId().equals(request.workspaceId()))
-            .forEach(task -> task.updateStatus(targetMapping.getTaskStatus()));
-
-        workspaceTaskStatusRepository.delete(mapping);
-
-        // 기본 상태(1,2,3)는 모든 워크스페이스가 같이 쓰는 행이라 DB에서 지우지 않고 이 워크스페이스의 연결만 끊는다
-        if (!mapping.getIsDefault()) {
-            taskStatusRepository.delete(mapping.getTaskStatus());
-        }
+        // 작업 이동, 연결 끊기, 전용 상태 삭제를 프로시저 한 번으로 해요
+        taskMapper.deleteTaskStatus(workspaceId, statusId, request.targetStatusId());
     }
 
     // Task 생성
@@ -279,7 +257,7 @@ public class TaskServiceImpl implements TaskService {
     // Task 저장 공통 처리 (sprint가 null이면 Backlog Task)
     private TaskResponse saveNewTask(Workspace workspace, Sprint sprint, TaskCreateRequest request, User user) {
 
-        TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
+        TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
 
         // 같은 상태인 작업 수를 순서로 써서, 새 작업이 그 상태의 맨 뒤에 놓여요
         BigDecimal position = BigDecimal
@@ -388,7 +366,7 @@ public class TaskServiceImpl implements TaskService {
             }
         }
 
-        TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
+        TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
 
         boolean sprintChanged = !Objects.equals(task.getSprintId(), request.sprintId());
 
@@ -487,7 +465,7 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
+        TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
 
         // 같은 Status면 변경하지 않음
         if (task.getStatusId().equals(request.statusId())) {
@@ -690,7 +668,7 @@ public class TaskServiceImpl implements TaskService {
             workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-            TaskStatus status = validateWorkspaceStatus(workspace, item.statusId());
+            TaskStatusVO status = validateWorkspaceStatus(workspace, item.statusId());
 
             // 칸반에서 다른 열로 옮긴 작업만(같은 열 안에서 순서만 바꾼 건 제외) 알려요.
             boolean statusChanged = !task.getStatusId().equals(status.getStatusId());
@@ -715,7 +693,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 작업 상태가 바뀌었음을 담당자들에게 알림 (바꾼 본인은 제외돼요)
-    private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatus status, User actor,
+    private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatusVO status, User actor,
         List<User> targets) {
         notificationService.sendAll(targets, actor, workspace, NotificationType.TASK_STATUS_CHANGED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
@@ -723,7 +701,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 완료 시각: 완료 상태가 되면 처음 한 번만 기록하고, 완료가 아니면 비워요(엔티티의 syncCompletedAt과 같은 규칙)
-    private void syncCompletedAt(TaskVO task, TaskStatus status) {
+    private void syncCompletedAt(TaskVO task, TaskStatusVO status) {
 
         if (status.getCategory() != TaskStatusCategory.DONE) {
             task.setCompletedAt(null);
@@ -737,14 +715,38 @@ public class TaskServiceImpl implements TaskService {
         return userRepository.findAllById(taskMapper.selectTaskAssigneeUserIds(taskId));
     }
 
-    // 공통 검증 메서드
-    private TaskStatus validateWorkspaceStatus(Workspace workspace, Long statusId) {
+    // 작업에 쓸 상태가 이 워크스페이스의 상태인지 확인해요 (아니면 INVALID_TASK_STATUS)
+    private TaskStatusVO validateWorkspaceStatus(Workspace workspace, Long statusId) {
 
-        WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
-            .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), statusId))
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS));
+        TaskStatusVO status = taskMapper.selectTaskStatusById(workspace.getWorkspaceId(), statusId);
 
-        return mapping.getTaskStatus();
+        if (status == null) {
+            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
+        }
+
+        return status;
+    }
+
+    // 상태 화면에서 고르는 상태 한 개 (없으면 TASK_STATUS_NOT_FOUND)
+    private TaskStatusVO findTaskStatus(Long workspaceId, Long statusId) {
+
+        TaskStatusVO status = taskMapper.selectTaskStatusById(workspaceId, statusId);
+
+        if (status == null) {
+            throw new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND);
+        }
+
+        return status;
+    }
+
+    // 워크스페이스 멤버인지 확인해요
+    private void validateWorkspaceMember(Long workspaceId, User user) {
+
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
     }
 
     // Task 검색
