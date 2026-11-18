@@ -15,7 +15,7 @@
         WHERE sprint_id = #{sprintId}
     </select>
 
-    <!-- 워크스페이스의 스프린트 목록과 진행 상황. 조인과 집계는 프로시저 안에서 해요(backend/database/procedures). -->
+    <!-- 워크스페이스의 스프린트 목록과 진행 상황. 조인과 집계는 프로시저 안에서 해요(backend/database/procedures/sprint). -->
     <select id="selectSprintProgressList" statementType="CALLABLE"
             resultType="com.flowspace.sprint.service.SprintProgressVO">
         {call sp_sprint_progress_list(#{workspaceId})}

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.task.service.impl.TaskMapper">
 
-    <!-- 칸반 작업 목록과 상태 이름. 조인은 프로시저 안에서 해요(backend/database/procedures).
+    <!-- 칸반 작업 목록과 상태 이름. 조인은 프로시저 안에서 해요(backend/database/procedures/task).
          sprintId가 null일 수 있어서 jdbcType을 적어 줘요(값이 없으면 어떤 타입의 NULL인지 알려 줘야 해요). -->
     <select id="selectTaskList" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskVO">
         {call sp_task_list(#{workspaceId}, #{sprintId, jdbcType=BIGINT})}
