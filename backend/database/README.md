@@ -60,6 +60,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_status_list` | 조인 | 워크스페이스 번호 | 작업 상태(칸반 열) 목록과 순서·WIP 제한 | `TaskMapper.selectTaskStatusList` |
 | `sp_task_status` | 조인 | 워크스페이스 번호, 상태 번호 | 위와 같은데 한 개 (그 워크스페이스의 상태가 아니면 없음) | `TaskMapper.selectTaskStatusById` |
 | `sp_replace_default_task_status` | 일괄 변경 | 워크스페이스 번호, 기존·새 상태 번호, WIP 제한 | 기본 상태 대신 새 상태를 같은 자리에 연결하고 작업을 옮김 | `TaskMapper.updateDefaultTaskStatus` |
+| `sp_task_search` | 조인 | 워크스페이스 번호, 검색어 | 제목으로 작업 검색 (상태 이름 포함) | `TaskMapper.selectTaskSearchList` |
 | `sp_delete_task_status` | 일괄 변경 | 워크스페이스 번호, 삭제할·옮길 상태 번호 | 작업을 다른 상태로 옮기고 상태 삭제 (기본 상태는 연결만 끊음) | `TaskMapper.deleteTaskStatus` |
 
 ## 함께 고쳐야 하는 쌍
@@ -72,3 +73,6 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_list` | `sp_task` | `TaskVO` |
 | `sp_task_assignee_list` | `sp_task_assignee` | `TaskAssigneeVO` |
 | `sp_task_status_list` | `sp_task_status` | `TaskStatusVO` |
+
+담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
+작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요. 담당자 컬럼을 바꾸면 이 세 곳을 함께 고쳐요.

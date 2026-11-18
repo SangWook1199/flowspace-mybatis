@@ -234,4 +234,27 @@
         {call sp_delete_task_status(#{workspaceId}, #{statusId}, #{targetStatusId})}
     </delete>
 
+    <!-- 제목으로 작업 검색. 조인은 프로시저 안에서 해요. -->
+    <select id="selectTaskSearchList" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskVO">
+        {call sp_task_search(#{workspaceId}, #{keyword})}
+    </select>
+
+    <!-- 여러 작업의 담당자. 검색 결과는 여러 스프린트에 흩어져 있어서 작업 번호 목록으로 읽어요.
+         프로시저는 목록을 인자로 받기 어려워서, 조인이지만 XML의 foreach로 했어요(sp_task_assignee_list와 같은 컬럼). -->
+    <select id="selectTaskAssigneeListByTaskIds" resultType="com.flowspace.task.service.TaskAssigneeVO">
+        SELECT ta.task_id,
+               u.user_id,
+               u.nickname,
+               u.profile_file_id,
+               f.file_url AS profile_image_url
+          FROM task_assignees ta
+          JOIN users u ON u.user_id = ta.user_id
+          LEFT JOIN files f ON f.file_id = u.profile_file_id
+         WHERE ta.task_id IN
+        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
+            #{taskId}
+        </foreach>
+         ORDER BY ta.task_assignee_id
+    </select>
+
 </mapper>

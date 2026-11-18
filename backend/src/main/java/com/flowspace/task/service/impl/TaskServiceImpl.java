@@ -39,8 +39,6 @@ import com.flowspace.task.dto.request.SubTaskUpdateRequest;
 import com.flowspace.entity.Comment;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
-import com.flowspace.entity.Task;
-import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.ActivityTargetType;
@@ -52,8 +50,6 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.TaskAttachmentRepository;
 import com.flowspace.repository.SprintRepository;
-import com.flowspace.repository.TaskAssigneeRepository;
-import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
@@ -67,14 +63,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TaskServiceImpl implements TaskService {
 
-    private final TaskRepository taskRepository;
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final CommentRepository commentRepository;
     private final TaskAttachmentRepository taskAttachmentRepository;
     private final FileService fileService;
-    private final TaskAssigneeRepository taskAssigneeRepository;
     private final UserRepository userRepository;
 
     private final ActivityService activityService;
@@ -765,9 +759,20 @@ public class TaskServiceImpl implements TaskService {
 
         String search = keyword == null ? "" : keyword;
 
-        List<Task> tasks = taskRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search);
+        // LIKE에서 %와 _는 "아무 글자"라는 뜻이라, 입력한 글자 그대로 찾도록 앞에 \를 붙여요(JPA의 Containing이 자동으로 하던 일)
+        String escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 
-        Map<Long, List<TaskAssignee>> assigneesByTask = groupAssignees(tasks);
+        List<TaskVO> tasks = taskMapper.selectTaskSearchList(workspaceId, escaped);
+
+        // 결과가 없으면 IN ()이 되어 SQL 오류가 나서 여기서 끝내요
+        if (tasks.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> taskIds = tasks.stream().map(TaskVO::getTaskId).toList();
+
+        Map<Long, List<AssigneeItem>> assigneesByTask =
+            groupAssigneeItems(taskMapper.selectTaskAssigneeListByTaskIds(taskIds));
 
         return tasks.stream()
             .map(task -> TaskSearchResponse.from(task, assigneesByTask.getOrDefault(task.getTaskId(), List.of())))
@@ -787,12 +792,8 @@ public class TaskServiceImpl implements TaskService {
 
         List<Long> taskIds = tasks.stream().map(TaskVO::getTaskId).toList();
 
-        Map<Long, List<AssigneeItem>> assigneesByTask = new HashMap<>();
-
-        for (TaskAssigneeVO assignee : taskMapper.selectTaskAssigneeList(workspaceId, sprintId)) {
-            assigneesByTask.computeIfAbsent(assignee.getTaskId(), key -> new ArrayList<>())
-                .add(AssigneeItem.from(assignee));
-        }
+        Map<Long, List<AssigneeItem>> assigneesByTask =
+            groupAssigneeItems(taskMapper.selectTaskAssigneeList(workspaceId, sprintId));
 
         Map<Long, List<SubTaskResponse>> subtasksByTask = new HashMap<>();
 
@@ -877,17 +878,13 @@ public class TaskServiceImpl implements TaskService {
         return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
-    // 여러 작업의 담당자를 한 번에 읽어서 작업 id별로 나눠 담아요.
-    private Map<Long, List<TaskAssignee>> groupAssignees(List<Task> tasks) {
+    // 담당자 조회 결과를 작업 번호별로 나눠 담아요 (칸반 목록과 검색에서 같이 써요)
+    private Map<Long, List<AssigneeItem>> groupAssigneeItems(List<TaskAssigneeVO> assignees) {
 
-        Map<Long, List<TaskAssignee>> result = new HashMap<>();
+        Map<Long, List<AssigneeItem>> result = new HashMap<>();
 
-        if (tasks.isEmpty()) {
-            return result;
-        }
-
-        for (TaskAssignee assignee : taskAssigneeRepository.findByTasks(tasks)) {
-            result.computeIfAbsent(assignee.getTask().getTaskId(), key -> new ArrayList<>()).add(assignee);
+        for (TaskAssigneeVO assignee : assignees) {
+            result.computeIfAbsent(assignee.getTaskId(), key -> new ArrayList<>()).add(AssigneeItem.from(assignee));
         }
 
         return result;

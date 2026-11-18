@@ -110,4 +110,10 @@ public interface TaskMapper {
     // 상태 삭제와 작업 이동 (프로시저 sp_delete_task_status)
     void deleteTaskStatus(@Param("workspaceId") Long workspaceId, @Param("statusId") Long statusId,
         @Param("targetStatusId") Long targetStatusId);
+
+    // 제목으로 작업 검색 (프로시저 sp_task_search, 작업 번호·제목·상태만 채워져요)
+    List<TaskVO> selectTaskSearchList(@Param("workspaceId") Long workspaceId, @Param("keyword") String keyword);
+
+    // 여러 작업의 담당자 (작업 번호 목록으로, taskIds가 비어 있으면 안 돼요)
+    List<TaskAssigneeVO> selectTaskAssigneeListByTaskIds(@Param("taskIds") List<Long> taskIds);
 }

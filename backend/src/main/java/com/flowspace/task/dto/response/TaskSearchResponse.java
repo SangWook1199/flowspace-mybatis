@@ -2,6 +2,7 @@ package com.flowspace.task.dto.response;
 
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
+import com.flowspace.task.service.TaskVO;
 
 import java.util.List;
 
@@ -35,6 +36,19 @@ public record TaskSearchResponse(
         );
     }
 
+    // MyBatis 조회 결과(TaskVO)로 응답을 만들어요
+    public static TaskSearchResponse from(
+        TaskVO task,
+        List<AssigneeItem> assignees
+    ) {
+        return new TaskSearchResponse(
+            task.getTaskId(),
+            task.getTitle(),
+            task.getStatusId(),
+            task.getStatusName(),
+            assignees
+        );
+    }
 }
 
 // @formatter:on
