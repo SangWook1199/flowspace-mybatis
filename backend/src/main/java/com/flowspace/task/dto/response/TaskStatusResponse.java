@@ -1,4 +1,4 @@
-package com.flowspace.dto.task;
+package com.flowspace.task.dto.response;
 
 import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.TaskStatusCategory;

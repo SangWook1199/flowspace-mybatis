@@ -1,4 +1,4 @@
-package com.flowspace.dto.task;
+package com.flowspace.task.dto.response;
 
 import com.flowspace.dto.comment.CommentResponse;
 import com.flowspace.entity.SubTask;

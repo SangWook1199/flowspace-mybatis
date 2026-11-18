@@ -1,4 +1,4 @@
-package com.flowspace.dto.task;
+package com.flowspace.task.dto.response;
 
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;

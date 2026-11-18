@@ -1,4 +1,4 @@
-package com.flowspace.dto.task;
+package com.flowspace.task.dto.request;
 
 import com.flowspace.entity.enums.TaskPriority;
 import jakarta.validation.constraints.NotBlank;

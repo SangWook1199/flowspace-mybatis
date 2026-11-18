@@ -1,4 +1,9 @@
-package com.flowspace.service;
+package com.flowspace.task.service.impl;
+
+import com.flowspace.service.ActivityService;
+import com.flowspace.service.FileService;
+import com.flowspace.service.NotificationService;
+import com.flowspace.task.service.TaskService;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -9,23 +14,23 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.flowspace.dto.task.TaskCreateRequest;
-import com.flowspace.dto.task.TaskReorderRequest;
-import com.flowspace.dto.task.TaskResponse;
-import com.flowspace.dto.task.TaskSearchResponse;
-import com.flowspace.dto.task.TaskSprintUpdateRequest;
-import com.flowspace.dto.task.TaskStatusCreateRequest;
-import com.flowspace.dto.task.TaskStatusDeleteRequest;
-import com.flowspace.dto.task.TaskStatusEditRequest;
-import com.flowspace.dto.task.TaskStatusReorderRequest;
-import com.flowspace.dto.task.TaskStatusResponse;
-import com.flowspace.dto.task.TaskStatusUpdateRequest;
-import com.flowspace.dto.task.TaskUpdateRequest;
+import com.flowspace.task.dto.request.TaskCreateRequest;
+import com.flowspace.task.dto.request.TaskReorderRequest;
+import com.flowspace.task.dto.response.TaskResponse;
+import com.flowspace.task.dto.response.TaskSearchResponse;
+import com.flowspace.task.dto.request.TaskSprintUpdateRequest;
+import com.flowspace.task.dto.request.TaskStatusCreateRequest;
+import com.flowspace.task.dto.request.TaskStatusDeleteRequest;
+import com.flowspace.task.dto.request.TaskStatusEditRequest;
+import com.flowspace.task.dto.request.TaskStatusReorderRequest;
+import com.flowspace.task.dto.response.TaskStatusResponse;
+import com.flowspace.task.dto.request.TaskStatusUpdateRequest;
+import com.flowspace.task.dto.request.TaskUpdateRequest;
 import com.flowspace.dto.comment.CommentResponse;
-import com.flowspace.dto.task.SubTaskCreateRequest;
-import com.flowspace.dto.task.SubTaskReorderRequest;
-import com.flowspace.dto.task.SubTaskResponse;
-import com.flowspace.dto.task.SubTaskUpdateRequest;
+import com.flowspace.task.dto.request.SubTaskCreateRequest;
+import com.flowspace.task.dto.request.SubTaskReorderRequest;
+import com.flowspace.task.dto.response.SubTaskResponse;
+import com.flowspace.task.dto.request.SubTaskUpdateRequest;
 import com.flowspace.entity.Comment;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
@@ -63,7 +68,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class TaskService {
+public class TaskServiceImpl implements TaskService {
 
     private final TaskStatusRepository taskStatusRepository;
     private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
@@ -82,6 +87,7 @@ public class TaskService {
     private final NotificationService notificationService;
 
     // Task 상태 생성
+    @Override
     public TaskStatusResponse createStatus(Long workspaceId, TaskStatusCreateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -109,6 +115,7 @@ public class TaskService {
 
     // Task 상태 목록 조회
     @Transactional(readOnly = true)
+    @Override
     public List<TaskStatusResponse> getStatuses(Long workspaceId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -125,6 +132,7 @@ public class TaskService {
     }
 
     // Task 상태 수정
+    @Override
     public TaskStatusResponse updateStatusInfo(Long statusId, TaskStatusEditRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -170,6 +178,7 @@ public class TaskService {
     }
 
     // Task 상태 순서 변경
+    @Override
     public void reorderStatuses(TaskStatusReorderRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -192,6 +201,7 @@ public class TaskService {
     }
 
     // Task 상태 삭제
+    @Override
     public void deleteStatus(Long statusId, TaskStatusDeleteRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -232,6 +242,7 @@ public class TaskService {
     }
 
     // Task 생성
+    @Override
     public TaskResponse createTask(Long sprintId, TaskCreateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -247,6 +258,7 @@ public class TaskService {
     }
 
     // Backlog Task 생성 (스프린트 없이 워크스페이스에 바로 만든다)
+    @Override
     public TaskResponse createBacklogTask(Long workspaceId, TaskCreateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -304,6 +316,7 @@ public class TaskService {
 
     // 스프린트 Task 목록 조회
     @Transactional(readOnly = true)
+    @Override
     public List<TaskResponse> getTasksBySprint(Long sprintId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -320,6 +333,7 @@ public class TaskService {
 
     // Task 단건 조회
     @Transactional(readOnly = true)
+    @Override
     public TaskResponse getTask(Long taskId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -338,6 +352,7 @@ public class TaskService {
     }
 
     // Task 수정
+    @Override
     public TaskResponse updateTask(Long taskId, TaskUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -426,6 +441,7 @@ public class TaskService {
 
     // Backlog Task 목록 조회
     @Transactional(readOnly = true)
+    @Override
     public List<TaskResponse> getBacklogTasks(Long workspaceId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -441,6 +457,7 @@ public class TaskService {
     }
 
     // Task 상태 변경
+    @Override
     public TaskResponse updateTaskStatus(Long taskId, TaskStatusUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -485,6 +502,7 @@ public class TaskService {
     }
 
     // Task 삭제
+    @Override
     public void deleteTask(Long taskId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -525,6 +543,7 @@ public class TaskService {
     }
 
     // SubTask 생성
+    @Override
     public SubTaskResponse createSubTask(Long taskId, SubTaskCreateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -558,6 +577,7 @@ public class TaskService {
 
     // SubTask 목록 조회
     @Transactional(readOnly = true)
+    @Override
     public List<SubTaskResponse> getSubTasks(Long taskId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -572,6 +592,7 @@ public class TaskService {
     }
 
     // SubTask 수정
+    @Override
     public SubTaskResponse updateSubTask(Long subTaskId, SubTaskUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -601,6 +622,7 @@ public class TaskService {
     }
 
     // SubTask 순서 변경
+    @Override
     public void reorderSubTasks(SubTaskReorderRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -619,6 +641,7 @@ public class TaskService {
     }
 
     // SubTask 삭제
+    @Override
     public void deleteSubTask(Long subtaskId, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -634,6 +657,7 @@ public class TaskService {
     }
 
     // Task 스프린트 이동
+    @Override
     public TaskResponse updateTaskSprint(Long taskId, TaskSprintUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -685,6 +709,7 @@ public class TaskService {
     }
 
     // Task 순서 변경
+    @Override
     public void reorderTasks(TaskReorderRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -740,6 +765,7 @@ public class TaskService {
 
     // Task 검색
     @Transactional(readOnly = true)
+    @Override
     public List<TaskSearchResponse> searchTasks(Long workspaceId, String keyword, String email) {
 
         User user = userRepository.findByEmail(email)

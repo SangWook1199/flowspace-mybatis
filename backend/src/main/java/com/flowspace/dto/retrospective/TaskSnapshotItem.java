@@ -3,7 +3,7 @@ package com.flowspace.dto.retrospective;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.flowspace.dto.task.AssigneeItem;
+import com.flowspace.task.dto.response.AssigneeItem;
 import com.flowspace.entity.SubTaskSnapshot;
 import com.flowspace.entity.TaskSnapshot;
 import com.flowspace.entity.TaskSnapshotAssignee;

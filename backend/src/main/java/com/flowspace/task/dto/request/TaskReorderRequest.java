@@ -1,4 +1,4 @@
-package com.flowspace.dto.task;
+package com.flowspace.task.dto.request;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -1,6 +1,6 @@
 package com.flowspace.dto.calendar;
 
-import com.flowspace.dto.task.AssigneeItem;
+import com.flowspace.task.dto.response.AssigneeItem;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
