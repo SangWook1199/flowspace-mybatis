@@ -23,7 +23,8 @@ database/
     ├── calendar/           캘린더·일정
     ├── comment/            댓글
     ├── retrospective/      회고
-    └── page/               페이지
+    ├── page/               페이지
+    └── block/              블록
 ```
 
 ## 규칙
@@ -155,6 +156,15 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 
 휴지통 보내기·복원은 하위 페이지 번호 **목록**을 받아 한 번에 바꾸는 SQL이라 `Page_SQL.xml`의 `<foreach>`로 했어요.
 
+### 블록 (`procedures/block`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_block_list` | 조인 | 페이지 | 블록 목록과 이미지 주소·데이터베이스 번호·페이지 정보 | `BlockMapper.selectBlockList` |
+| `sp_block` | 조인 | 블록 | 위와 같은데 한 개 | `BlockMapper.selectBlockById` |
+
+블록 등록·수정·삭제, 연결할 작업·일정·스프린트 확인, 페이지 잠금(`FOR UPDATE`)·버전 올리기는 테이블 하나라서 `Block_SQL.xml`에 있어요.
+
 ## 함께 고쳐야 하는 쌍
 
 아래 쌍은 결과 컬럼이 같고 `WHERE`만 달라요. 컬럼을 바꾸면 **두 파일을 함께** 고쳐야 해요(VO 하나가 두 결과를 함께 받아요).
@@ -171,6 +181,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_notification_list` | `sp_notification` | `NotificationVO` |
 | `sp_retrospective_list` | `sp_retrospective` | `RetrospectiveVO` |
 | `sp_page_list` | `sp_page` | `PageVO` |
+| `sp_block_list` | `sp_block` | `BlockVO` |
 
 담당자 조회는 위 두 프로시저 말고 `Task_SQL.xml`의 `selectTaskAssigneeListByTaskIds`에도 같은 조인이 있어요.
 작업 번호 목록(`<foreach>`)을 넘겨야 해서 XML에 뒀어요.

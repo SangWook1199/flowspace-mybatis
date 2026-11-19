@@ -1,4 +1,4 @@
-package com.flowspace.dto.block;
+package com.flowspace.block.dto.request;
 
 import com.flowspace.entity.enums.BlockType;
 import jakarta.validation.constraints.NotNull;

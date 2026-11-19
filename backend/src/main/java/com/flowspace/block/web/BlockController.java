@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.block.web;
 
 import java.util.List;
 
@@ -7,14 +7,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.flowspace.dto.block.BlockCreateRequest;
-import com.flowspace.dto.block.BlockIndentRequest;
-import com.flowspace.dto.block.BlockReorderRequest;
-import com.flowspace.dto.block.BlockResponse;
-import com.flowspace.dto.block.BlockSyncRequest;
-import com.flowspace.dto.block.BlockSyncResponse;
-import com.flowspace.dto.block.BlockUpdateRequest;
-import com.flowspace.service.BlockService;
+import com.flowspace.block.dto.request.BlockCreateRequest;
+import com.flowspace.block.dto.request.BlockIndentRequest;
+import com.flowspace.block.dto.request.BlockReorderRequest;
+import com.flowspace.block.dto.response.BlockResponse;
+import com.flowspace.block.dto.request.BlockSyncRequest;
+import com.flowspace.block.dto.response.BlockSyncResponse;
+import com.flowspace.block.dto.request.BlockUpdateRequest;
+import com.flowspace.block.service.BlockService;
 import com.flowspace.service.PagePresenceService;
 
 import io.swagger.v3.oas.annotations.Operation;

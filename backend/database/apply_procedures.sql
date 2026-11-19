@@ -68,3 +68,7 @@ source /database/procedures/retrospective/sp_subtask_snapshot_list.sql
 source /database/procedures/page/sp_page_list.sql
 source /database/procedures/page/sp_page.sql
 source /database/procedures/page/sp_page_subtree.sql
+
+-- 블록
+source /database/procedures/block/sp_block_list.sql
+source /database/procedures/block/sp_block.sql
