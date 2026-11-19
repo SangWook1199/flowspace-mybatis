@@ -24,7 +24,8 @@ database/
     ├── comment/            댓글
     ├── retrospective/      회고
     ├── page/               페이지
-    └── block/              블록
+    ├── block/              블록
+    └── database/           데이터베이스 블록
 ```
 
 ## 규칙
@@ -164,6 +165,16 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_block` | 조인 | 블록 | 위와 같은데 한 개 | `BlockMapper.selectBlockById` |
 
 블록 등록·수정·삭제, 연결할 작업·일정·스프린트 확인, 페이지 잠금(`FOR UPDATE`)·버전 올리기는 테이블 하나라서 `Block_SQL.xml`에 있어요.
+
+### 데이터베이스 블록 (`procedures/database`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_block_database` | 조인 | 데이터베이스 | 데이터베이스와 블록이 있는 페이지·워크스페이스·휴지통 여부 | `BlockDatabaseMapper.selectDatabase` |
+| `sp_block_database_option_list` | 조인 | 데이터베이스 | 모든 컬럼의 옵션 (전체 조회용) | `BlockDatabaseMapper.selectDatabaseOptionList` |
+| `sp_block_database_cell_list` | 조인 | 데이터베이스 | 모든 셀, 컬럼 순서대로 (전체 조회용) | `BlockDatabaseMapper.selectDatabaseCellList` |
+
+컬럼·옵션·행·셀 등록·수정·삭제와 순서 바꾸기는 테이블 하나라서 `BlockDatabase_SQL.xml`에 있어요. 행을 지울 때 연결된 페이지는 `PageService.deletePage`로 휴지통에 보내요.
 
 ## 함께 고쳐야 하는 쌍
 

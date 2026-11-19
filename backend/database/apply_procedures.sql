@@ -72,3 +72,8 @@ source /database/procedures/page/sp_page_subtree.sql
 -- 블록
 source /database/procedures/block/sp_block_list.sql
 source /database/procedures/block/sp_block.sql
+
+-- 데이터베이스 블록
+source /database/procedures/database/sp_block_database.sql
+source /database/procedures/database/sp_block_database_option_list.sql
+source /database/procedures/database/sp_block_database_cell_list.sql

@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.database.service.impl.BlockDatabaseMapper">
+
+    <!-- 이메일로 사용자 번호 -->
+    <select id="selectUserIdByEmail" resultType="long">
+        SELECT user_id
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- ==================== 페이지·블록 ==================== -->
+
+    <!-- 페이지 정보 -->
+    <select id="selectPage" resultType="com.flowspace.page.service.PageVO">
+        SELECT page_id,
+               workspace_id,
+               is_deleted
+        FROM pages
+        WHERE page_id = #{pageId}
+    </select>
+
+    <!-- 페이지 정보 + 행 잠금 (휴지통 제외) -->
+    <select id="selectPageForUpdate" resultType="com.flowspace.page.service.PageVO">
+        SELECT page_id,
+               workspace_id,
+               is_deleted
+        FROM pages
+        WHERE page_id = #{pageId}
+          AND is_deleted = FALSE
+        FOR UPDATE
+    </select>
+
+    <!-- 페이지 버전 +1 -->
+    <update id="updatePageVersion">
+        UPDATE pages
+        SET version = version + 1
+        WHERE page_id = #{pageId}
+    </update>
+
+    <!-- 페이지의 블록 수 -->
+    <select id="selectBlockCount" resultType="int">
+        SELECT COUNT(*)
+        FROM blocks
+        WHERE page_id = #{pageId}
+    </select>
+
+    <!-- 데이터베이스 블록 등록 -->
+    <insert id="insertBlock" parameterType="com.flowspace.block.service.BlockVO"
+            useGeneratedKeys="true" keyProperty="blockId">
+        INSERT INTO blocks (page_id, type, position, created_by)
+        VALUES (#{pageId}, #{type}, #{position}, #{createdBy})
+    </insert>
+
+    <!-- 행 페이지 등록 (제목·순서는 DB 기본값) -->
+    <insert id="insertPage" parameterType="com.flowspace.page.service.PageVO"
+            useGeneratedKeys="true" keyProperty="pageId">
+        INSERT INTO pages (workspace_id, parent_page_id, created_by)
+        VALUES (#{workspaceId}, #{parentPageId}, #{createdBy})
+    </insert>
+
+    <!-- 페이지를 쓰는 행 수 -->
+    <select id="selectRowCountByPage" resultType="int">
+        SELECT COUNT(*)
+        FROM block_database_rows
+        WHERE page_id = #{pageId}
+    </select>
+
+    <!-- ==================== 데이터베이스 ==================== -->
+
+    <!-- 데이터베이스 한 개 (sp_block_database) -->
+    <select id="selectDatabase" statementType="CALLABLE" resultType="com.flowspace.database.service.BlockDatabaseVO">
+        {call sp_block_database(#{databaseId})}
+    </select>
+
+    <!-- 데이터베이스 등록 -->
+    <insert id="insertDatabase" parameterType="com.flowspace.database.service.BlockDatabaseVO"
+            useGeneratedKeys="true" keyProperty="databaseId">
+        INSERT INTO block_databases (block_id, title, view_type)
+        VALUES (#{blockId}, #{title}, #{viewType})
+    </insert>
+
+    <!-- 제목 수정 -->
+    <update id="updateDatabaseTitle">
+        UPDATE block_databases
+        SET title = #{title}
+        WHERE database_id = #{databaseId}
+    </update>
+
+    <!-- 표 / 데이터베이스 전환 -->
+    <update id="updateDatabaseViewType">
+        UPDATE block_databases
+        SET view_type = #{viewType}
+        WHERE database_id = #{databaseId}
+    </update>
+
+    <!-- 데이터베이스 삭제 -->
+    <delete id="deleteDatabase">
+        DELETE FROM block_databases
+        WHERE database_id = #{databaseId}
+    </delete>
+
+    <!-- ==================== 컬럼 ==================== -->
+
+    <!-- 컬럼 조회 공통 -->
+    <sql id="columnSelect">
+        SELECT column_id,
+               database_id,
+               name,
+               type,
+               position,
+               width,
+               created_at
+        FROM block_database_columns
+    </sql>
+
+    <!-- 컬럼 목록 -->
+    <select id="selectColumnList" resultType="com.flowspace.database.service.BlockDatabaseColumnVO">
+        <include refid="columnSelect"/>
+        WHERE database_id = #{databaseId}
+        ORDER BY position, column_id
+    </select>
+
+    <!-- 컬럼 한 개 -->
+    <select id="selectColumn" resultType="com.flowspace.database.service.BlockDatabaseColumnVO">
+        <include refid="columnSelect"/>
+        WHERE column_id = #{columnId}
+    </select>
+
+    <!-- 여러 컬럼 -->
+    <select id="selectColumnListByIds" resultType="com.flowspace.database.service.BlockDatabaseColumnVO">
+        <include refid="columnSelect"/>
+        WHERE column_id IN
+        <foreach collection="columnIds" item="columnId" open="(" separator="," close=")">
+            #{columnId}
+        </foreach>
+    </select>
+
+    <!-- 컬럼 수 -->
+    <select id="selectColumnCount" resultType="int">
+        SELECT COUNT(*)
+        FROM block_database_columns
+        WHERE database_id = #{databaseId}
+    </select>
+
+    <!-- 컬럼 등록 (너비는 DB 기본값) -->
+    <insert id="insertColumn" parameterType="com.flowspace.database.service.BlockDatabaseColumnVO"
+            useGeneratedKeys="true" keyProperty="columnId">
+        INSERT INTO block_database_columns (database_id, name, type, position)
+        VALUES (#{databaseId}, #{name}, #{type}, #{position})
+    </insert>
+
+    <!-- 이름·종류 수정 -->
+    <update id="updateColumn">
+        UPDATE block_database_columns
+        SET name = #{name},
+            type = #{type}
+        WHERE column_id = #{columnId}
+    </update>
+
+    <!-- 너비 수정 -->
+    <update id="updateColumnWidth">
+        UPDATE block_database_columns
+        SET width = #{width}
+        WHERE column_id = #{columnId}
+    </update>
+
+    <!-- 순서 수정 -->
+    <update id="updateColumnPosition">
+        UPDATE block_database_columns
+        SET position = #{position}
+        WHERE column_id = #{columnId}
+    </update>
+
+    <!-- 컬럼 삭제 -->
+    <delete id="deleteColumn">
+        DELETE FROM block_database_columns
+        WHERE column_id = #{columnId}
+    </delete>
+
+    <!-- ==================== 옵션 ==================== -->
+
+    <!-- 옵션 조회 공통 -->
+    <sql id="optionSelect">
+        SELECT option_id,
+               column_id,
+               value,
+               color,
+               status_group,
+               position,
+               created_at
+        FROM block_database_column_options
+    </sql>
+
+    <!-- 컬럼의 옵션 목록 -->
+    <select id="selectOptionList" resultType="com.flowspace.database.service.BlockDatabaseColumnOptionVO">
+        <include refid="optionSelect"/>
+        WHERE column_id = #{columnId}
+        ORDER BY position, option_id
+    </select>
+
+    <!-- 데이터베이스의 모든 옵션 (sp_block_database_option_list) -->
+    <select id="selectDatabaseOptionList" statementType="CALLABLE"
+            resultType="com.flowspace.database.service.BlockDatabaseColumnOptionVO">
+        {call sp_block_database_option_list(#{databaseId})}
+    </select>
+
+    <!-- 옵션 한 개 -->
+    <select id="selectOption" resultType="com.flowspace.database.service.BlockDatabaseColumnOptionVO">
+        <include refid="optionSelect"/>
+        WHERE option_id = #{optionId}
+    </select>
+
+    <!-- 여러 옵션 -->
+    <select id="selectOptionListByIds" resultType="com.flowspace.database.service.BlockDatabaseColumnOptionVO">
+        <include refid="optionSelect"/>
+        WHERE option_id IN
+        <foreach collection="optionIds" item="optionId" open="(" separator="," close=")">
+            #{optionId}
+        </foreach>
+    </select>
+
+    <!-- 컬럼의 옵션 수 -->
+    <select id="selectOptionCount" resultType="int">
+        SELECT COUNT(*)
+        FROM block_database_column_options
+        WHERE column_id = #{columnId}
+    </select>
+
+    <!-- 옵션 등록 -->
+    <insert id="insertOption" parameterType="com.flowspace.database.service.BlockDatabaseColumnOptionVO"
+            useGeneratedKeys="true" keyProperty="optionId">
+        INSERT INTO block_database_column_options (column_id, value, color, status_group, position)
+        VALUES (#{columnId}, #{value}, #{color}, #{statusGroup}, #{position})
+    </insert>
+
+    <!-- 값·색상·상태 그룹 수정 -->
+    <update id="updateOption">
+        UPDATE block_database_column_options
+        SET value        = #{value},
+            color        = #{color},
+            status_group = #{statusGroup}
+        WHERE option_id = #{optionId}
+    </update>
+
+    <!-- 순서 수정 -->
+    <update id="updateOptionPosition">
+        UPDATE block_database_column_options
+        SET position = #{position}
+        WHERE option_id = #{optionId}
+    </update>
+
+    <!-- 옵션 삭제 -->
+    <delete id="deleteOption">
+        DELETE FROM block_database_column_options
+        WHERE option_id = #{optionId}
+    </delete>
+
+    <!-- ==================== 행 ==================== -->
+
+    <!-- 행 조회 공통 -->
+    <sql id="rowSelect">
+        SELECT row_id,
+               database_id,
+               page_id,
+               position,
+               created_at
+        FROM block_database_rows
+    </sql>
+
+    <!-- 행 목록 -->
+    <select id="selectRowList" resultType="com.flowspace.database.service.BlockDatabaseRowVO">
+        <include refid="rowSelect"/>
+        WHERE database_id = #{databaseId}
+        ORDER BY position, row_id
+    </select>
+
+    <!-- 행 한 개 -->
+    <select id="selectRow" resultType="com.flowspace.database.service.BlockDatabaseRowVO">
+        <include refid="rowSelect"/>
+        WHERE row_id = #{rowId}
+    </select>
+
+    <!-- 여러 행 -->
+    <select id="selectRowListByIds" resultType="com.flowspace.database.service.BlockDatabaseRowVO">
+        <include refid="rowSelect"/>
+        WHERE row_id IN
+        <foreach collection="rowIds" item="rowId" open="(" separator="," close=")">
+            #{rowId}
+        </foreach>
+    </select>
+
+    <!-- 행 수 -->
+    <select id="selectRowCount" resultType="int">
+        SELECT COUNT(*)
+        FROM block_database_rows
+        WHERE database_id = #{databaseId}
+    </select>
+
+    <!-- 행 등록 -->
+    <insert id="insertRow" parameterType="com.flowspace.database.service.BlockDatabaseRowVO"
+            useGeneratedKeys="true" keyProperty="rowId">
+        INSERT INTO block_database_rows (database_id, page_id, position)
+        VALUES (#{databaseId}, #{pageId}, #{position})
+    </insert>
+
+    <!-- 순서 수정 -->
+    <update id="updateRowPosition">
+        UPDATE block_database_rows
+        SET position = #{position}
+        WHERE row_id = #{rowId}
+    </update>
+
+    <!-- 행 삭제 -->
+    <delete id="deleteRow">
+        DELETE FROM block_database_rows
+        WHERE row_id = #{rowId}
+    </delete>
+
+    <!-- ==================== 셀 ==================== -->
+
+    <!-- 새 컬럼의 빈 셀 (기존 행마다) -->
+    <insert id="insertColumnCells">
+        INSERT INTO block_database_cells (row_id, column_id)
+        SELECT row_id, #{columnId}
+        FROM block_database_rows
+        WHERE database_id = #{databaseId}
+    </insert>
+
+    <!-- 새 행의 빈 셀 (컬럼마다) -->
+    <insert id="insertRowCells">
+        INSERT INTO block_database_cells (row_id, column_id)
+        SELECT #{rowId}, column_id
+        FROM block_database_columns
+        WHERE database_id = #{databaseId}
+    </insert>
+
+    <!-- 셀 한 개 -->
+    <select id="selectCell" resultType="com.flowspace.database.service.BlockDatabaseCellVO">
+        SELECT row_id,
+               column_id,
+               value
+        FROM block_database_cells
+        WHERE row_id = #{rowId}
+          AND column_id = #{columnId}
+    </select>
+
+    <!-- 값 수정 -->
+    <update id="updateCellValue">
+        UPDATE block_database_cells
+        SET value = #{value}
+        WHERE row_id = #{rowId}
+          AND column_id = #{columnId}
+    </update>
+
+    <!-- 데이터베이스의 모든 셀 (sp_block_database_cell_list) -->
+    <select id="selectDatabaseCellList" statementType="CALLABLE" resultType="com.flowspace.database.service.BlockDatabaseCellVO">
+        {call sp_block_database_cell_list(#{databaseId})}
+    </select>
+
+</mapper>
