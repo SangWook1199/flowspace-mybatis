@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.file.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,8 +27,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.file.service.FileVO;
-import com.flowspace.file.service.impl.FileMapper;
-import com.flowspace.file.service.impl.FileServiceImpl;
 
 // 업로드 검사: 위험한 확장자 차단, 이미지는 확장자·Content-Type·시작 바이트 모두 확인
 @ExtendWith(MockitoExtension.class)

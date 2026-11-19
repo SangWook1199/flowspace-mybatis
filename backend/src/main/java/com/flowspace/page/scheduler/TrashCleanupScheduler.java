@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.page.scheduler;
 
 import com.flowspace.page.service.PageService;
 

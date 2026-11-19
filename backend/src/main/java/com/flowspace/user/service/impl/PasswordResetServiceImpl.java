@@ -1,6 +1,6 @@
 package com.flowspace.user.service.impl;
 
-import com.flowspace.service.MailService;
+import com.flowspace.common.mail.MailService;
 import com.flowspace.user.service.MailTokenVO;
 import com.flowspace.user.service.PasswordResetService;
 import com.flowspace.user.service.UserVO;

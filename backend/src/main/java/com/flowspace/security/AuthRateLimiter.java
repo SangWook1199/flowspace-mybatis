@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.security;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.Deque;

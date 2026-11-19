@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.common.util;
 
 import java.util.LinkedHashSet;
 import java.util.Set;

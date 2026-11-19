@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.common.mail;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;

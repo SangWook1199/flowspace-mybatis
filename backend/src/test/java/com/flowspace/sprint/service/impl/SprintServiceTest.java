@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.sprint.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,8 +32,6 @@ import com.flowspace.retrospective.service.RetrospectiveService;
 import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
 import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;
-import com.flowspace.sprint.service.impl.SprintMapper;
-import com.flowspace.sprint.service.impl.SprintServiceImpl;
 import com.flowspace.user.service.UserVO;
 import com.flowspace.workspace.dto.response.WorkspaceResponse;
 import com.flowspace.workspace.service.WorkspaceService;

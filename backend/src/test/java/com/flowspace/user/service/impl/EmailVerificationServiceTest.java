@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.user.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,14 +28,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.flowspace.common.mail.MailService;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.user.service.MailTokenVO;
-import com.flowspace.user.service.UserVO;
-import com.flowspace.user.service.impl.UserMapper;
 import com.flowspace.user.dto.request.EmailResendRequest;
 import com.flowspace.user.dto.request.EmailVerifyRequest;
-import com.flowspace.user.service.impl.EmailVerificationServiceImpl;
+import com.flowspace.user.service.MailTokenVO;
+import com.flowspace.user.service.UserVO;
 
 // 이메일 인증: 해시 저장, 재발송 제한, 가입 여부 비노출, 토큰 확인 규칙
 // Mapper 반환 값을 지정하고 호출된 SQL 확인

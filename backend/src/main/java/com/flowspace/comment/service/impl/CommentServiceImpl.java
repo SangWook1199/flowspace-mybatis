@@ -24,7 +24,7 @@ import com.flowspace.common.enums.NotificationType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.notification.service.NotificationService;
-import com.flowspace.service.MentionParser;
+import com.flowspace.common.util.MentionParser;
 import com.flowspace.user.service.UserVO;
 import com.flowspace.workspace.service.WorkspaceService;
 

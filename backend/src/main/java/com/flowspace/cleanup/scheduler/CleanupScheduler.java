@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.cleanup.scheduler;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;

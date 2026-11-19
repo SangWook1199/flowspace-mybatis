@@ -16,7 +16,7 @@ import com.flowspace.search.dto.response.SearchResponse;
 import com.flowspace.search.dto.response.SearchResponse.SearchItem;
 import com.flowspace.search.service.SearchResultVO;
 import com.flowspace.search.service.SearchService;
-import com.flowspace.service.MentionParser;
+import com.flowspace.common.util.MentionParser;
 import com.flowspace.workspace.service.WorkspaceService;
 
 import lombok.RequiredArgsConstructor;

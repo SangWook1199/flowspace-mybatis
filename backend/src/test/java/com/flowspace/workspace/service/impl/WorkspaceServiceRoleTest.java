@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.workspace.service.impl;
 
 import com.flowspace.presence.service.PresenceService;
 
@@ -29,8 +29,6 @@ import com.flowspace.user.service.UserVO;
 import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceVO;
-import com.flowspace.workspace.service.impl.WorkspaceMapper;
-import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
 
 // 워크스페이스 역할 규칙: 초대·추방은 관리자 이상, 역할 변경은 소유자, 관리자는 관리자 추방 불가
 // 역할은 Mapper(selectMemberRole) 반환 값으로 지정

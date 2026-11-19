@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.retrospective.service.impl;
 
 import com.flowspace.page.service.PageService;
 
@@ -24,8 +24,6 @@ import com.flowspace.common.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.retrospective.service.RetrospectiveVO;
-import com.flowspace.retrospective.service.impl.RetrospectiveMapper;
-import com.flowspace.retrospective.service.impl.RetrospectiveServiceImpl;
 import com.flowspace.workspace.service.WorkspaceService;
 
 // 회고 생성: 프로시저 인자, OUT 페이지 번호로 활동 기록, 중복 생성 거절

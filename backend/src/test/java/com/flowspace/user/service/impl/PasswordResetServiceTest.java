@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.user.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,16 +28,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.flowspace.common.mail.MailService;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.user.service.MailTokenVO;
 import com.flowspace.user.service.UserVO;
-import com.flowspace.user.service.impl.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.flowspace.user.dto.request.PasswordForgotRequest;
 import com.flowspace.user.dto.request.PasswordResetRequest;
-import com.flowspace.user.service.impl.PasswordResetServiceImpl;
 
 // 비밀번호 재설정: 가입 여부 비노출, 해시 저장, 토큰·비밀번호 규칙, 로그인 해제
 // Mapper 반환 값을 지정하고 호출된 SQL 확인

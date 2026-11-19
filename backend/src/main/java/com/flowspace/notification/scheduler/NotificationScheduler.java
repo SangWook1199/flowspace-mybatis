@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.notification.scheduler;
 
 import com.flowspace.notification.service.NotificationService;
 

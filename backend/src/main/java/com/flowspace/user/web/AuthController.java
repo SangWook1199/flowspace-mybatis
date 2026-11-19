@@ -22,7 +22,7 @@ import com.flowspace.user.dto.request.TokenRequest;
 import com.flowspace.user.service.AccountService;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.service.AuthRateLimiter;
+import com.flowspace.security.AuthRateLimiter;
 import com.flowspace.user.service.AuthService;
 import com.flowspace.user.service.EmailVerificationService;
 import com.flowspace.user.service.PasswordResetService;
