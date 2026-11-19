@@ -16,6 +16,8 @@ services:
       - ./backend/database:/database:ro
       # 빈 DB로 처음 켤 때 ddl.sql 다음에 프로시저를 만들어요(파일 이름 순서로 실행돼요).
       - ./backend/database/apply_procedures.sql:/docker-entrypoint-initdb.d/procedures.sql:ro
+      # 백엔드 계정(flowspace)은 프로시저 실행 권한만 가져요.
+      - ./backend/database/grants.sql:/docker-entrypoint-initdb.d/grants.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
       interval: 5s

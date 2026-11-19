@@ -13,6 +13,7 @@
 ```
 database/
 ├── apply_procedures.sql    모든 프로시저를 DB에 적용하는 목록
+├── grants.sql              백엔드 계정 권한 (프로시저 실행만)
 └── procedures/
     ├── sprint.sql            스프린트 (Sprint_SQL.xml)
     ├── task.sql              작업(칸반) (Task_SQL.xml)
@@ -46,6 +47,7 @@ database/
 - 인자에 null을 넘길 수 있게 `application.yaml`에 `jdbc-type-for-null: "NULL"`을 설정했어요.
 - 프로시저마다 `DROP PROCEDURE IF EXISTS`로 시작해요. 그래서 파일을 몇 번 적용해도 최신 내용으로 다시 만들어져요.
 - 데이터를 읽기만 하면 `READS SQL DATA`, 바꾸면 `MODIFIES SQL DATA`를 적어요.
+- 백엔드 계정(`flowspace`)은 `EXECUTE` 권한만 가져요(`grants.sql`). 테이블을 직접 읽거나 바꾸지 못하고 프로시저로만 DB를 다뤄요. 프로시저 안의 SQL은 프로시저를 만든 계정(root) 권한으로 실행돼요(`SQL SECURITY DEFINER`, MySQL 기본값).
 - 새 프로시저는 Mapper에 맞는 파일에 추가하고, 아래 표에도 추가해요. 새 Mapper를 만들면 `apply_procedures.sql`에 파일 한 줄을 추가해요.
 
 ## 적용
@@ -55,7 +57,11 @@ docker compose up -d mysql
 docker compose exec mysql mysql -uroot -p flow_space -e "source /database/apply_procedures.sql"
 docker compose exec mysql mysql -uroot -p flow_space -e "source /database/procedures/page.sql"
 docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS WHERE Db = 'flow_space'"
+docker compose exec mysql mysql -uroot -p -e "source /database/grants.sql"
+docker compose exec mysql mysql -uroot -p -e "SHOW GRANTS FOR 'flowspace'@'%'"
 ```
+
+프로시저와 테이블을 만들고 고치는 일은 root로 해요. 백엔드 계정은 실행만 할 수 있어요.
 
 빈 DB로 처음 켤 때는 `ddl.sql` 다음에 자동으로 적용돼요(`docker-compose.yml`의 `docker-entrypoint-initdb.d`).
 
