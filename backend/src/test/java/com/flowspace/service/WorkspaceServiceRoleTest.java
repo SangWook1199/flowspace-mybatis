@@ -11,8 +11,6 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,15 +19,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.flowspace.entity.User;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.workspace.dto.request.WorkspaceInviteRequest;
 import com.flowspace.workspace.dto.request.WorkspaceRoleChangeRequest;
 import com.flowspace.workspace.dto.response.WorkspaceMemberResponse;
+import com.flowspace.user.service.UserVO;
 import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceVO;
@@ -42,10 +38,6 @@ import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
 class WorkspaceServiceRoleTest {
 
     @Mock
-    private WorkspaceRepository workspaceRepository;
-    @Mock
-    private UserRepository userRepository;
-    @Mock
     private NotificationService notificationService;
     @Mock
     private PresenceService presenceService;
@@ -55,23 +47,31 @@ class WorkspaceServiceRoleTest {
     @InjectMocks
     private WorkspaceServiceImpl workspaceService;
 
-    private User actor;
-    private User target;
+    private UserVO actor;
+    private UserVO target;
 
     @BeforeEach
     void setUp() {
-        actor = User.builder().userId(1L).email("actor@a.com").nickname("actor").build();
-        target = User.builder().userId(2L).email("target@a.com").nickname("target").build();
+        actor = user(1L, "actor@a.com", "actor");
+        target = user(2L, "target@a.com", "target");
 
-        lenient().when(userRepository.findByEmail("actor@a.com")).thenReturn(Optional.of(actor));
-        lenient().when(userRepository.findById(2L)).thenReturn(Optional.of(target));
-        lenient().when(userRepository.existsById(2L)).thenReturn(true);
+        lenient().when(workspaceMapper.selectUserByEmail("actor@a.com")).thenReturn(actor);
+        lenient().when(workspaceMapper.selectUserById(2L)).thenReturn(target);
 
         WorkspaceVO workspace = new WorkspaceVO();
         workspace.setWorkspaceId(5L);
         workspace.setName("w");
 
         lenient().when(workspaceMapper.selectWorkspaceById(5L)).thenReturn(workspace);
+    }
+
+    // 사용자 한 명 (MyBatis 조회 결과)
+    private UserVO user(Long userId, String email, String nickname) {
+        UserVO user = new UserVO();
+        user.setUserId(userId);
+        user.setEmail(email);
+        user.setNickname(nickname);
+        return user;
     }
 
     // 로그인한 사람(1번)의 역할
@@ -110,7 +110,7 @@ class WorkspaceServiceRoleTest {
     @DisplayName("관리자는 초대할 수 있다")
     void adminCanInvite() {
         actorRole(WorkspaceRole.ADMIN);
-        lenient().when(userRepository.findByEmail("target@a.com")).thenReturn(Optional.of(target));
+        lenient().when(workspaceMapper.selectUserByEmail("target@a.com")).thenReturn(target);
 
         workspaceService.inviteMember(5L, new WorkspaceInviteRequest("target@a.com"), "actor@a.com");
 

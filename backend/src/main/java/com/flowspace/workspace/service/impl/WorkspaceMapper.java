@@ -12,6 +12,7 @@ import com.flowspace.workspace.service.MemberTaskCountVO;
 import com.flowspace.workspace.service.MemberTaskVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceVO;
+import com.flowspace.user.service.UserVO;
 
 // 워크스페이스 Mapper (Workspace_SQL.xml)
 @Mapper
@@ -88,4 +89,12 @@ public interface WorkspaceMapper {
 
     // 마지막으로 본 워크스페이스가 이곳이면 비우기 (나갈 때)
     int clearUserLastWorkspace(@Param("userId") Long userId, @Param("workspaceId") Long workspaceId);
+
+    // ---------- 사용자 ----------
+
+    // 이메일로 사용자 (sp_user_by_email, 없으면 null)
+    UserVO selectUserByEmail(String email);
+
+    // 번호로 사용자 (sp_user, 없으면 null)
+    UserVO selectUserById(Long userId);
 }

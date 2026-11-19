@@ -7,14 +7,13 @@ import com.flowspace.workspace.service.MemberTaskCountVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceService;
 import com.flowspace.workspace.service.WorkspaceVO;
+import com.flowspace.user.service.UserVO;
 
 import com.flowspace.workspace.dto.request.*;
 import com.flowspace.workspace.dto.response.*;
-import com.flowspace.entity.*;
 import com.flowspace.entity.enums.*;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.*;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -30,7 +29,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         // 프로필 카드에 보여줄 담당 작업 최대 개수
         private static final int PROFILE_TASK_LIMIT = 5;
 
-        private final UserRepository userRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
 
@@ -41,8 +39,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 WorkspaceVO workspace = new WorkspaceVO();
                 workspace.setName(request.name());
@@ -64,8 +61,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public WorkspaceResponse updateWorkspace(Long workspaceId, WorkspaceUpdateRequest request, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
@@ -116,8 +112,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public List<WorkspaceResponse> getMyWorkspaces(String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 return workspaceMapper.selectMyWorkspaceList(user.getUserId()).stream()
                         .map(workspace -> WorkspaceResponse.from(workspace, workspace.getRole())).toList();
@@ -128,8 +123,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public WorkspaceResponse getWorkspace(Long workspaceId, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
@@ -142,8 +136,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public WorkspaceInviteResponse inviteMember(Long workspaceId, WorkspaceInviteRequest request, String email) {
 
-                User inviter = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO inviter = findUser(email);
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
@@ -151,8 +144,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                User invitee = userRepository.findByEmail(request.email())
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO invitee = findUser(request.email());
 
                 if (workspaceMapper.selectMemberRole(workspaceId, invitee.getUserId()) != null) {
                         throw new FlowSpaceException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
@@ -183,8 +175,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public List<InviteResponse> getMyInvites(String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 return workspaceMapper.selectMyInviteList(user.getEmail()).stream().map(InviteResponse::from).toList();
         }
@@ -193,8 +184,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public void acceptInvite(Long inviteId, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 InviteVO invite = findMyPendingInvite(inviteId, user);
 
@@ -215,8 +205,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public void declineInvite(Long inviteId, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 InviteVO invite = findMyPendingInvite(inviteId, user);
 
@@ -231,7 +220,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
 
         // 나에게 온, 아직 답하지 않은 초대 (아니면 예외)
-        private InviteVO findMyPendingInvite(Long inviteId, User user) {
+        private InviteVO findMyPendingInvite(Long inviteId, UserVO user) {
 
                 InviteVO invite = workspaceMapper.selectInviteById(inviteId);
 
@@ -255,8 +244,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public List<WorkspaceMemberResponse> getMembers(Long workspaceId, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 findWorkspace(workspaceId);
                 findMemberRole(workspaceId, user);
@@ -271,13 +259,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public MemberProfileResponse getMemberProfile(Long workspaceId, Long userId, String email) {
 
-                User viewer = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO viewer = findUser(email);
 
                 findWorkspace(workspaceId);
                 findMemberRole(workspaceId, viewer);
 
-                if (!userRepository.existsById(userId)) {
+                if (workspaceMapper.selectUserById(userId) == null) {
                         throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
                 }
 
@@ -303,8 +290,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public void transferOwnership(Long workspaceId, WorkspaceOwnerTransferRequest request, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
@@ -312,8 +298,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                User targetUser = userRepository.findById(request.userId())
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO targetUser = findUserById(request.userId());
 
                 if (workspaceMapper.selectMemberRole(workspaceId, targetUser.getUserId()) == null) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
@@ -333,8 +318,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public void deleteWorkspace(Long workspaceId, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 findWorkspace(workspaceId);
 
@@ -353,8 +337,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public void removeMember(Long workspaceId, Long userId, String email) {
 
-                User loginUser = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO loginUser = findUser(email);
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
@@ -364,8 +347,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                User targetUser = userRepository.findById(userId)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO targetUser = findUserById(userId);
 
                 WorkspaceRole targetRole = workspaceMapper.selectMemberRole(workspaceId, userId);
 
@@ -393,8 +375,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         public WorkspaceMemberResponse changeMemberRole(Long workspaceId, Long userId,
                 WorkspaceRoleChangeRequest request, String email) {
 
-                User loginUser = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO loginUser = findUser(email);
 
                 findWorkspace(workspaceId);
 
@@ -406,7 +387,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.INVALID_ROLE_CHANGE);
                 }
 
-                if (!userRepository.existsById(userId)) {
+                if (workspaceMapper.selectUserById(userId) == null) {
                         throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
                 }
 
@@ -431,8 +412,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         @Override
         public void leaveWorkspace(Long workspaceId, String email) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+                UserVO user = findUser(email);
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
@@ -453,6 +433,30 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 workspaceMapper.clearUserLastWorkspace(user.getUserId(), workspaceId);
         }
 
+        // 이메일로 사용자 (없으면 예외)
+        private UserVO findUser(String email) {
+
+                UserVO user = workspaceMapper.selectUserByEmail(email);
+
+                if (user == null) {
+                        throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+                }
+
+                return user;
+        }
+
+        // 번호로 사용자 (없으면 예외)
+        private UserVO findUserById(Long userId) {
+
+                UserVO user = workspaceMapper.selectUserById(userId);
+
+                if (user == null) {
+                        throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+                }
+
+                return user;
+        }
+
         // 워크스페이스 한 건 (없으면 예외)
         private WorkspaceVO findWorkspace(Long workspaceId) {
 
@@ -466,7 +470,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
 
         // 로그인한 사람의 그 워크스페이스 역할 (멤버가 아니면 예외)
-        private WorkspaceRole findMemberRole(Long workspaceId, User user) {
+        private WorkspaceRole findMemberRole(Long workspaceId, UserVO user) {
 
                 WorkspaceRole role = workspaceMapper.selectMemberRole(workspaceId, user.getUserId());
 

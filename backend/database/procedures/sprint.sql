@@ -288,3 +288,23 @@ BEGIN
 END //
 
 DELIMITER ;
+
+
+-- 백로그(스프린트 없음) 작업 수
+--   p_workspace_id  워크스페이스 번호
+-- 결과: 1행 (개수)
+
+DROP PROCEDURE IF EXISTS sp_backlog_task_count;
+
+DELIMITER //
+
+CREATE PROCEDURE sp_backlog_task_count(IN p_workspace_id BIGINT)
+    READS SQL DATA
+BEGIN
+    SELECT COUNT(*)
+    FROM tasks
+    WHERE workspace_id = p_workspace_id
+      AND sprint_id IS NULL;
+END //
+
+DELIMITER ;

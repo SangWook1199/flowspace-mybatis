@@ -550,3 +550,26 @@ BEGIN
 END //
 
 DELIMITER ;
+
+
+-- ---------- 다른 Mapper 공용 ----------
+
+
+-- 워크스페이스 멤버의 사용자 번호
+--   p_workspace_id  워크스페이스 번호
+-- 결과: 멤버당 한 행 (user_id)
+
+DROP PROCEDURE IF EXISTS sp_workspace_user_id_list;
+
+DELIMITER //
+
+CREATE PROCEDURE sp_workspace_user_id_list(IN p_workspace_id BIGINT)
+    READS SQL DATA
+BEGIN
+    SELECT user_id
+    FROM workspace_members
+    WHERE workspace_id = p_workspace_id
+    ORDER BY member_id;
+END //
+
+DELIMITER ;

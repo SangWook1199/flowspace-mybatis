@@ -11,8 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,9 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.flowspace.activity.service.ActivityService;
-import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
-import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.SprintStatus;
@@ -33,29 +28,22 @@ import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.notification.service.NotificationService;
-import com.flowspace.repository.TaskRepository;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
-import com.flowspace.repository.WorkspaceRepository;
 import com.flowspace.retrospective.service.RetrospectiveService;
 import com.flowspace.sprint.dto.request.SprintStatusUpdateRequest;
 import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;
 import com.flowspace.sprint.service.impl.SprintMapper;
 import com.flowspace.sprint.service.impl.SprintServiceImpl;
+import com.flowspace.user.service.UserVO;
+import com.flowspace.workspace.dto.response.WorkspaceResponse;
+import com.flowspace.workspace.service.WorkspaceService;
 
 // 스프린트 완료(회고 생성 후 완료 프로시저), 회고 생성 실패 시 미완료, 삭제는 관리자 이상
 @ExtendWith(MockitoExtension.class)
 class SprintServiceTest {
 
     @Mock
-    private WorkspaceMemberRepository workspaceMemberRepository;
-    @Mock
-    private TaskRepository taskRepository;
-    @Mock
-    private UserRepository userRepository;
-    @Mock
-    private WorkspaceRepository workspaceRepository;
+    private WorkspaceService workspaceService;
     @Mock
     private ActivityService activityService;
     @Mock
@@ -68,15 +56,14 @@ class SprintServiceTest {
     @InjectMocks
     private SprintServiceImpl sprintService;
 
-    private User user;
-    private Workspace workspace;
-
     @BeforeEach
     void setUp() {
-        user = User.builder().userId(1L).email("a@a.com").nickname("a").build();
-        workspace = Workspace.builder().workspaceId(5L).name("w").initials("W").build();
+        UserVO user = new UserVO();
+        user.setUserId(1L);
+        user.setEmail("a@a.com");
+        user.setNickname("a");
 
-        when(userRepository.findByEmail("a@a.com")).thenReturn(Optional.of(user));
+        lenient().when(sprintMapper.selectUserByEmail("a@a.com")).thenReturn(user);
     }
 
     // 스프린트 한 건 (MyBatis 조회 결과)
@@ -88,7 +75,6 @@ class SprintServiceTest {
         row.setStatus(status);
 
         when(sprintMapper.selectSprintById(10L)).thenReturn(row);
-        when(workspaceRepository.findById(5L)).thenReturn(Optional.of(workspace));
 
         SprintProgressVO progress = new SprintProgressVO();
         progress.setSprintId(10L);
@@ -99,9 +85,10 @@ class SprintServiceTest {
         lenient().when(sprintMapper.selectSprintProgressById(10L)).thenReturn(progress);
     }
 
+    // 로그인한 사람의 워크스페이스 역할
     private void memberWithRole(WorkspaceRole role) {
-        when(workspaceMemberRepository.findByWorkspaceAndUser(workspace, user))
-            .thenReturn(Optional.of(WorkspaceMember.builder().workspace(workspace).user(user).role(role).build()));
+        when(workspaceService.getWorkspace(5L, "a@a.com"))
+            .thenReturn(new WorkspaceResponse(5L, "w", "W", null, null, 1L, role));
     }
 
     @Test

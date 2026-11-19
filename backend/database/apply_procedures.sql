@@ -20,3 +20,4 @@ source /database/procedures/block.sql
 source /database/procedures/block_database.sql
 source /database/procedures/search.sql
 source /database/procedures/presence.sql
+source /database/procedures/cleanup.sql

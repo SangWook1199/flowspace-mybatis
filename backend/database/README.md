@@ -30,7 +30,8 @@ database/
     ├── block.sql             블록 (Block_SQL.xml)
     ├── block_database.sql    데이터베이스 블록 (BlockDatabase_SQL.xml)
     ├── search.sql            통합 검색 (Search_SQL.xml)
-    └── presence.sql          접속 상태 (Presence_SQL.xml)
+    ├── presence.sql          접속 상태 (Presence_SQL.xml)
+    └── cleanup.sql           만료 데이터 정리 (Cleanup_SQL.xml)
 ```
 
 ## 규칙
@@ -75,6 +76,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_start_sprint` | 스프린트 시작 (진행 중이던 다른 스프린트는 계획으로 변경) | `SprintMapper.updateSprintStart` |
 | `sp_complete_sprint` | 스프린트 완료 (미완료 작업은 백로그 맨 뒤로 이동, 완료 작업은 유지) | `SprintMapper.updateSprintComplete` |
 | `sp_delete_sprint` | 스프린트 삭제 (작업은 백로그 맨 뒤로 이동) | `SprintMapper.deleteSprint` |
+| `sp_backlog_task_count` | 백로그(스프린트 없음) 작업 수 | `SprintMapper.selectBacklogTaskCount` |
 
 ### 작업(칸반) (`procedures/task.sql` ↔ `Task_SQL.xml`)
 
@@ -154,12 +156,13 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_workspace_member_delete` | 멤버 삭제 | `WorkspaceMapper.deleteWorkspaceMember` |
 | `sp_user_last_workspace_update` | 사용자의 마지막 워크스페이스 지정 (워크스페이스 생성 시 함께 변경) | `WorkspaceMapper.updateUserLastWorkspace` |
 | `sp_user_last_workspace_clear` | 마지막 워크스페이스가 이곳이면 해제 | `WorkspaceMapper.clearUserLastWorkspace` |
+| `sp_workspace_user_id_list` (공용) | 워크스페이스 멤버의 사용자 번호 | `SprintMapper.selectWorkspaceUserIds` |
 
 ### 사용자·로그인 (`procedures/user.sql` ↔ `User_SQL.xml`)
 
 | 프로시저 | 하는 일 | 부르는 Mapper 메서드 |
 |---|---|---|
-| `sp_user_by_email` | 이메일로 사용자 조회 (프로필 이미지 주소 포함) | `UserMapper.selectUserByEmail` |
+| `sp_user_by_email` | 이메일로 사용자 조회 (프로필 이미지 주소 포함) | `SprintMapper.selectUserByEmail`, `WorkspaceMapper.selectUserByEmail`, `UserMapper.selectUserByEmail` |
 | `sp_user_profile_update` | 프로필 수정 | `UserMapper.updateUserProfile` |
 | `sp_user_profile_file_update` | 프로필 이미지 수정 | `UserMapper.updateUserProfileFile` |
 | `sp_user_password_update` | 비밀번호 수정 | `UserMapper.updateUserPassword` |
@@ -167,7 +170,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_refresh_token_expired_at` | refresh token 만료 시각 | `UserMapper.selectRefreshTokenExpiredAt` |
 | `sp_refresh_token_delete` | refresh token 삭제 | `UserMapper.deleteRefreshToken` |
 | `sp_refresh_token_insert` | refresh token 저장 | `UserMapper.insertRefreshToken` |
-| `sp_user` | 번호로 사용자 조회 (프로필 이미지 주소 포함, 컬럼은 sp_user_by_email과 동일) | `UserMapper.selectUserById` |
+| `sp_user` | 번호로 사용자 조회 (프로필 이미지 주소 포함, 컬럼은 sp_user_by_email과 동일) | `WorkspaceMapper.selectUserById`, `UserMapper.selectUserById` |
 | `sp_user_insert` | 사용자 등록 (생성 시각은 DB 기본값) | `UserMapper.insertUser` |
 | `sp_user_signup_restart_update` | 인증 전 재가입 | `UserMapper.updateUserSignupRestart` |
 | `sp_user_email_verified_update` | 이메일 인증 완료 | `UserMapper.updateUserEmailVerified` |
@@ -393,6 +396,15 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_user_update_last_active_at` | 마지막 접속 시각 갱신 | `PresenceMapper.updateLastActiveAt` |
 | `sp_co_member_id_list` | 같은 워크스페이스에 있는 다른 사용자 번호 (중복 제외) | `PresenceMapper.selectCoMemberIds` |
 | `sp_workspace_member_count` | 워크스페이스 멤버 여부 | `PresenceMapper.selectMemberCount` |
+
+### 만료 데이터 정리 (`procedures/cleanup.sql` ↔ `Cleanup_SQL.xml`)
+
+| 프로시저 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|
+| `sp_refresh_token_expired_delete` | 만료된 리프레시 토큰 삭제 | `CleanupMapper.deleteExpiredRefreshTokens` |
+| `sp_password_token_expired_delete` | 만료된 비밀번호 재설정 토큰 삭제 | `CleanupMapper.deleteExpiredPasswordTokens` |
+| `sp_email_token_expired_delete` | 만료된 이메일 인증 토큰 삭제 | `CleanupMapper.deleteExpiredEmailTokens` |
+| `sp_invite_stale_delete` | 오래된 대기(PENDING) 초대 삭제 | `CleanupMapper.deleteStaleInvites` |
 
 ## 함께 고쳐야 하는 묶음
 

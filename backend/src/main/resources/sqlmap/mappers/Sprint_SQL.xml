@@ -50,4 +50,19 @@
         {call sp_delete_sprint(#{sprintId})}
     </delete>
 
+    <!-- 이메일로 사용자 (sp_user_by_email) -->
+    <select id="selectUserByEmail" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user_by_email(#{email})}
+    </select>
+
+    <!-- 백로그 작업 수 (sp_backlog_task_count) -->
+    <select id="selectBacklogTaskCount" statementType="CALLABLE" resultType="int">
+        {call sp_backlog_task_count(#{workspaceId})}
+    </select>
+
+    <!-- 워크스페이스 멤버의 사용자 번호 (sp_workspace_user_id_list) -->
+    <select id="selectWorkspaceUserIds" statementType="CALLABLE" resultType="long">
+        {call sp_workspace_user_id_list(#{workspaceId})}
+    </select>
+
 </mapper>

@@ -124,4 +124,14 @@
         {call sp_user_last_workspace_clear(#{userId}, #{workspaceId})}
     </update>
 
+    <!-- 이메일로 사용자 (sp_user_by_email) -->
+    <select id="selectUserByEmail" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user_by_email(#{email})}
+    </select>
+
+    <!-- 번호로 사용자 (sp_user) -->
+    <select id="selectUserById" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user(#{userId})}
+    </select>
+
 </mapper>

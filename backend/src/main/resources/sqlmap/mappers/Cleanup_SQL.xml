@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.cleanup.service.impl.CleanupMapper">
+
+    <!-- 만료된 리프레시 토큰 삭제 (sp_refresh_token_expired_delete) -->
+    <delete id="deleteExpiredRefreshTokens" statementType="CALLABLE">
+        {call sp_refresh_token_expired_delete(#{now})}
+    </delete>
+
+    <!-- 만료된 비밀번호 재설정 토큰 삭제 (sp_password_token_expired_delete) -->
+    <delete id="deleteExpiredPasswordTokens" statementType="CALLABLE">
+        {call sp_password_token_expired_delete(#{now})}
+    </delete>
+
+    <!-- 만료된 이메일 인증 토큰 삭제 (sp_email_token_expired_delete) -->
+    <delete id="deleteExpiredEmailTokens" statementType="CALLABLE">
+        {call sp_email_token_expired_delete(#{now})}
+    </delete>
+
+    <!-- 오래된 대기 초대 삭제 (sp_invite_stale_delete) -->
+    <delete id="deleteStaleInvites" statementType="CALLABLE">
+        {call sp_invite_stale_delete(#{before})}
+    </delete>
+
+</mapper>

@@ -9,6 +9,7 @@ import com.flowspace.entity.enums.SprintStatus;
 
 import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;
+import com.flowspace.user.service.UserVO;
 
 // 스프린트 Mapper (Sprint_SQL.xml)
 @Mapper
@@ -41,4 +42,13 @@ public interface SprintMapper {
 
     // 스프린트 삭제 (sp_delete_sprint, 작업은 백로그로 이동)
     void deleteSprint(Long sprintId);
+
+    // 이메일로 사용자 (sp_user_by_email, 없으면 null)
+    UserVO selectUserByEmail(String email);
+
+    // 백로그(스프린트 없음) 작업 수
+    int selectBacklogTaskCount(Long workspaceId);
+
+    // 워크스페이스 멤버의 사용자 번호 (알림 대상)
+    List<Long> selectWorkspaceUserIds(Long workspaceId);
 }
