@@ -2,91 +2,51 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.comment.service.impl.CommentMapper">
 
-    <!-- 이메일로 사용자 번호와 닉네임 -->
-    <select id="selectUserByEmail" resultType="com.flowspace.user.service.UserVO">
-        SELECT user_id,
-               nickname
-        FROM users
-        WHERE email = #{email}
+    <!-- 이메일로 사용자 번호와 닉네임 (sp_user_name_by_email) -->
+    <select id="selectUserByEmail" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user_name_by_email(#{email})}
     </select>
 
     <!-- ==================== 댓글 ==================== -->
 
-    <!-- 댓글 컬럼 + 작성자 조인 (아래 세 SQL에서 include) -->
-    <sql id="commentSelect">
-        SELECT c.comment_id,
-               c.task_id,
-               c.block_id,
-               c.user_id,
-               c.parent_comment_id,
-               c.content,
-               c.created_at,
-               c.updated_at,
-               u.nickname AS user_name,
-               u.profile_file_id,
-               f.file_url AS profile_image_url
-          FROM comments c
-          JOIN users u ON u.user_id = c.user_id
-          LEFT JOIN files f ON f.file_id = u.profile_file_id
-    </sql>
-
-    <!-- 댓글 한 건 -->
-    <select id="selectCommentById" resultType="com.flowspace.comment.service.CommentVO">
-        <include refid="commentSelect"/>
-         WHERE c.comment_id = #{commentId}
+    <!-- 댓글 한 건 (sp_comment) -->
+    <select id="selectCommentById" statementType="CALLABLE" resultType="com.flowspace.comment.service.CommentVO">
+        {call sp_comment(#{commentId})}
     </select>
 
-    <!-- 여러 작업의 댓글 (원 댓글·답글 함께 조회) -->
-    <select id="selectCommentListByTaskIds" resultType="com.flowspace.comment.service.CommentVO">
-        <include refid="commentSelect"/>
-         WHERE c.task_id IN
-        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
-            #{taskId}
-        </foreach>
-         ORDER BY c.created_at, c.comment_id
+    <!-- 여러 작업의 댓글 (sp_comment_list_by_tasks, 원 댓글·답글 함께 조회) -->
+    <select id="selectCommentListByTaskIds" statementType="CALLABLE"
+            resultType="com.flowspace.comment.service.CommentVO">
+        {call sp_comment_list_by_tasks(#{taskIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
-    <!-- 여러 블록의 댓글 -->
-    <select id="selectCommentListByBlockIds" resultType="com.flowspace.comment.service.CommentVO">
-        <include refid="commentSelect"/>
-         WHERE c.block_id IN
-        <foreach collection="blockIds" item="blockId" open="(" separator="," close=")">
-            #{blockId}
-        </foreach>
-         ORDER BY c.created_at, c.comment_id
+    <!-- 여러 블록의 댓글 (sp_comment_list_by_blocks) -->
+    <select id="selectCommentListByBlockIds" statementType="CALLABLE"
+            resultType="com.flowspace.comment.service.CommentVO">
+        {call sp_comment_list_by_blocks(#{blockIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
-    <!-- 댓글 등록 (taskId, blockId 중 하나) -->
-    <insert id="insertComment" parameterType="com.flowspace.comment.service.CommentVO"
-            useGeneratedKeys="true" keyProperty="commentId">
-        INSERT INTO comments (task_id, block_id, user_id, parent_comment_id, content)
-        VALUES (#{taskId}, #{blockId}, #{userId}, #{parentCommentId}, #{content})
+    <!-- 댓글 등록 (sp_comment_insert, taskId, blockId 중 하나) -->
+    <insert id="insertComment" statementType="CALLABLE" parameterType="com.flowspace.comment.service.CommentVO">
+        {call sp_comment_insert(#{taskId}, #{blockId}, #{userId}, #{parentCommentId}, #{content},
+                                #{commentId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 댓글 내용 수정 -->
-    <update id="updateCommentContent">
-        UPDATE comments
-        SET content = #{content}
-        WHERE comment_id = #{commentId}
+    <!-- 댓글 내용 수정 (sp_comment_content_update) -->
+    <update id="updateCommentContent" statementType="CALLABLE">
+        {call sp_comment_content_update(#{content}, #{commentId})}
     </update>
 
-    <!-- 댓글 삭제 (답글은 ON DELETE CASCADE) -->
-    <delete id="deleteComment">
-        DELETE FROM comments
-        WHERE comment_id = #{commentId}
+    <!-- 댓글 삭제 (sp_comment_delete, 답글은 ON DELETE CASCADE) -->
+    <delete id="deleteComment" statementType="CALLABLE">
+        {call sp_comment_delete(#{commentId})}
     </delete>
 
     <!-- ==================== 댓글이 달리는 곳 ==================== -->
 
-    <!-- 작업 정보 -->
-    <select id="selectCommentTask" resultType="com.flowspace.comment.service.CommentTargetVO">
-        SELECT task_id AS target_id,
-               workspace_id,
-               title,
-               created_by,
-               sprint_id
-        FROM tasks
-        WHERE task_id = #{taskId}
+    <!-- 작업 정보 (sp_comment_task) -->
+    <select id="selectCommentTask" statementType="CALLABLE" resultType="com.flowspace.comment.service.CommentTargetVO">
+        {call sp_comment_task(#{taskId})}
     </select>
 
     <!-- 블록이 속한 페이지 정보 (sp_comment_block) -->
@@ -94,23 +54,15 @@
         {call sp_comment_block(#{blockId})}
     </select>
 
-    <!-- 작업 담당자 번호 -->
-    <select id="selectTaskAssigneeUserIds" resultType="long">
-        SELECT user_id
-        FROM task_assignees
-        WHERE task_id = #{taskId}
-        ORDER BY task_assignee_id
+    <!-- 작업 담당자 번호 (sp_task_assignee_user_id_list) -->
+    <select id="selectTaskAssigneeUserIds" statementType="CALLABLE" resultType="long">
+        {call sp_task_assignee_user_id_list(#{taskId})}
     </select>
 
-    <!-- 멘션된 사용자 중 워크스페이스 멤버 -->
-    <select id="selectWorkspaceMemberIds" resultType="long">
-        SELECT user_id
-        FROM workspace_members
-        WHERE workspace_id = #{workspaceId}
-          AND user_id IN
-        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
-            #{userId}
-        </foreach>
+    <!-- 멘션된 사용자 중 워크스페이스 멤버 (sp_workspace_member_id_list) -->
+    <select id="selectWorkspaceMemberIds" statementType="CALLABLE" resultType="long">
+        {call sp_workspace_member_id_list(#{workspaceId},
+                                          #{userIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
 </mapper>

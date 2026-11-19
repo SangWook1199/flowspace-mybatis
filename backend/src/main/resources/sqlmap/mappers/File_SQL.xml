@@ -2,43 +2,25 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.file.service.impl.FileMapper">
 
-    <!-- 이메일로 사용자 번호 -->
-    <select id="selectUserIdByEmail" resultType="long">
-        SELECT user_id
-        FROM users
-        WHERE email = #{email}
+    <!-- 이메일로 사용자 번호 (sp_user_id_by_email) -->
+    <select id="selectUserIdByEmail" statementType="CALLABLE" resultType="long">
+        {call sp_user_id_by_email(#{email})}
     </select>
 
-    <!-- 파일 한 건 -->
-    <select id="selectFileById" resultType="com.flowspace.file.service.FileVO">
-        SELECT file_id,
-               workspace_id,
-               uploaded_by,
-               original_name,
-               stored_name,
-               mime_type,
-               size,
-               width,
-               height,
-               file_url,
-               created_at
-        FROM files
-        WHERE file_id = #{fileId}
+    <!-- 파일 한 건 (sp_file) -->
+    <select id="selectFileById" statementType="CALLABLE" resultType="com.flowspace.file.service.FileVO">
+        {call sp_file(#{fileId})}
     </select>
 
-    <!-- 파일 등록 (생성 시각은 DB 기본값) -->
-    <insert id="insertFile" parameterType="com.flowspace.file.service.FileVO"
-            useGeneratedKeys="true" keyProperty="fileId">
-        INSERT INTO files (workspace_id, uploaded_by, original_name, stored_name, mime_type, size, width, height,
-                           file_url)
-        VALUES (#{workspaceId}, #{uploadedBy}, #{originalName}, #{storedName}, #{mimeType}, #{size}, #{width},
-                #{height}, #{fileUrl})
+    <!-- 파일 등록 (sp_file_insert, 새 번호는 OUT으로 fileId에) -->
+    <insert id="insertFile" statementType="CALLABLE" parameterType="com.flowspace.file.service.FileVO">
+        {call sp_file_insert(#{workspaceId}, #{uploadedBy}, #{originalName}, #{storedName}, #{mimeType}, #{size},
+                             #{width}, #{height}, #{fileUrl}, #{fileId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 파일 삭제 (참조하는 곳은 ON DELETE SET NULL / CASCADE) -->
-    <delete id="deleteFile">
-        DELETE FROM files
-        WHERE file_id = #{fileId}
+    <!-- 파일 삭제 (sp_file_delete) -->
+    <delete id="deleteFile" statementType="CALLABLE">
+        {call sp_file_delete(#{fileId})}
     </delete>
 
 </mapper>

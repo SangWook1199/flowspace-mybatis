@@ -2,19 +2,14 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.workspace.service.impl.WorkspaceMapper">
 
-    <!-- 워크스페이스 한 건 -->
-    <select id="selectWorkspaceById" resultType="com.flowspace.workspace.service.WorkspaceVO">
-        SELECT workspace_id, owner_id, name, initials, color, icon, created_at
-        FROM workspaces
-        WHERE workspace_id = #{workspaceId}
+    <!-- 워크스페이스 한 건 (sp_workspace) -->
+    <select id="selectWorkspaceById" statementType="CALLABLE" resultType="com.flowspace.workspace.service.WorkspaceVO">
+        {call sp_workspace(#{workspaceId})}
     </select>
 
-    <!-- 워크스페이스에서 사용자의 역할 (enum으로 매핑, 없으면 null) -->
-    <select id="selectMemberRole" resultType="com.flowspace.entity.enums.WorkspaceRole">
-        SELECT role
-        FROM workspace_members
-        WHERE workspace_id = #{workspaceId}
-          AND user_id = #{userId}
+    <!-- 워크스페이스에서 사용자의 역할 (sp_workspace_member_role, enum으로 매핑, 없으면 null) -->
+    <select id="selectMemberRole" statementType="CALLABLE" resultType="com.flowspace.entity.enums.WorkspaceRole">
+        {call sp_workspace_member_role(#{workspaceId}, #{userId})}
     </select>
 
     <!-- 내 워크스페이스 목록 + 역할 (sp_my_workspace_list) -->
@@ -47,18 +42,15 @@
         {call sp_member_task_count(#{workspaceId}, #{userId})}
     </select>
 
-    <!-- 내가 속한 워크스페이스 수 -->
-    <select id="selectMyWorkspaceCount" resultType="int">
-        SELECT COUNT(*)
-        FROM workspace_members
-        WHERE user_id = #{userId}
+    <!-- 내가 속한 워크스페이스 수 (sp_my_workspace_count) -->
+    <select id="selectMyWorkspaceCount" statementType="CALLABLE" resultType="int">
+        {call sp_my_workspace_count(#{userId})}
     </select>
 
-    <!-- 워크스페이스 등록 (생성 시각은 DB 기본값) -->
-    <insert id="insertWorkspace" parameterType="com.flowspace.workspace.service.WorkspaceVO"
-            useGeneratedKeys="true" keyProperty="workspaceId">
-        INSERT INTO workspaces (owner_id, name, initials, color, icon)
-        VALUES (#{ownerId}, #{name}, #{initials}, #{color}, #{icon})
+    <!-- 워크스페이스 등록 (sp_workspace_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertWorkspace" statementType="CALLABLE" parameterType="com.flowspace.workspace.service.WorkspaceVO">
+        {call sp_workspace_insert(#{ownerId}, #{name}, #{initials}, #{color}, #{icon},
+                                  #{workspaceId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
     <!-- 소유자와 기본 상태 연결 -->
@@ -66,14 +58,9 @@
         {call sp_init_workspace(#{workspaceId}, #{ownerId})}
     </insert>
 
-    <!-- 워크스페이스 수정 -->
-    <update id="updateWorkspace" parameterType="com.flowspace.workspace.service.WorkspaceVO">
-        UPDATE workspaces
-           SET name     = #{name},
-               initials = #{initials},
-               color    = #{color},
-               icon     = #{icon}
-         WHERE workspace_id = #{workspaceId}
+    <!-- 워크스페이스 수정 (sp_workspace_update) -->
+    <update id="updateWorkspace" statementType="CALLABLE" parameterType="com.flowspace.workspace.service.WorkspaceVO">
+        {call sp_workspace_update(#{name}, #{initials}, #{color}, #{icon}, #{workspaceId})}
     </update>
 
     <!-- 워크스페이스 삭제 -->
@@ -81,20 +68,15 @@
         {call sp_delete_workspace(#{workspaceId})}
     </delete>
 
-    <!-- 대기 중인 초대 수 -->
-    <select id="selectPendingInviteCount" resultType="int">
-        SELECT COUNT(*)
-        FROM workspace_invites
-        WHERE workspace_id = #{workspaceId}
-          AND email = #{email}
-          AND status = 'PENDING'
+    <!-- 대기 중인 초대 수 (sp_pending_invite_count) -->
+    <select id="selectPendingInviteCount" statementType="CALLABLE" resultType="int">
+        {call sp_pending_invite_count(#{workspaceId}, #{email})}
     </select>
 
-    <!-- 초대 등록 (생성 시각은 DB 기본값) -->
-    <insert id="insertInvite" parameterType="com.flowspace.workspace.service.InviteVO"
-            useGeneratedKeys="true" keyProperty="inviteId">
-        INSERT INTO workspace_invites (workspace_id, inviter_id, email, status)
-        VALUES (#{workspaceId}, #{inviterId}, #{email}, #{status})
+    <!-- 초대 등록 (sp_invite_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertInvite" statementType="CALLABLE" parameterType="com.flowspace.workspace.service.InviteVO">
+        {call sp_invite_insert(#{workspaceId}, #{inviterId}, #{email}, #{status},
+                               #{inviteId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
     <!-- 받은 초대 목록 (sp_my_invite_list) -->
@@ -102,62 +84,44 @@
         {call sp_my_invite_list(#{email})}
     </select>
 
-    <!-- 초대 한 건 -->
-    <select id="selectInviteById" resultType="com.flowspace.workspace.service.InviteVO">
-        SELECT invite_id, workspace_id, inviter_id, email, status, created_at
-        FROM workspace_invites
-        WHERE invite_id = #{inviteId}
+    <!-- 초대 한 건 (sp_invite) -->
+    <select id="selectInviteById" statementType="CALLABLE" resultType="com.flowspace.workspace.service.InviteVO">
+        {call sp_invite(#{inviteId})}
     </select>
 
-    <!-- 초대 응답 처리 -->
-    <update id="updateInviteStatus">
-        UPDATE workspace_invites
-           SET status       = #{status},
-               responded_at = NOW()
-         WHERE invite_id = #{inviteId}
+    <!-- 초대 응답 처리 (sp_invite_status_update) -->
+    <update id="updateInviteStatus" statementType="CALLABLE">
+        {call sp_invite_status_update(#{status}, #{inviteId})}
     </update>
 
-    <!-- 멤버 추가 (참여 시각은 DB 기본값) -->
-    <insert id="insertWorkspaceMember">
-        INSERT INTO workspace_members (workspace_id, user_id, role)
-        VALUES (#{workspaceId}, #{userId}, #{role})
+    <!-- 멤버 추가 (sp_workspace_member_insert, 참여 시각은 DB 기본값) -->
+    <insert id="insertWorkspaceMember" statementType="CALLABLE">
+        {call sp_workspace_member_insert(#{workspaceId}, #{userId}, #{role})}
     </insert>
 
-    <!-- 멤버 역할 변경 -->
-    <update id="updateMemberRole">
-        UPDATE workspace_members
-           SET role = #{role}
-         WHERE workspace_id = #{workspaceId}
-           AND user_id = #{userId}
+    <!-- 멤버 역할 변경 (sp_workspace_member_role_update) -->
+    <update id="updateMemberRole" statementType="CALLABLE">
+        {call sp_workspace_member_role_update(#{role}, #{workspaceId}, #{userId})}
     </update>
 
-    <!-- 워크스페이스 소유자 변경 -->
-    <update id="updateWorkspaceOwner">
-        UPDATE workspaces
-           SET owner_id = #{ownerId}
-         WHERE workspace_id = #{workspaceId}
+    <!-- 워크스페이스 소유자 변경 (sp_workspace_owner_update) -->
+    <update id="updateWorkspaceOwner" statementType="CALLABLE">
+        {call sp_workspace_owner_update(#{ownerId}, #{workspaceId})}
     </update>
 
-    <!-- 멤버 삭제 -->
-    <delete id="deleteWorkspaceMember">
-        DELETE FROM workspace_members
-        WHERE workspace_id = #{workspaceId}
-          AND user_id = #{userId}
+    <!-- 멤버 삭제 (sp_workspace_member_delete) -->
+    <delete id="deleteWorkspaceMember" statementType="CALLABLE">
+        {call sp_workspace_member_delete(#{workspaceId}, #{userId})}
     </delete>
 
-    <!-- 사용자의 마지막 워크스페이스 지정 (워크스페이스 생성 시 함께 변경) -->
-    <update id="updateUserLastWorkspace">
-        UPDATE users
-           SET last_workspace_id = #{workspaceId}
-         WHERE user_id = #{userId}
+    <!-- 사용자의 마지막 워크스페이스 지정 (sp_user_last_workspace_update, 워크스페이스 생성 시 함께 변경) -->
+    <update id="updateUserLastWorkspace" statementType="CALLABLE">
+        {call sp_user_last_workspace_update(#{workspaceId}, #{userId})}
     </update>
 
-    <!-- 마지막 워크스페이스가 이곳이면 해제 -->
-    <update id="clearUserLastWorkspace">
-        UPDATE users
-           SET last_workspace_id = NULL
-         WHERE user_id = #{userId}
-           AND last_workspace_id = #{workspaceId}
+    <!-- 마지막 워크스페이스가 이곳이면 해제 (sp_user_last_workspace_clear) -->
+    <update id="clearUserLastWorkspace" statementType="CALLABLE">
+        {call sp_user_last_workspace_clear(#{userId}, #{workspaceId})}
     </update>
 
 </mapper>

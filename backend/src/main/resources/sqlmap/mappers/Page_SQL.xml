@@ -2,11 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.page.service.impl.PageMapper">
 
-    <!-- 이메일로 사용자 번호 -->
-    <select id="selectUserIdByEmail" resultType="long">
-        SELECT user_id
-        FROM users
-        WHERE email = #{email}
+    <!-- 이메일로 사용자 번호 (sp_user_id_by_email) -->
+    <select id="selectUserIdByEmail" statementType="CALLABLE" resultType="long">
+        {call sp_user_id_by_email(#{email})}
     </select>
 
     <!-- ==================== 조회 ==================== -->
@@ -26,182 +24,100 @@
         {call sp_page_subtree(#{pageId})}
     </select>
 
-    <!-- 여러 페이지 (순서 바꾸기 확인용) -->
-    <select id="selectPageListByIds" resultType="com.flowspace.page.service.PageVO">
-        SELECT page_id,
-               workspace_id,
-               parent_page_id,
-               is_deleted
-        FROM pages
-        WHERE page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 여러 페이지 (sp_page_list_by_ids, 순서 바꾸기 확인용) -->
+    <select id="selectPageListByIds" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page_list_by_ids(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
-    <!-- 상위 페이지 번호 -->
-    <select id="selectParentPageId" resultType="long">
-        SELECT parent_page_id
-        FROM pages
-        WHERE page_id = #{pageId}
+    <!-- 상위 페이지 번호 (sp_page_parent_id) -->
+    <select id="selectParentPageId" statementType="CALLABLE" resultType="long">
+        {call sp_page_parent_id(#{pageId})}
     </select>
 
-    <!-- 같은 상위 페이지 아래의 페이지 수 (<=>: NULL끼리 같음, XML에서는 CDATA 처리) -->
-    <select id="selectSiblingCount" resultType="int">
-        SELECT COUNT(*)
-        FROM pages
-        WHERE workspace_id = #{workspaceId}
-          AND parent_page_id <![CDATA[ <=> ]]> #{parentPageId}
-          AND is_deleted = FALSE
+    <!-- 같은 상위 페이지 아래의 페이지 수 (sp_page_sibling_count, <=>: NULL끼리 같음) -->
+    <select id="selectSiblingCount" statementType="CALLABLE" resultType="int">
+        {call sp_page_sibling_count(#{workspaceId}, #{parentPageId})}
     </select>
 
     <!-- ==================== 등록·수정 ==================== -->
 
-    <!-- 페이지 등록 (휴지통 여부·버전·생성 시각은 DB 기본값) -->
-    <insert id="insertPage" parameterType="com.flowspace.page.service.PageVO"
-            useGeneratedKeys="true" keyProperty="pageId">
-        INSERT INTO pages (workspace_id, parent_page_id, title, icon, cover_file_id, position, created_by)
-        VALUES (#{workspaceId}, #{parentPageId}, #{title}, #{icon}, #{coverFileId}, #{position}, #{createdBy})
+    <!-- 페이지 등록 (sp_page_insert, 휴지통 여부·버전·생성 시각은 DB 기본값) -->
+    <insert id="insertPage" statementType="CALLABLE" parameterType="com.flowspace.page.service.PageVO">
+        {call sp_page_insert(#{workspaceId}, #{parentPageId}, #{title}, #{icon}, #{coverFileId}, #{position},
+                             #{createdBy}, #{pageId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 제목·아이콘·상위 페이지 수정 (상위 페이지 null이면 최상위) -->
-    <update id="updatePage" parameterType="com.flowspace.page.service.PageVO">
-        UPDATE pages
-        SET title          = #{title},
-            icon           = #{icon},
-            parent_page_id = #{parentPageId}
-        WHERE page_id = #{pageId}
+    <!-- 제목·아이콘·상위 페이지 수정 (sp_page_update, 상위 페이지 null이면 최상위) -->
+    <update id="updatePage" statementType="CALLABLE" parameterType="com.flowspace.page.service.PageVO">
+        {call sp_page_update(#{title}, #{icon}, #{parentPageId}, #{pageId})}
     </update>
 
-    <!-- 순서 수정 -->
-    <update id="updatePagePosition">
-        UPDATE pages
-        SET position = #{position}
-        WHERE page_id = #{pageId}
+    <!-- 순서 수정 (sp_page_position_update) -->
+    <update id="updatePagePosition" statementType="CALLABLE">
+        {call sp_page_position_update(#{position}, #{pageId})}
     </update>
 
-    <!-- 상위 페이지와 순서 수정 -->
-    <update id="updatePageParent">
-        UPDATE pages
-        SET parent_page_id = #{parentPageId},
-            position       = #{position}
-        WHERE page_id = #{pageId}
+    <!-- 상위 페이지와 순서 수정 (sp_page_parent_update) -->
+    <update id="updatePageParent" statementType="CALLABLE">
+        {call sp_page_parent_update(#{parentPageId}, #{position}, #{pageId})}
     </update>
 
-    <!-- 커버 수정 -->
-    <update id="updatePageCover">
-        UPDATE pages
-        SET cover_file_id = #{fileId}
-        WHERE page_id = #{pageId}
+    <!-- 커버 수정 (sp_page_cover_update) -->
+    <update id="updatePageCover" statementType="CALLABLE">
+        {call sp_page_cover_update(#{fileId}, #{pageId})}
     </update>
 
     <!-- ==================== 휴지통 ==================== -->
 
-    <!-- 여러 페이지 휴지통 이동 (같은 삭제 시각 = 함께 복원되는 묶음) -->
-    <update id="updatePagesTrashed">
-        UPDATE pages
-        SET is_deleted = TRUE,
-            deleted_at = #{deletedAt}
-        WHERE page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 여러 페이지 휴지통 이동 (sp_page_trash_update, 같은 삭제 시각 = 함께 복원되는 묶음) -->
+    <update id="updatePagesTrashed" statementType="CALLABLE">
+        {call sp_page_trash_update(#{deletedAt},
+                                   #{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </update>
 
-    <!-- 여러 페이지 복원 -->
-    <update id="updatePagesRestored">
-        UPDATE pages
-        SET is_deleted = FALSE,
-            deleted_at = NULL
-        WHERE page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 여러 페이지 복원 (sp_page_restore_update) -->
+    <update id="updatePagesRestored" statementType="CALLABLE">
+        {call sp_page_restore_update(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </update>
 
-    <!-- 휴지통으로 가는 페이지를 가리키는 데이터베이스 행 삭제 (함께 이동하는 페이지 안의 데이터베이스는 제외, 셀은 연쇄 삭제) -->
-    <delete id="deleteOutsideDatabaseRows">
-        DELETE r
-          FROM block_database_rows r
-          JOIN block_databases d ON d.database_id = r.database_id
-          JOIN blocks b          ON b.block_id = d.block_id
-         WHERE r.page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
-           AND b.page_id NOT IN
-        <foreach collection="subtreeIds" item="subtreeId" open="(" separator="," close=")">
-            #{subtreeId}
-        </foreach>
+    <!-- 휴지통으로 가는 페이지를 가리키는 데이터베이스 행 삭제 (sp_page_outside_database_row_delete, 함께 이동하는 페이지 안의 데이터베이스는 제외, 셀은 연쇄 삭제) -->
+    <delete id="deleteOutsideDatabaseRows" statementType="CALLABLE">
+        {call sp_page_outside_database_row_delete(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler},
+                                                  #{subtreeIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </delete>
 
     <!-- ==================== 상세 조회 ==================== -->
 
-    <!-- 휴지통이 아닌 하위 페이지 -->
-    <select id="selectChildPageList" resultType="com.flowspace.page.service.PageVO">
-        SELECT page_id,
-               title,
-               icon
-        FROM pages
-        WHERE parent_page_id = #{pageId}
-          AND is_deleted = FALSE
-        ORDER BY page_id
+    <!-- 휴지통이 아닌 하위 페이지 (sp_page_child_list) -->
+    <select id="selectChildPageList" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page_child_list(#{pageId})}
     </select>
 
     <!-- ==================== 영구 삭제 ==================== -->
 
-    <!-- 보관 기간이 지난 휴지통 페이지 (모든 워크스페이스) -->
-    <select id="selectExpiredTrashList" resultType="com.flowspace.page.service.PageVO">
-        SELECT page_id,
-               workspace_id,
-               parent_page_id
-        FROM pages
-        WHERE is_deleted = TRUE
-          AND deleted_at <![CDATA[ < ]]> #{cutoff}
+    <!-- 보관 기간이 지난 휴지통 페이지 (sp_page_expired_trash_list, 모든 워크스페이스) -->
+    <select id="selectExpiredTrashList" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page_expired_trash_list(#{cutoff})}
     </select>
 
-    <!-- 주어진 페이지 중 회고 페이지 번호 -->
-    <select id="selectRetrospectivePageIds" resultType="long">
-        SELECT page_id
-        FROM retrospectives
-        WHERE page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 주어진 페이지 중 회고 페이지 번호 (sp_page_retrospective_id_list) -->
+    <select id="selectRetrospectivePageIds" statementType="CALLABLE" resultType="long">
+        {call sp_page_retrospective_id_list(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
-    <!-- 페이지 커버·블록 이미지 파일 번호 (UNION으로 중복 제외) -->
-    <select id="selectPageFileIds" resultType="long">
-        SELECT cover_file_id
-        FROM pages
-        WHERE cover_file_id IS NOT NULL
-          AND page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
-        UNION
-        SELECT image_file_id
-        FROM blocks
-        WHERE image_file_id IS NOT NULL
-          AND page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 페이지 커버·블록 이미지 파일 번호 (sp_page_file_id_list, UNION으로 중복 제외) -->
+    <select id="selectPageFileIds" statementType="CALLABLE" resultType="long">
+        {call sp_page_file_id_list(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
-    <!-- 페이지를 가리키는 데이터베이스 행 삭제 -->
-    <delete id="deleteDatabaseRowsByPages">
-        DELETE FROM block_database_rows
-        WHERE page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 페이지를 가리키는 데이터베이스 행 삭제 (sp_page_database_row_delete) -->
+    <delete id="deleteDatabaseRowsByPages" statementType="CALLABLE">
+        {call sp_page_database_row_delete(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </delete>
 
-    <!-- 페이지 삭제 (블록·데이터베이스는 CASCADE) -->
-    <delete id="deletePage">
-        DELETE FROM pages
-        WHERE page_id = #{pageId}
+    <!-- 페이지 삭제 (sp_page_delete, 블록·데이터베이스는 CASCADE) -->
+    <delete id="deletePage" statementType="CALLABLE">
+        {call sp_page_delete(#{pageId})}
     </delete>
 
 </mapper>

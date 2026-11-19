@@ -2,17 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.sprint.service.impl.SprintMapper">
 
-    <!-- 스프린트 공통 컬럼 -->
-    <sql id="sprintColumns">
-        sprint_id, workspace_id, created_by, name, goal, description,
-        color, start_date, end_date, status, created_at
-    </sql>
-
-    <!-- 스프린트 한 건 -->
-    <select id="selectSprintById" resultType="com.flowspace.sprint.service.SprintVO">
-        SELECT <include refid="sprintColumns"/>
-        FROM sprints
-        WHERE sprint_id = #{sprintId}
+    <!-- 스프린트 한 건 (sp_sprint) -->
+    <select id="selectSprintById" statementType="CALLABLE" resultType="com.flowspace.sprint.service.SprintVO">
+        {call sp_sprint(#{sprintId})}
     </select>
 
     <!-- 스프린트 목록 + 진행 상황 (sp_sprint_progress_list) -->
@@ -27,33 +19,20 @@
         {call sp_sprint_progress(#{sprintId})}
     </select>
 
-    <!-- 워크스페이스에서 해당 상태인 스프린트 수 -->
-    <select id="selectSprintCountByStatus" resultType="int">
-        SELECT COUNT(*)
-        FROM sprints
-        WHERE workspace_id = #{workspaceId}
-          AND status = #{status}
+    <!-- 워크스페이스에서 해당 상태인 스프린트 수 (sp_sprint_count_by_status) -->
+    <select id="selectSprintCountByStatus" statementType="CALLABLE" resultType="int">
+        {call sp_sprint_count_by_status(#{workspaceId}, #{status})}
     </select>
 
-    <!-- 스프린트 등록 (생성된 sprint_id는 sprintId에 설정, 생성 시각은 DB 기본값) -->
-    <insert id="insertSprint" parameterType="com.flowspace.sprint.service.SprintVO"
-            useGeneratedKeys="true" keyProperty="sprintId">
-        INSERT INTO sprints (workspace_id, created_by, name, goal, description,
-                             color, start_date, end_date, status)
-        VALUES (#{workspaceId}, #{createdBy}, #{name}, #{goal}, #{description},
-                #{color}, #{startDate}, #{endDate}, #{status})
+    <!-- 스프린트 등록 (sp_sprint_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertSprint" statementType="CALLABLE" parameterType="com.flowspace.sprint.service.SprintVO">
+        {call sp_sprint_insert(#{workspaceId}, #{createdBy}, #{name}, #{goal}, #{description}, #{color},
+                               #{startDate}, #{endDate}, #{status}, #{sprintId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 스프린트 수정 (상태 제외) -->
-    <update id="updateSprint" parameterType="com.flowspace.sprint.service.SprintVO">
-        UPDATE sprints
-           SET name        = #{name},
-               goal        = #{goal},
-               description = #{description},
-               color       = #{color},
-               start_date  = #{startDate},
-               end_date    = #{endDate}
-         WHERE sprint_id = #{sprintId}
+    <!-- 스프린트 수정 (sp_sprint_update, 상태 제외) -->
+    <update id="updateSprint" statementType="CALLABLE" parameterType="com.flowspace.sprint.service.SprintVO">
+        {call sp_sprint_update(#{name}, #{goal}, #{description}, #{color}, #{startDate}, #{endDate}, #{sprintId})}
     </update>
 
     <!-- 스프린트 시작 (sp_start_sprint) -->

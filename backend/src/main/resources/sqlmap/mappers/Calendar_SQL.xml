@@ -2,20 +2,17 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.calendar.service.impl.CalendarMapper">
 
-    <!-- 이메일로 사용자 번호 -->
-    <select id="selectUserIdByEmail" resultType="long">
-        SELECT user_id
-        FROM users
-        WHERE email = #{email}
+    <!-- 이메일로 사용자 번호 (sp_user_id_by_email) -->
+    <select id="selectUserIdByEmail" statementType="CALLABLE" resultType="long">
+        {call sp_user_id_by_email(#{email})}
     </select>
 
     <!-- ==================== 일정 ==================== -->
 
-    <!-- 일정 등록 (생성·수정 시각은 DB 기본값) -->
-    <insert id="insertEvent" parameterType="com.flowspace.calendar.service.EventVO"
-            useGeneratedKeys="true" keyProperty="eventId">
-        INSERT INTO events (workspace_id, created_by, title, description, color, start_datetime, end_datetime)
-        VALUES (#{workspaceId}, #{createdBy}, #{title}, #{description}, #{color}, #{startDatetime}, #{endDatetime})
+    <!-- 일정 등록 (sp_event_insert, 생성·수정 시각은 DB 기본값) -->
+    <insert id="insertEvent" statementType="CALLABLE" parameterType="com.flowspace.calendar.service.EventVO">
+        {call sp_event_insert(#{workspaceId}, #{createdBy}, #{title}, #{description}, #{color}, #{startDatetime},
+                              #{endDatetime}, #{eventId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
     <!-- 일정 한 건 (sp_event) -->
@@ -23,52 +20,31 @@
         {call sp_event(#{eventId})}
     </select>
 
-    <!-- 일정 수정 (updated_at은 ON UPDATE CURRENT_TIMESTAMP) -->
-    <update id="updateEvent" parameterType="com.flowspace.calendar.service.EventVO">
-        UPDATE events
-        SET title          = #{title},
-            description    = #{description},
-            color          = #{color},
-            start_datetime = #{startDatetime},
-            end_datetime   = #{endDatetime}
-        WHERE event_id = #{eventId}
+    <!-- 일정 수정 (sp_event_update, updated_at은 ON UPDATE CURRENT_TIMESTAMP) -->
+    <update id="updateEvent" statementType="CALLABLE" parameterType="com.flowspace.calendar.service.EventVO">
+        {call sp_event_update(#{title}, #{description}, #{color}, #{startDatetime}, #{endDatetime}, #{eventId})}
     </update>
 
-    <!-- 일정 삭제 (블록의 event_id는 ON DELETE SET NULL) -->
-    <delete id="deleteEvent">
-        DELETE FROM events
-        WHERE event_id = #{eventId}
+    <!-- 일정 삭제 (sp_event_delete, 블록의 event_id는 ON DELETE SET NULL) -->
+    <delete id="deleteEvent" statementType="CALLABLE">
+        {call sp_event_delete(#{eventId})}
     </delete>
 
-    <!-- 제목으로 일정 검색 (대소문자 구분 없음) -->
-    <select id="selectEventSearchList" resultType="com.flowspace.calendar.service.EventVO">
-        SELECT event_id,
-               title,
-               start_datetime,
-               end_datetime
-        FROM events
-        WHERE workspace_id = #{workspaceId}
-          AND LOWER(title) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-        ORDER BY event_id
+    <!-- 제목으로 일정 검색 (sp_event_search_list, 대소문자 구분 없음) -->
+    <select id="selectEventSearchList" statementType="CALLABLE" resultType="com.flowspace.calendar.service.EventVO">
+        {call sp_event_search_list(#{workspaceId}, #{keyword})}
     </select>
 
     <!-- ==================== 캘린더 ==================== -->
 
-    <!-- 스프린트가 속한 워크스페이스 -->
-    <select id="selectSprintWorkspaceId" resultType="long">
-        SELECT workspace_id
-        FROM sprints
-        WHERE sprint_id = #{sprintId}
+    <!-- 스프린트가 속한 워크스페이스 (sp_sprint_workspace_id) -->
+    <select id="selectSprintWorkspaceId" statementType="CALLABLE" resultType="long">
+        {call sp_sprint_workspace_id(#{sprintId})}
     </select>
 
-    <!-- 기본 스프린트 (진행 중 → 계획 중, 시작일 순) -->
-    <select id="selectDefaultSprintId" resultType="long">
-        SELECT sprint_id
-        FROM sprints
-        WHERE workspace_id = #{workspaceId}
-          AND status IN ('ACTIVE', 'PLANNING')
-        ORDER BY status = 'ACTIVE' DESC, start_date, sprint_id
-        LIMIT 1
+    <!-- 기본 스프린트 (sp_default_sprint_id, 진행 중 → 계획 중, 시작일 순) -->
+    <select id="selectDefaultSprintId" statementType="CALLABLE" resultType="long">
+        {call sp_default_sprint_id(#{workspaceId})}
     </select>
 
     <!-- 그 달의 작업 (sp_calendar_task_list, sprintId null이면 백로그) -->
@@ -76,36 +52,15 @@
         {call sp_calendar_task_list(#{workspaceId}, #{sprintId, jdbcType=BIGINT}, #{startDate}, #{endDate})}
     </select>
 
-    <!-- 여러 작업의 담당자 (Task_SQL.xml selectTaskAssigneeListByTaskIds와 동일, 목록 인자라 XML) -->
-    <select id="selectCalendarAssigneeList" resultType="com.flowspace.task.service.TaskAssigneeVO">
-        SELECT ta.task_id,
-               u.user_id,
-               u.nickname,
-               u.profile_file_id,
-               f.file_url AS profile_image_url
-          FROM task_assignees ta
-          JOIN users u ON u.user_id = ta.user_id
-          LEFT JOIN files f ON f.file_id = u.profile_file_id
-         WHERE ta.task_id IN
-        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
-            #{taskId}
-        </foreach>
-         ORDER BY ta.task_assignee_id
+    <!-- 여러 작업의 담당자 (sp_task_assignee_list_by_tasks) -->
+    <select id="selectCalendarAssigneeList" statementType="CALLABLE"
+            resultType="com.flowspace.task.service.TaskAssigneeVO">
+        {call sp_task_assignee_list_by_tasks(#{taskIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
-    <!-- 그 달에 시작하는 일정 -->
-    <select id="selectCalendarEventList" resultType="com.flowspace.calendar.service.EventVO">
-        SELECT event_id,
-               workspace_id,
-               title,
-               description,
-               color,
-               start_datetime,
-               end_datetime
-        FROM events
-        WHERE workspace_id = #{workspaceId}
-          AND start_datetime BETWEEN #{startDatetime} AND #{endDatetime}
-        ORDER BY start_datetime, event_id
+    <!-- 그 달에 시작하는 일정 (sp_calendar_event_list) -->
+    <select id="selectCalendarEventList" statementType="CALLABLE" resultType="com.flowspace.calendar.service.EventVO">
+        {call sp_calendar_event_list(#{workspaceId}, #{startDatetime}, #{endDatetime})}
     </select>
 
 </mapper>

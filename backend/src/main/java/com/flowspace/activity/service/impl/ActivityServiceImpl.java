@@ -83,7 +83,7 @@ public class ActivityServiceImpl implements ActivityService {
         List<ActivityResponse> items = toResponses(
             activityMapper.selectActivityList(workspaceId, userId, typeText, safePage * PAGE_SIZE, PAGE_SIZE));
 
-        long total = activityMapper.selectActivityCount(workspaceId, userId, types);
+        long total = activityMapper.selectActivityCount(workspaceId, userId, typeText);
         int totalPages = (int) Math.ceil((double) total / PAGE_SIZE);
 
         return new ActivityPageResponse(items, safePage, PAGE_SIZE, total, totalPages, safePage + 1 < totalPages);

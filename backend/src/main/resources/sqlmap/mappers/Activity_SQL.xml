@@ -2,10 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.activity.service.impl.ActivityMapper">
 
-    <!-- 활동 기록 등록 (생성 시각은 DB 기본값) -->
-    <insert id="insertActivity" parameterType="com.flowspace.activity.service.ActivityVO">
-        INSERT INTO activities (workspace_id, user_id, type, target_type, target_id)
-        VALUES (#{workspaceId}, #{userId}, #{type}, #{targetType}, #{targetId})
+    <!-- 활동 기록 등록 (sp_activity_insert) -->
+    <insert id="insertActivity" statementType="CALLABLE" parameterType="com.flowspace.activity.service.ActivityVO">
+        {call sp_activity_insert(#{workspaceId}, #{userId}, #{type}, #{targetType}, #{targetId})}
     </insert>
 
     <!-- 활동 기록 목록 (sp_activity_list, null 가능 인자는 jdbcType 지정) -->
@@ -14,27 +13,14 @@
                                #{offset}, #{limit})}
     </select>
 
-    <!-- 같은 조건의 활동 기록 수 (동적 SQL) -->
-    <select id="selectActivityCount" resultType="long">
-        SELECT COUNT(*)
-        FROM activities
-        WHERE workspace_id = #{workspaceId}
-        <if test="userId != null">
-          AND user_id = #{userId}
-        </if>
-        <if test="types != null">
-          AND type IN
-          <foreach collection="types" item="type" open="(" separator="," close=")">
-              #{type}
-          </foreach>
-        </if>
+    <!-- 같은 조건의 활동 기록 수 (sp_activity_count) -->
+    <select id="selectActivityCount" statementType="CALLABLE" resultType="long">
+        {call sp_activity_count(#{workspaceId}, #{userId}, #{types})}
     </select>
 
-    <!-- 사용자 존재 여부 -->
-    <select id="selectUserCount" resultType="int">
-        SELECT COUNT(*)
-        FROM users
-        WHERE user_id = #{userId}
+    <!-- 사용자 존재 여부 (sp_user_count) -->
+    <select id="selectUserCount" statementType="CALLABLE" resultType="int">
+        {call sp_user_count(#{userId})}
     </select>
 
 </mapper>

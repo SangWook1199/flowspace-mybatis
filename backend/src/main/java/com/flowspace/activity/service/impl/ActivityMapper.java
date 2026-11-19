@@ -6,7 +6,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.flowspace.activity.service.ActivityVO;
-import com.flowspace.entity.enums.ActivityType;
 
 // 활동 기록 Mapper (Activity_SQL.xml)
 @Mapper
@@ -20,10 +19,10 @@ public interface ActivityMapper {
     List<ActivityVO> selectActivityList(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId,
         @Param("types") String types, @Param("offset") int offset, @Param("limit") int limit);
 
-    // 같은 조건의 활동 기록 수 (전체 페이지 수 계산용)
-    // types: 종류 목록, null이면 전체
+    // 같은 조건의 활동 기록 수 (sp_activity_count, 전체 페이지 수 계산용)
+    // types: 쉼표로 연결한 종류 문자열, null이면 전체
     long selectActivityCount(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId,
-        @Param("types") List<ActivityType> types);
+        @Param("types") String types);
 
     // 사용자 존재 여부
     int selectUserCount(Long userId);

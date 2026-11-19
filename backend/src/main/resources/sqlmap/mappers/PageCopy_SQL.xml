@@ -4,119 +4,66 @@
 
     <!-- ==================== 블록 ==================== -->
 
-    <!-- 페이지의 블록 목록 -->
-    <select id="selectBlockList" resultType="com.flowspace.block.service.BlockVO">
-        SELECT block_id,
-               parent_block_id,
-               task_id,
-               event_id,
-               sprint_id,
-               image_file_id,
-               type,
-               position,
-               content
-        FROM blocks
-        WHERE page_id = #{pageId}
-        ORDER BY position, block_id
+    <!-- 페이지의 블록 목록 (sp_copy_block_list) -->
+    <select id="selectBlockList" statementType="CALLABLE" resultType="com.flowspace.block.service.BlockVO">
+        {call sp_copy_block_list(#{pageId})}
     </select>
 
-    <!-- 블록 복사본 등록 (상위 블록은 나중에 연결) -->
-    <insert id="insertBlock" parameterType="com.flowspace.block.service.BlockVO"
-            useGeneratedKeys="true" keyProperty="blockId">
-        INSERT INTO blocks (page_id, task_id, event_id, sprint_id, image_file_id, type, position, content,
-                            created_by)
-        VALUES (#{pageId}, #{taskId}, #{eventId}, #{sprintId}, #{imageFileId}, #{type}, #{position}, #{content},
-                #{createdBy})
+    <!-- 블록 복사본 등록 (sp_copy_block_insert, 상위 블록은 나중에 연결) -->
+    <insert id="insertBlock" statementType="CALLABLE" parameterType="com.flowspace.block.service.BlockVO">
+        {call sp_copy_block_insert(#{pageId}, #{taskId}, #{eventId}, #{sprintId}, #{imageFileId}, #{type},
+                                   #{position}, #{content}, #{createdBy}, #{blockId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 상위 블록 연결 -->
-    <update id="updateBlockParent">
-        UPDATE blocks
-        SET parent_block_id = #{parentBlockId}
-        WHERE block_id = #{blockId}
+    <!-- 상위 블록 연결 (sp_copy_block_parent_update) -->
+    <update id="updateBlockParent" statementType="CALLABLE">
+        {call sp_copy_block_parent_update(#{parentBlockId}, #{blockId})}
     </update>
 
     <!-- ==================== 데이터베이스 ==================== -->
 
-    <!-- 블록의 데이터베이스 -->
-    <select id="selectDatabaseByBlock" resultType="com.flowspace.database.service.BlockDatabaseVO">
-        SELECT database_id,
-               block_id,
-               title,
-               view_type
-        FROM block_databases
-        WHERE block_id = #{blockId}
+    <!-- 블록의 데이터베이스 (sp_copy_database) -->
+    <select id="selectDatabaseByBlock" statementType="CALLABLE"
+            resultType="com.flowspace.database.service.BlockDatabaseVO">
+        {call sp_copy_database(#{blockId})}
     </select>
 
-    <!-- 데이터베이스 복사본 등록 -->
-    <insert id="insertDatabase" parameterType="com.flowspace.database.service.BlockDatabaseVO"
-            useGeneratedKeys="true" keyProperty="databaseId">
-        INSERT INTO block_databases (block_id, title, view_type)
-        VALUES (#{blockId}, #{title}, #{viewType})
+    <!-- 데이터베이스 복사본 등록 (sp_copy_database_insert) -->
+    <insert id="insertDatabase" statementType="CALLABLE" parameterType="com.flowspace.database.service.BlockDatabaseVO">
+        {call sp_copy_database_insert(#{blockId}, #{title}, #{viewType}, #{databaseId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 컬럼 목록 -->
-    <select id="selectColumnList" resultType="com.flowspace.database.service.BlockDatabaseColumnVO">
-        SELECT column_id,
-               database_id,
-               name,
-               type,
-               position,
-               width
-        FROM block_database_columns
-        WHERE database_id = #{databaseId}
-        ORDER BY position, column_id
+    <!-- 컬럼 목록 (sp_copy_column_list) -->
+    <select id="selectColumnList" statementType="CALLABLE"
+            resultType="com.flowspace.database.service.BlockDatabaseColumnVO">
+        {call sp_copy_column_list(#{databaseId})}
     </select>
 
-    <!-- 컬럼 복사본 등록 -->
-    <insert id="insertColumn" parameterType="com.flowspace.database.service.BlockDatabaseColumnVO"
-            useGeneratedKeys="true" keyProperty="columnId">
-        INSERT INTO block_database_columns (database_id, name, type, position, width)
-        VALUES (#{databaseId}, #{name}, #{type}, #{position}, #{width})
+    <!-- 컬럼 복사본 등록 (sp_copy_column_insert) -->
+    <insert id="insertColumn" statementType="CALLABLE" parameterType="com.flowspace.database.service.BlockDatabaseColumnVO">
+        {call sp_copy_column_insert(#{databaseId}, #{name}, #{type}, #{position}, #{width},
+                                    #{columnId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 옵션 복사 (원본 컬럼 → 새 컬럼) -->
-    <insert id="insertOptionCopies">
-        INSERT INTO block_database_column_options (column_id, value, color, status_group, position)
-        SELECT #{columnId}, value, color, status_group, position
-        FROM block_database_column_options
-        WHERE column_id = #{sourceColumnId}
+    <!-- 옵션 복사 (sp_copy_option_insert, 원본 컬럼 → 새 컬럼) -->
+    <insert id="insertOptionCopies" statementType="CALLABLE">
+        {call sp_copy_option_insert(#{columnId}, #{sourceColumnId})}
     </insert>
 
-    <!-- 행 목록 -->
-    <select id="selectRowList" resultType="com.flowspace.database.service.BlockDatabaseRowVO">
-        SELECT row_id,
-               database_id,
-               page_id,
-               position
-        FROM block_database_rows
-        WHERE database_id = #{databaseId}
-        ORDER BY position, row_id
+    <!-- 행 목록 (sp_copy_row_list) -->
+    <select id="selectRowList" statementType="CALLABLE" resultType="com.flowspace.database.service.BlockDatabaseRowVO">
+        {call sp_copy_row_list(#{databaseId})}
     </select>
 
-    <!-- 행 복사본 등록 -->
-    <insert id="insertRow" parameterType="com.flowspace.database.service.BlockDatabaseRowVO"
-            useGeneratedKeys="true" keyProperty="rowId">
-        INSERT INTO block_database_rows (database_id, page_id, position)
-        VALUES (#{databaseId}, #{pageId}, #{position})
+    <!-- 행 복사본 등록 (sp_copy_row_insert) -->
+    <insert id="insertRow" statementType="CALLABLE" parameterType="com.flowspace.database.service.BlockDatabaseRowVO">
+        {call sp_copy_row_insert(#{databaseId}, #{pageId}, #{position}, #{rowId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 셀 복사 (원본 행 → 새 행, 컬럼 번호는 CASE로 새 번호) -->
-    <insert id="insertCellCopies">
-        INSERT INTO block_database_cells (row_id, column_id, value)
-        SELECT #{rowId},
-               CASE column_id
-               <foreach collection="columnIdMap" index="sourceColumnId" item="columnId">
-                   WHEN #{sourceColumnId} THEN #{columnId}
-               </foreach>
-               END,
-               value
-        FROM block_database_cells
-        WHERE row_id = #{sourceRowId}
-          AND column_id IN
-        <foreach collection="columnIdMap" index="sourceColumnId" open="(" separator="," close=")">
-            #{sourceColumnId}
-        </foreach>
+    <!-- 셀 복사 (sp_copy_cell_insert, 원본 행 → 새 행, 컬럼 번호는 원본 → 새 번호 쌍으로 교체) -->
+    <insert id="insertCellCopies" statementType="CALLABLE">
+        {call sp_copy_cell_insert(#{sourceRowId}, #{rowId},
+                                  #{columnIdMap, typeHandler=com.flowspace.common.mybatis.IdMapTypeHandler})}
     </insert>
 
 </mapper>

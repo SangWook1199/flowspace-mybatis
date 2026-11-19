@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.flowspace.entity.Task;
 import com.flowspace.entity.enums.TaskPriority;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.notification.service.NotificationService;
@@ -41,17 +40,6 @@ public record MemberProfileResponse(
         String link
 
     ) {
-
-        public static TaskItem from(Task task) {
-            return new TaskItem(
-                task.getTaskId(),
-                task.getTitle(),
-                task.getEndDate(),
-                task.getPriority(),
-                task.getStatus().getName(),
-                NotificationService.taskLink(task)
-            );
-        }
 
         // MemberTaskVO 기반 생성
         public static TaskItem from(MemberTaskVO task) {

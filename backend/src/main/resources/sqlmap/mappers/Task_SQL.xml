@@ -13,15 +13,9 @@
         {call sp_task_assignee_list(#{workspaceId}, #{sprintId, jdbcType=BIGINT})}
     </select>
 
-    <!-- 여러 작업의 하위 작업 -->
-    <select id="selectSubTaskList" resultType="com.flowspace.task.service.SubTaskVO">
-        SELECT subtask_id, task_id, assignee_id, content, is_completed, position
-        FROM subtasks
-        WHERE task_id IN
-        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
-            #{taskId}
-        </foreach>
-        ORDER BY position
+    <!-- 여러 작업의 하위 작업 (sp_subtask_list) -->
+    <select id="selectSubTaskList" statementType="CALLABLE" resultType="com.flowspace.task.service.SubTaskVO">
+        {call sp_subtask_list(#{taskIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
     <!-- 작업 한 건과 상태 이름 -->
@@ -35,76 +29,48 @@
         {call sp_task_assignee(#{taskId})}
     </select>
 
-    <!-- 워크스페이스에서 해당 상태인 작업 수 -->
-    <select id="selectTaskCountByStatus" resultType="int">
-        SELECT COUNT(*)
-        FROM tasks
-        WHERE workspace_id = #{workspaceId}
-          AND status_id = #{statusId}
+    <!-- 워크스페이스에서 해당 상태인 작업 수 (sp_task_count_by_status) -->
+    <select id="selectTaskCountByStatus" statementType="CALLABLE" resultType="int">
+        {call sp_task_count_by_status(#{workspaceId}, #{statusId})}
     </select>
 
-    <!-- 워크스페이스의 최대 작업 번호 (없으면 0) -->
-    <select id="selectMaxTaskNumber" resultType="int">
-        SELECT COALESCE(MAX(task_number), 0)
-        FROM tasks
-        WHERE workspace_id = #{workspaceId}
+    <!-- 워크스페이스의 최대 작업 번호 (sp_task_max_number, 없으면 0) -->
+    <select id="selectMaxTaskNumber" statementType="CALLABLE" resultType="int">
+        {call sp_task_max_number(#{workspaceId})}
     </select>
 
-    <!-- 작업 등록 (생성된 task_id는 taskId에 설정, 생성 시각은 DB 기본값) -->
-    <insert id="insertTask" parameterType="com.flowspace.task.service.TaskVO"
-            useGeneratedKeys="true" keyProperty="taskId">
-        INSERT INTO tasks (workspace_id, sprint_id, status_id, task_number, position, created_by,
-                           title, description, start_date, end_date, priority)
-        VALUES (#{workspaceId}, #{sprintId}, #{statusId}, #{taskNumber}, #{position}, #{createdBy},
-                #{title}, #{description}, #{startDate}, #{endDate}, #{priority})
+    <!-- 작업 등록 (sp_task_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertTask" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskVO">
+        {call sp_task_insert(#{workspaceId}, #{sprintId}, #{statusId}, #{taskNumber}, #{position}, #{createdBy},
+                             #{title}, #{description}, #{startDate}, #{endDate}, #{priority},
+                             #{taskId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 작업 담당자 등록 -->
-    <insert id="insertTaskAssignee">
-        INSERT INTO task_assignees (task_id, user_id)
-        VALUES (#{taskId}, #{userId})
+    <!-- 작업 담당자 등록 (sp_task_assignee_insert) -->
+    <insert id="insertTaskAssignee" statementType="CALLABLE">
+        {call sp_task_assignee_insert(#{taskId}, #{userId})}
     </insert>
 
-    <!-- 작업 수정 -->
-    <update id="updateTask" parameterType="com.flowspace.task.service.TaskVO">
-        UPDATE tasks
-           SET sprint_id    = #{sprintId},
-               status_id    = #{statusId},
-               position     = #{position},
-               title        = #{title},
-               description  = #{description},
-               start_date   = #{startDate},
-               end_date     = #{endDate},
-               priority     = #{priority},
-               completed_at = #{completedAt}
-         WHERE task_id = #{taskId}
+    <!-- 작업 수정 (sp_task_update) -->
+    <update id="updateTask" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskVO">
+        {call sp_task_update(#{sprintId}, #{statusId}, #{position}, #{title}, #{description}, #{startDate},
+                             #{endDate}, #{priority}, #{completedAt}, #{taskId})}
     </update>
 
-    <!-- 작업 담당자의 사용자 번호 목록 -->
-    <select id="selectTaskAssigneeUserIds" resultType="long">
-        SELECT user_id
-        FROM task_assignees
-        WHERE task_id = #{taskId}
+    <!-- 작업 담당자의 사용자 번호 목록 (sp_task_assignee_user_id_list) -->
+    <select id="selectTaskAssigneeUserIds" statementType="CALLABLE" resultType="long">
+        {call sp_task_assignee_user_id_list(#{taskId})}
     </select>
 
-    <!-- 작업 담당자 모두 삭제 -->
-    <delete id="deleteTaskAssignees">
-        DELETE FROM task_assignees
-        WHERE task_id = #{taskId}
+    <!-- 작업 담당자 모두 삭제 (sp_task_assignee_delete) -->
+    <delete id="deleteTaskAssignees" statementType="CALLABLE">
+        {call sp_task_assignee_delete(#{taskId})}
     </delete>
 
-    <!-- 작업 담당자가 아닌 하위 작업 담당자 해제 (남은 담당자가 없으면 전체 해제) -->
-    <update id="updateSubTaskAssigneeClear">
-        UPDATE subtasks
-           SET assignee_id = NULL
-         WHERE task_id = #{taskId}
-           AND assignee_id IS NOT NULL
-        <if test="assigneeIds != null and assigneeIds.size() > 0">
-           AND assignee_id NOT IN
-           <foreach collection="assigneeIds" item="userId" open="(" separator="," close=")">
-               #{userId}
-           </foreach>
-        </if>
+    <!-- 작업 담당자가 아닌 하위 작업 담당자 해제 (sp_subtask_assignee_clear, 남은 담당자가 없으면 전체 해제) -->
+    <update id="updateSubTaskAssigneeClear" statementType="CALLABLE">
+        {call sp_subtask_assignee_clear(#{taskId},
+                                        #{assigneeIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </update>
 
     <!-- 작업 삭제 (sp_delete_task) -->
@@ -112,55 +78,40 @@
         {call sp_delete_task(#{taskId})}
     </delete>
 
-    <!-- 작업 담당자 여부 -->
-    <select id="selectTaskAssigneeCount" resultType="int">
-        SELECT COUNT(*)
-        FROM task_assignees
-        WHERE task_id = #{taskId}
-          AND user_id = #{userId}
+    <!-- 작업 담당자 여부 (sp_task_assignee_count) -->
+    <select id="selectTaskAssigneeCount" statementType="CALLABLE" resultType="int">
+        {call sp_task_assignee_count(#{taskId}, #{userId})}
     </select>
 
-    <!-- 하위 작업 한 건 -->
-    <select id="selectSubTaskById" resultType="com.flowspace.task.service.SubTaskVO">
-        SELECT subtask_id, task_id, assignee_id, content, is_completed, position
-        FROM subtasks
-        WHERE subtask_id = #{subtaskId}
+    <!-- 하위 작업 한 건 (sp_subtask) -->
+    <select id="selectSubTaskById" statementType="CALLABLE" resultType="com.flowspace.task.service.SubTaskVO">
+        {call sp_subtask(#{subtaskId})}
     </select>
 
-    <!-- 작업의 하위 작업 수 -->
-    <select id="selectSubTaskCount" resultType="int">
-        SELECT COUNT(*)
-        FROM subtasks
-        WHERE task_id = #{taskId}
+    <!-- 작업의 하위 작업 수 (sp_subtask_count) -->
+    <select id="selectSubTaskCount" statementType="CALLABLE" resultType="int">
+        {call sp_subtask_count(#{taskId})}
     </select>
 
-    <!-- 하위 작업 등록 (is_completed는 DB 기본값) -->
-    <insert id="insertSubTask" parameterType="com.flowspace.task.service.SubTaskVO"
-            useGeneratedKeys="true" keyProperty="subtaskId">
-        INSERT INTO subtasks (task_id, assignee_id, content, position)
-        VALUES (#{taskId}, #{assigneeId}, #{content}, #{position})
+    <!-- 하위 작업 등록 (sp_subtask_insert, is_completed는 DB 기본값) -->
+    <insert id="insertSubTask" statementType="CALLABLE" parameterType="com.flowspace.task.service.SubTaskVO">
+        {call sp_subtask_insert(#{taskId}, #{assigneeId}, #{content}, #{position},
+                                #{subtaskId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 하위 작업 수정 -->
-    <update id="updateSubTask" parameterType="com.flowspace.task.service.SubTaskVO">
-        UPDATE subtasks
-           SET content      = #{content},
-               assignee_id  = #{assigneeId},
-               is_completed = #{isCompleted}
-         WHERE subtask_id = #{subtaskId}
+    <!-- 하위 작업 수정 (sp_subtask_update) -->
+    <update id="updateSubTask" statementType="CALLABLE" parameterType="com.flowspace.task.service.SubTaskVO">
+        {call sp_subtask_update(#{content}, #{assigneeId}, #{isCompleted}, #{subtaskId})}
     </update>
 
-    <!-- 하위 작업 순서 변경 -->
-    <update id="updateSubTaskPosition">
-        UPDATE subtasks
-           SET position = #{position}
-         WHERE subtask_id = #{subtaskId}
+    <!-- 하위 작업 순서 변경 (sp_subtask_position_update) -->
+    <update id="updateSubTaskPosition" statementType="CALLABLE">
+        {call sp_subtask_position_update(#{position}, #{subtaskId})}
     </update>
 
-    <!-- 하위 작업 삭제 -->
-    <delete id="deleteSubTask">
-        DELETE FROM subtasks
-        WHERE subtask_id = #{subtaskId}
+    <!-- 하위 작업 삭제 (sp_subtask_delete) -->
+    <delete id="deleteSubTask" statementType="CALLABLE">
+        {call sp_subtask_delete(#{subtaskId})}
     </delete>
 
     <!-- 워크스페이스 작업 상태 목록 (sp_task_status_list) -->
@@ -175,49 +126,34 @@
         {call sp_task_status(#{workspaceId}, #{statusId})}
     </select>
 
-    <!-- 워크스페이스의 작업 상태 수 -->
-    <select id="selectTaskStatusCount" resultType="int">
-        SELECT COUNT(*)
-        FROM workspace_task_statuses
-        WHERE workspace_id = #{workspaceId}
+    <!-- 워크스페이스의 작업 상태 수 (sp_task_status_count) -->
+    <select id="selectTaskStatusCount" statementType="CALLABLE" resultType="int">
+        {call sp_task_status_count(#{workspaceId})}
     </select>
 
-    <!-- 상태 등록 -->
-    <insert id="insertTaskStatus" parameterType="com.flowspace.task.service.TaskStatusVO"
-            useGeneratedKeys="true" keyProperty="statusId">
-        INSERT INTO task_statuses (name, category, color)
-        VALUES (#{name}, #{category}, #{color})
+    <!-- 상태 등록 (sp_task_status_insert) -->
+    <insert id="insertTaskStatus" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_task_status_insert(#{name}, #{category}, #{color}, #{statusId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 워크스페이스에 상태 연결 (is_default는 DB 기본값) -->
-    <insert id="insertWorkspaceTaskStatus" parameterType="com.flowspace.task.service.TaskStatusVO">
-        INSERT INTO workspace_task_statuses (workspace_id, status_id, position, wip_limit)
-        VALUES (#{workspaceId}, #{statusId}, #{position}, #{wipLimit})
+    <!-- 워크스페이스에 상태 연결 (sp_workspace_task_status_insert, is_default는 DB 기본값) -->
+    <insert id="insertWorkspaceTaskStatus" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_workspace_task_status_insert(#{workspaceId}, #{statusId}, #{position}, #{wipLimit})}
     </insert>
 
-    <!-- 상태 정보 수정 -->
-    <update id="updateTaskStatusInfo" parameterType="com.flowspace.task.service.TaskStatusVO">
-        UPDATE task_statuses
-           SET name     = #{name},
-               category = #{category},
-               color    = #{color}
-         WHERE status_id = #{statusId}
+    <!-- 상태 정보 수정 (sp_task_status_update) -->
+    <update id="updateTaskStatusInfo" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_task_status_update(#{name}, #{category}, #{color}, #{statusId})}
     </update>
 
-    <!-- 워크스페이스별 WIP 제한 수정 -->
-    <update id="updateWorkspaceTaskStatusWipLimit" parameterType="com.flowspace.task.service.TaskStatusVO">
-        UPDATE workspace_task_statuses
-           SET wip_limit = #{wipLimit}
-         WHERE workspace_id = #{workspaceId}
-           AND status_id = #{statusId}
+    <!-- 워크스페이스별 WIP 제한 수정 (sp_workspace_task_status_wip_limit_update) -->
+    <update id="updateWorkspaceTaskStatusWipLimit" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_workspace_task_status_wip_limit_update(#{wipLimit}, #{workspaceId}, #{statusId})}
     </update>
 
-    <!-- 칸반 열 순서 변경 -->
-    <update id="updateTaskStatusPosition">
-        UPDATE workspace_task_statuses
-           SET position = #{position}
-         WHERE workspace_id = #{workspaceId}
-           AND status_id = #{statusId}
+    <!-- 칸반 열 순서 변경 (sp_workspace_task_status_position_update) -->
+    <update id="updateTaskStatusPosition" statementType="CALLABLE">
+        {call sp_workspace_task_status_position_update(#{position}, #{workspaceId}, #{statusId})}
     </update>
 
     <!-- 기본 상태를 새 상태로 교체 (sp_replace_default_task_status) -->
@@ -236,21 +172,10 @@
         {call sp_task_search(#{workspaceId}, #{keyword})}
     </select>
 
-    <!-- 여러 작업의 담당자 (목록 인자라 XML, sp_task_assignee_list와 같은 컬럼) -->
-    <select id="selectTaskAssigneeListByTaskIds" resultType="com.flowspace.task.service.TaskAssigneeVO">
-        SELECT ta.task_id,
-               u.user_id,
-               u.nickname,
-               u.profile_file_id,
-               f.file_url AS profile_image_url
-          FROM task_assignees ta
-          JOIN users u ON u.user_id = ta.user_id
-          LEFT JOIN files f ON f.file_id = u.profile_file_id
-         WHERE ta.task_id IN
-        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
-            #{taskId}
-        </foreach>
-         ORDER BY ta.task_assignee_id
+    <!-- 여러 작업의 담당자 (sp_task_assignee_list_by_tasks, sp_task_assignee_list와 같은 컬럼) -->
+    <select id="selectTaskAssigneeListByTaskIds" statementType="CALLABLE"
+            resultType="com.flowspace.task.service.TaskAssigneeVO">
+        {call sp_task_assignee_list_by_tasks(#{taskIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
 </mapper>

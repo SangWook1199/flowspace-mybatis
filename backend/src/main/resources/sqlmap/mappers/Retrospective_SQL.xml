@@ -14,18 +14,14 @@
         {call sp_retrospective(#{retrospectiveId})}
     </select>
 
-    <!-- 스프린트의 회고 번호 -->
-    <select id="selectRetrospectiveIdBySprint" resultType="long">
-        SELECT retrospective_id
-        FROM retrospectives
-        WHERE sprint_id = #{sprintId}
+    <!-- 스프린트의 회고 번호 (sp_retrospective_id_by_sprint) -->
+    <select id="selectRetrospectiveIdBySprint" statementType="CALLABLE" resultType="long">
+        {call sp_retrospective_id_by_sprint(#{sprintId})}
     </select>
 
-    <!-- 스프린트 존재 여부 -->
-    <select id="selectSprintCount" resultType="int">
-        SELECT COUNT(*)
-        FROM sprints
-        WHERE sprint_id = #{sprintId}
+    <!-- 스프린트 존재 여부 (sp_sprint_count) -->
+    <select id="selectSprintCount" statementType="CALLABLE" resultType="int">
+        {call sp_sprint_count(#{sprintId})}
     </select>
 
     <!-- 회고 생성 (sp_create_retrospective, OUT 인자로 pageId 설정) -->
@@ -36,16 +32,10 @@
 
     <!-- ==================== 스냅샷 ==================== -->
 
-    <!-- 상태 스냅샷 -->
-    <select id="selectStatusSnapshotList" resultType="com.flowspace.retrospective.service.StatusSnapshotVO">
-        SELECT snapshot_status_id,
-               retrospective_id,
-               name,
-               color,
-               position
-        FROM retrospective_status_snapshots
-        WHERE retrospective_id = #{retrospectiveId}
-        ORDER BY position, snapshot_status_id
+    <!-- 상태 스냅샷 (sp_status_snapshot_list) -->
+    <select id="selectStatusSnapshotList" statementType="CALLABLE"
+            resultType="com.flowspace.retrospective.service.StatusSnapshotVO">
+        {call sp_status_snapshot_list(#{retrospectiveId})}
     </select>
 
     <!-- 작업 스냅샷 (retrospectiveId null이면 워크스페이스 전체) -->
@@ -65,16 +55,10 @@
 
     <!-- ==================== Action Item ==================== -->
 
-    <!-- 회고 페이지들의 TODO 블록 -->
-    <select id="selectTodoBlockList" resultType="com.flowspace.retrospective.service.TodoBlockVO">
-        SELECT page_id,
-               content
-        FROM blocks
-        WHERE type = 'TODO'
-          AND page_id IN
-        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
-            #{pageId}
-        </foreach>
+    <!-- 회고 페이지들의 TODO 블록 (sp_todo_block_list) -->
+    <select id="selectTodoBlockList" statementType="CALLABLE"
+            resultType="com.flowspace.retrospective.service.TodoBlockVO">
+        {call sp_todo_block_list(#{pageIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
 </mapper>

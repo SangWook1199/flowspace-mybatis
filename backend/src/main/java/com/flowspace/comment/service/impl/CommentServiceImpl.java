@@ -381,7 +381,7 @@ public class CommentServiceImpl implements CommentService {
         return page;
     }
 
-    // 휴지통 페이지면 PAGE_NOT_FOUND (PageGuard와 같은 규칙)
+    // 휴지통 페이지면 PAGE_NOT_FOUND
     private void requireActivePage(CommentTargetVO page) {
 
         if (Boolean.TRUE.equals(page.getPageDeleted())) {

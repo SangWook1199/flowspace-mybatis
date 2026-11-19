@@ -2,45 +2,29 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.presence.service.impl.PresenceMapper">
 
-    <!-- 이메일로 사용자 번호 -->
-    <select id="selectUserIdByEmail" resultType="long">
-        SELECT user_id
-        FROM users
-        WHERE email = #{email}
+    <!-- 이메일로 사용자 번호 (sp_user_id_by_email) -->
+    <select id="selectUserIdByEmail" statementType="CALLABLE" resultType="long">
+        {call sp_user_id_by_email(#{email})}
     </select>
 
-    <!-- 마지막 접속 시각 갱신 -->
-    <update id="updateLastActiveAt">
-        UPDATE users
-        SET last_active_at = #{lastActiveAt}
-        WHERE user_id = #{userId}
+    <!-- 마지막 접속 시각 갱신 (sp_user_update_last_active_at) -->
+    <update id="updateLastActiveAt" statementType="CALLABLE">
+        {call sp_user_update_last_active_at(#{userId}, #{lastActiveAt})}
     </update>
 
-    <!-- 같은 워크스페이스에 있는 다른 사용자 번호 -->
-    <select id="selectCoMemberIds" resultType="long">
-        SELECT DISTINCT user_id
-        FROM workspace_members
-        WHERE workspace_id IN (SELECT workspace_id
-                               FROM workspace_members
-                               WHERE user_id = #{userId})
-          AND user_id != #{userId}
+    <!-- 같은 워크스페이스에 있는 다른 사용자 번호 (sp_co_member_id_list) -->
+    <select id="selectCoMemberIds" statementType="CALLABLE" resultType="long">
+        {call sp_co_member_id_list(#{userId})}
     </select>
 
-    <!-- 페이지 정보 -->
-    <select id="selectPage" resultType="com.flowspace.page.service.PageVO">
-        SELECT page_id,
-               workspace_id,
-               is_deleted
-        FROM pages
-        WHERE page_id = #{pageId}
+    <!-- 페이지 정보 (sp_page) -->
+    <select id="selectPage" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
+        {call sp_page(#{pageId})}
     </select>
 
-    <!-- 워크스페이스 멤버 수 -->
-    <select id="selectMemberCount" resultType="int">
-        SELECT COUNT(*)
-        FROM workspace_members
-        WHERE workspace_id = #{workspaceId}
-          AND user_id = #{userId}
+    <!-- 워크스페이스 멤버 수 (sp_workspace_member_count) -->
+    <select id="selectMemberCount" statementType="CALLABLE" resultType="int">
+        {call sp_workspace_member_count(#{workspaceId}, #{userId})}
     </select>
 
 </mapper>

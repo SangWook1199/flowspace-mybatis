@@ -2,17 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.search.service.impl.SearchMapper">
 
-    <!-- 제목이 맞는 페이지 -->
-    <select id="selectPageListByTitle" resultType="com.flowspace.search.service.SearchResultVO">
-        SELECT page_id AS id,
-               title,
-               icon
-        FROM pages
-        WHERE workspace_id = #{workspaceId}
-          AND is_deleted = FALSE
-          AND LOWER(title) LIKE #{like} ESCAPE '!'
-        ORDER BY page_id DESC
-        LIMIT #{limit}
+    <!-- 제목이 맞는 페이지 (sp_search_page_list) -->
+    <select id="selectPageListByTitle" statementType="CALLABLE" resultType="com.flowspace.search.service.SearchResultVO">
+        {call sp_search_page_list(#{workspaceId}, #{like}, #{limit})}
     </select>
 
     <!-- 본문 검색 후보 블록 (sp_search_block_list) -->
@@ -25,17 +17,9 @@
         {call sp_search_task_list(#{workspaceId}, #{like}, #{limit})}
     </select>
 
-    <!-- 스프린트 -->
-    <select id="selectSprintList" resultType="com.flowspace.search.service.SearchResultVO">
-        SELECT sprint_id AS id,
-               name      AS title,
-               goal      AS body
-        FROM sprints
-        WHERE workspace_id = #{workspaceId}
-          AND (LOWER(name) LIKE #{like} ESCAPE '!'
-               OR LOWER(COALESCE(goal, '')) LIKE #{like} ESCAPE '!')
-        ORDER BY sprint_id DESC
-        LIMIT #{limit}
+    <!-- 스프린트 (sp_search_sprint_list) -->
+    <select id="selectSprintList" statementType="CALLABLE" resultType="com.flowspace.search.service.SearchResultVO">
+        {call sp_search_sprint_list(#{workspaceId}, #{like}, #{limit})}
     </select>
 
     <!-- 댓글 (sp_search_comment_list) -->
@@ -43,18 +27,9 @@
         {call sp_search_comment_list(#{workspaceId}, #{like}, #{limit})}
     </select>
 
-    <!-- 일정 -->
-    <select id="selectEventList" resultType="com.flowspace.search.service.SearchResultVO">
-        SELECT event_id    AS id,
-               title,
-               description AS body,
-               start_datetime
-        FROM events
-        WHERE workspace_id = #{workspaceId}
-          AND (LOWER(title) LIKE #{like} ESCAPE '!'
-               OR LOWER(COALESCE(description, '')) LIKE #{like} ESCAPE '!')
-        ORDER BY start_datetime DESC
-        LIMIT #{limit}
+    <!-- 일정 (sp_search_event_list) -->
+    <select id="selectEventList" statementType="CALLABLE" resultType="com.flowspace.search.service.SearchResultVO">
+        {call sp_search_event_list(#{workspaceId}, #{like}, #{limit})}
     </select>
 
 </mapper>

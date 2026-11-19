@@ -740,7 +740,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 작업 목록 응답 변환 (sprintId가 null이면 백로그)
-    // 작업·담당자는 프로시저, 하위 작업은 XML, 댓글은 댓글 서비스에서 한 번씩 조회
+    // 작업·담당자·하위 작업은 프로시저, 댓글은 댓글 서비스에서 한 번씩 조회
     private List<TaskResponse> toTaskResponses(Long workspaceId, Long sprintId) {
 
         List<TaskVO> tasks = taskMapper.selectTaskList(workspaceId, sprintId);

@@ -7,55 +7,39 @@
         {call sp_user_by_email(#{email})}
     </select>
 
-    <!-- 프로필 수정 -->
-    <update id="updateUserProfile" parameterType="com.flowspace.user.service.UserVO">
-        UPDATE users
-           SET nickname        = #{nickname},
-               bio             = #{bio},
-               profile_file_id = #{profileFileId}
-         WHERE user_id = #{userId}
+    <!-- 프로필 수정 (sp_user_profile_update) -->
+    <update id="updateUserProfile" statementType="CALLABLE" parameterType="com.flowspace.user.service.UserVO">
+        {call sp_user_profile_update(#{nickname}, #{bio}, #{profileFileId}, #{userId})}
     </update>
 
-    <!-- 프로필 이미지 수정 -->
-    <update id="updateUserProfileFile">
-        UPDATE users
-           SET profile_file_id = #{profileFileId}
-         WHERE user_id = #{userId}
+    <!-- 프로필 이미지 수정 (sp_user_profile_file_update) -->
+    <update id="updateUserProfileFile" statementType="CALLABLE">
+        {call sp_user_profile_file_update(#{profileFileId}, #{userId})}
     </update>
 
-    <!-- 비밀번호 수정 -->
-    <update id="updateUserPassword">
-        UPDATE users
-           SET password = #{password}
-         WHERE user_id = #{userId}
+    <!-- 비밀번호 수정 (sp_user_password_update) -->
+    <update id="updateUserPassword" statementType="CALLABLE">
+        {call sp_user_password_update(#{password}, #{userId})}
     </update>
 
-    <!-- 참여 중인 첫 워크스페이스 번호 -->
-    <select id="selectFirstWorkspaceId" resultType="long">
-        SELECT workspace_id
-        FROM workspace_members
-        WHERE user_id = #{userId}
-        ORDER BY member_id
-        LIMIT 1
+    <!-- 참여 중인 첫 워크스페이스 번호 (sp_user_first_workspace_id) -->
+    <select id="selectFirstWorkspaceId" statementType="CALLABLE" resultType="long">
+        {call sp_user_first_workspace_id(#{userId})}
     </select>
 
-    <!-- refresh token 만료 시각 -->
-    <select id="selectRefreshTokenExpiredAt" resultType="java.time.LocalDateTime">
-        SELECT expired_at
-        FROM refresh_tokens
-        WHERE user_id = #{userId}
+    <!-- refresh token 만료 시각 (sp_refresh_token_expired_at) -->
+    <select id="selectRefreshTokenExpiredAt" statementType="CALLABLE" resultType="java.time.LocalDateTime">
+        {call sp_refresh_token_expired_at(#{userId})}
     </select>
 
-    <!-- refresh token 삭제 -->
-    <delete id="deleteRefreshToken">
-        DELETE FROM refresh_tokens
-        WHERE user_id = #{userId}
+    <!-- refresh token 삭제 (sp_refresh_token_delete) -->
+    <delete id="deleteRefreshToken" statementType="CALLABLE">
+        {call sp_refresh_token_delete(#{userId})}
     </delete>
 
-    <!-- refresh token 저장 -->
-    <insert id="insertRefreshToken">
-        INSERT INTO refresh_tokens (user_id, token, expired_at)
-        VALUES (#{userId}, #{token}, #{expiredAt})
+    <!-- refresh token 저장 (sp_refresh_token_insert) -->
+    <insert id="insertRefreshToken" statementType="CALLABLE">
+        {call sp_refresh_token_insert(#{userId}, #{token}, #{expiredAt})}
     </insert>
 
     <!-- 번호로 사용자 조회 -->
@@ -63,129 +47,95 @@
         {call sp_user(#{userId})}
     </select>
 
-    <!-- 사용자 등록 (생성 시각은 DB 기본값) -->
-    <insert id="insertUser" parameterType="com.flowspace.user.service.UserVO"
-            useGeneratedKeys="true" keyProperty="userId">
-        INSERT INTO users (email, password, nickname, provider, provider_id, email_verified)
-        VALUES (#{email}, #{password}, #{nickname}, #{provider}, #{providerId}, #{emailVerified})
+    <!-- 사용자 등록 (sp_user_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertUser" statementType="CALLABLE" parameterType="com.flowspace.user.service.UserVO">
+        {call sp_user_insert(#{email}, #{password}, #{nickname}, #{provider}, #{providerId}, #{emailVerified},
+                             #{userId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
-    <!-- 인증 전 재가입 -->
-    <update id="updateUserSignupRestart">
-        UPDATE users
-           SET nickname = #{nickname},
-               password = #{password}
-         WHERE user_id = #{userId}
+    <!-- 인증 전 재가입 (sp_user_signup_restart_update) -->
+    <update id="updateUserSignupRestart" statementType="CALLABLE">
+        {call sp_user_signup_restart_update(#{nickname}, #{password}, #{userId})}
     </update>
 
-    <!-- 이메일 인증 완료 -->
-    <update id="updateUserEmailVerified">
-        UPDATE users
-           SET email_verified = TRUE
-         WHERE user_id = #{userId}
+    <!-- 이메일 인증 완료 (sp_user_email_verified_update) -->
+    <update id="updateUserEmailVerified" statementType="CALLABLE">
+        {call sp_user_email_verified_update(#{userId})}
     </update>
 
-    <!-- 인증 전 계정을 소셜 로그인으로 전환 -->
-    <update id="updateUserClaimBySocial">
-        UPDATE users
-           SET email_verified = TRUE,
-               password       = NULL
-         WHERE user_id = #{userId}
+    <!-- 인증 전 계정을 소셜 로그인으로 전환 (sp_user_claim_by_social_update) -->
+    <update id="updateUserClaimBySocial" statementType="CALLABLE">
+        {call sp_user_claim_by_social_update(#{userId})}
     </update>
 
-    <!-- 저장된 refresh token -->
-    <select id="selectRefreshToken" resultType="com.flowspace.user.service.RefreshTokenVO">
-        SELECT user_id, token, expired_at
-        FROM refresh_tokens
-        WHERE token = #{token}
+    <!-- 저장된 refresh token (sp_refresh_token) -->
+    <select id="selectRefreshToken" statementType="CALLABLE" resultType="com.flowspace.user.service.RefreshTokenVO">
+        {call sp_refresh_token(#{token})}
     </select>
 
-    <!-- 소셜 계정에 연결된 사용자 번호 -->
-    <select id="selectSocialUserId" resultType="long">
-        SELECT user_id
-        FROM user_social_accounts
-        WHERE provider = #{provider}
-          AND provider_id = #{providerId}
+    <!-- 소셜 계정에 연결된 사용자 번호 (sp_social_account_user_id) -->
+    <select id="selectSocialUserId" statementType="CALLABLE" resultType="long">
+        {call sp_social_account_user_id(#{provider}, #{providerId})}
     </select>
 
-    <!-- 예전 방식으로 가입한 소셜 사용자 번호 -->
-    <select id="selectUserIdByProvider" resultType="long">
-        SELECT user_id
-        FROM users
-        WHERE provider = #{provider}
-          AND provider_id = #{providerId}
+    <!-- 예전 방식으로 가입한 소셜 사용자 번호 (sp_user_id_by_provider) -->
+    <select id="selectUserIdByProvider" statementType="CALLABLE" resultType="long">
+        {call sp_user_id_by_provider(#{provider}, #{providerId})}
     </select>
 
-    <!-- 소셜 계정 연결 여부 -->
-    <select id="selectSocialAccountCount" resultType="int">
-        SELECT COUNT(*)
-        FROM user_social_accounts
-        WHERE user_id = #{userId}
-          AND provider = #{provider}
+    <!-- 소셜 계정 연결 여부 (sp_social_account_count) -->
+    <select id="selectSocialAccountCount" statementType="CALLABLE" resultType="int">
+        {call sp_social_account_count(#{userId}, #{provider})}
     </select>
 
-    <!-- 소셜 계정 연결 -->
-    <insert id="insertSocialAccount">
-        INSERT INTO user_social_accounts (user_id, provider, provider_id)
-        VALUES (#{userId}, #{provider}, #{providerId})
+    <!-- 소셜 계정 연결 (sp_social_account_insert) -->
+    <insert id="insertSocialAccount" statementType="CALLABLE">
+        {call sp_social_account_insert(#{userId}, #{provider}, #{providerId})}
     </insert>
 
-    <!-- 가장 최근에 보낸 메일 시각 (email_verification_tokens) -->
-    <select id="selectLastEmailTokenCreatedAt" resultType="java.time.LocalDateTime">
-        SELECT MAX(created_at)
-        FROM email_verification_tokens
-        WHERE user_id = #{userId}
+    <!-- 가장 최근에 보낸 메일 시각 (sp_email_token_last_created_at, email_verification_tokens) -->
+    <select id="selectLastEmailTokenCreatedAt" statementType="CALLABLE" resultType="java.time.LocalDateTime">
+        {call sp_email_token_last_created_at(#{userId})}
     </select>
 
-    <!-- 사용자의 토큰 전체 삭제 -->
-    <delete id="deleteEmailTokens">
-        DELETE FROM email_verification_tokens
-        WHERE user_id = #{userId}
+    <!-- 사용자의 토큰 전체 삭제 (sp_email_token_delete) -->
+    <delete id="deleteEmailTokens" statementType="CALLABLE">
+        {call sp_email_token_delete(#{userId})}
     </delete>
 
-    <!-- 토큰 저장 (생성 시각은 DB 기본값) -->
-    <insert id="insertEmailToken">
-        INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
-        VALUES (#{userId}, #{tokenHash}, #{expiresAt})
+    <!-- 토큰 저장 (sp_email_token_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertEmailToken" statementType="CALLABLE">
+        {call sp_email_token_insert(#{userId}, #{tokenHash}, #{expiresAt})}
     </insert>
 
-    <!-- 해시로 토큰 찾기 -->
-    <select id="selectEmailTokenByHash" resultType="com.flowspace.user.service.MailTokenVO">
-        SELECT user_id, token_hash, expires_at, created_at
-        FROM email_verification_tokens
-        WHERE token_hash = #{tokenHash}
+    <!-- 해시로 토큰 찾기 (sp_email_token_by_hash) -->
+    <select id="selectEmailTokenByHash" statementType="CALLABLE" resultType="com.flowspace.user.service.MailTokenVO">
+        {call sp_email_token_by_hash(#{tokenHash})}
     </select>
 
-    <!-- 가장 최근에 보낸 메일 시각 (password_reset_tokens) -->
-    <select id="selectLastPasswordTokenCreatedAt" resultType="java.time.LocalDateTime">
-        SELECT MAX(created_at)
-        FROM password_reset_tokens
-        WHERE user_id = #{userId}
+    <!-- 가장 최근에 보낸 메일 시각 (sp_password_token_last_created_at, password_reset_tokens) -->
+    <select id="selectLastPasswordTokenCreatedAt" statementType="CALLABLE" resultType="java.time.LocalDateTime">
+        {call sp_password_token_last_created_at(#{userId})}
     </select>
 
-    <!-- 사용자의 토큰 전체 삭제 -->
-    <delete id="deletePasswordTokens">
-        DELETE FROM password_reset_tokens
-        WHERE user_id = #{userId}
+    <!-- 사용자의 토큰 전체 삭제 (sp_password_token_delete) -->
+    <delete id="deletePasswordTokens" statementType="CALLABLE">
+        {call sp_password_token_delete(#{userId})}
     </delete>
 
-    <!-- 토큰 저장 (생성 시각은 DB 기본값) -->
-    <insert id="insertPasswordToken">
-        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-        VALUES (#{userId}, #{tokenHash}, #{expiresAt})
+    <!-- 토큰 저장 (sp_password_token_insert, 생성 시각은 DB 기본값) -->
+    <insert id="insertPasswordToken" statementType="CALLABLE">
+        {call sp_password_token_insert(#{userId}, #{tokenHash}, #{expiresAt})}
     </insert>
 
-    <!-- 해시로 토큰 찾기 -->
-    <select id="selectPasswordTokenByHash" resultType="com.flowspace.user.service.MailTokenVO">
-        SELECT user_id, token_hash, expires_at, created_at
-        FROM password_reset_tokens
-        WHERE token_hash = #{tokenHash}
+    <!-- 해시로 토큰 찾기 (sp_password_token_by_hash) -->
+    <select id="selectPasswordTokenByHash" statementType="CALLABLE" resultType="com.flowspace.user.service.MailTokenVO">
+        {call sp_password_token_by_hash(#{tokenHash})}
     </select>
 
-    <!-- 재설정 토큰 삭제 -->
-    <delete id="deletePasswordTokenByHash">
-        DELETE FROM password_reset_tokens
-        WHERE token_hash = #{tokenHash}
+    <!-- 재설정 토큰 삭제 (sp_password_token_hash_delete) -->
+    <delete id="deletePasswordTokenByHash" statementType="CALLABLE">
+        {call sp_password_token_hash_delete(#{tokenHash})}
     </delete>
 
     <!-- 탈퇴 전 확인 (sp_withdraw_check) -->

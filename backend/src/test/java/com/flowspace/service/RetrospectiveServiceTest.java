@@ -47,6 +47,8 @@ class RetrospectiveServiceTest {
     @Test
     @DisplayName("회고를 만들면 프로시저에 제목을 넘기고, 돌려받은 페이지 번호로 활동 기록을 남긴다")
     void createRetrospective() {
+        when(retrospectiveMapper.selectRetrospectiveIdBySprint(10L)).thenReturn(null);
+
         doAnswer(invocation -> {
             RetrospectiveVO vo = invocation.getArgument(0);
             vo.setPageId(77L);

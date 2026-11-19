@@ -2,18 +2,15 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.notification.service.impl.NotificationMapper">
 
-    <!-- 이메일로 사용자 번호 -->
-    <select id="selectUserIdByEmail" resultType="long">
-        SELECT user_id
-        FROM users
-        WHERE email = #{email}
+    <!-- 이메일로 사용자 번호 (sp_user_id_by_email) -->
+    <select id="selectUserIdByEmail" statementType="CALLABLE" resultType="long">
+        {call sp_user_id_by_email(#{email})}
     </select>
 
-    <!-- 알림 등록 (읽음 여부·생성 시각은 DB 기본값) -->
-    <insert id="insertNotification" parameterType="com.flowspace.notification.service.NotificationVO"
-            useGeneratedKeys="true" keyProperty="notificationId">
-        INSERT INTO notifications (user_id, actor_id, workspace_id, type, message, ref_id, link_path)
-        VALUES (#{userId}, #{actorId}, #{workspaceId}, #{type}, #{message}, #{refId}, #{linkPath})
+    <!-- 알림 등록 (sp_notification_insert, 읽음 여부·생성 시각은 DB 기본값) -->
+    <insert id="insertNotification" statementType="CALLABLE" parameterType="com.flowspace.notification.service.NotificationVO">
+        {call sp_notification_insert(#{userId}, #{actorId}, #{workspaceId}, #{type}, #{message}, #{refId},
+                                     #{linkPath}, #{notificationId, mode=OUT, jdbcType=BIGINT})}
     </insert>
 
     <!-- 알림 한 건 (sp_notification) -->
@@ -28,56 +25,39 @@
         {call sp_notification_list(#{userId}, #{offset}, #{limit})}
     </select>
 
-    <!-- 읽지 않은 알림 수 -->
-    <select id="selectUnreadNotificationCount" resultType="long">
-        SELECT COUNT(*)
-        FROM notifications
-        WHERE user_id = #{userId}
-          AND is_read = FALSE
+    <!-- 읽지 않은 알림 수 (sp_notification_unread_count) -->
+    <select id="selectUnreadNotificationCount" statementType="CALLABLE" resultType="long">
+        {call sp_notification_unread_count(#{userId})}
     </select>
 
-    <!-- 알림 수신자 번호 -->
-    <select id="selectNotificationUserId" resultType="long">
-        SELECT user_id
-        FROM notifications
-        WHERE notification_id = #{notificationId}
+    <!-- 알림 수신자 번호 (sp_notification_user_id) -->
+    <select id="selectNotificationUserId" statementType="CALLABLE" resultType="long">
+        {call sp_notification_user_id(#{notificationId})}
     </select>
 
-    <!-- 알림 한 건 읽음 -->
-    <update id="updateNotificationRead">
-        UPDATE notifications
-           SET is_read = TRUE
-         WHERE notification_id = #{notificationId}
+    <!-- 알림 한 건 읽음 (sp_notification_read_update) -->
+    <update id="updateNotificationRead" statementType="CALLABLE">
+        {call sp_notification_read_update(#{notificationId})}
     </update>
 
-    <!-- 내 알림 모두 읽음 -->
-    <update id="updateAllNotificationsRead">
-        UPDATE notifications
-           SET is_read = TRUE
-         WHERE user_id = #{userId}
-           AND is_read = FALSE
+    <!-- 내 알림 모두 읽음 (sp_notification_read_all_update) -->
+    <update id="updateAllNotificationsRead" statementType="CALLABLE">
+        {call sp_notification_read_all_update(#{userId})}
     </update>
 
-    <!-- 특정 대상에 대한 내 알림 읽음 -->
-    <update id="updateNotificationReadByRef">
-        UPDATE notifications
-           SET is_read = TRUE
-         WHERE user_id = #{userId}
-           AND type = #{type}
-           AND ref_id = #{refId}
-           AND is_read = FALSE
+    <!-- 특정 대상에 대한 내 알림 읽음 (sp_notification_read_by_ref_update) -->
+    <update id="updateNotificationReadByRef" statementType="CALLABLE">
+        {call sp_notification_read_by_ref_update(#{userId}, #{type}, #{refId})}
     </update>
 
-    <!-- 알림 한 건 삭제 -->
-    <delete id="deleteNotification">
-        DELETE FROM notifications
-        WHERE notification_id = #{notificationId}
+    <!-- 알림 한 건 삭제 (sp_notification_delete) -->
+    <delete id="deleteNotification" statementType="CALLABLE">
+        {call sp_notification_delete(#{notificationId})}
     </delete>
 
-    <!-- 보관 기간이 지난 알림 삭제 -->
-    <delete id="deleteOldNotifications">
-        DELETE FROM notifications
-        WHERE created_at <![CDATA[ < ]]> #{before}
+    <!-- 보관 기간이 지난 알림 삭제 (sp_notification_old_delete) -->
+    <delete id="deleteOldNotifications" statementType="CALLABLE">
+        {call sp_notification_old_delete(#{before})}
     </delete>
 
     <!-- 마감 임박 알림을 보낼 대상 -->
