@@ -1,8 +1,8 @@
 package com.flowspace.database.service;
 
 import java.time.LocalDateTime;
-import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.TaskStatusCategory;
+import com.flowspace.common.enums.WorkspaceColor;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

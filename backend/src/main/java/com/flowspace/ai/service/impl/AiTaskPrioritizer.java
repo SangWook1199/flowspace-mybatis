@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 // 한 스프린트의 작업 우선순위를 서버가 정리해요.
 // - HIGH는 작업의 30%까지만 둬요(작업이 적어도 1개는 허용). 모두 HIGH로 적는 모델의 습관을 막는 거예요.

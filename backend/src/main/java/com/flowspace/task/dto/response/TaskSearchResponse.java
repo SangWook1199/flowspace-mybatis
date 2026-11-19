@@ -1,7 +1,5 @@
 package com.flowspace.task.dto.response;
 
-import com.flowspace.entity.Task;
-import com.flowspace.entity.TaskAssignee;
 import com.flowspace.task.service.TaskVO;
 
 import java.util.List;
@@ -20,21 +18,6 @@ public record TaskSearchResponse(
     List<AssigneeItem> assignees
 
 ) {
-
-    public static TaskSearchResponse from(
-        Task task,
-        List<TaskAssignee> assignees
-    ) {
-        return new TaskSearchResponse(
-            task.getTaskId(),
-            task.getTitle(),
-            task.getStatus().getStatusId(),
-            task.getStatus().getName(),
-            assignees.stream()
-                .map(AssigneeItem::from)
-                .toList()
-        );
-    }
 
     // TaskVO 기반 응답 생성
     public static TaskSearchResponse from(

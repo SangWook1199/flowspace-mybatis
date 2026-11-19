@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.flowspace.block.service.BlockVO;
-import com.flowspace.entity.enums.BlockType;
+import com.flowspace.common.enums.BlockType;
 
 // @formatter:off
 

@@ -4,8 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.flowspace.entity.enums.TaskPriority;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.TaskPriority;
+import com.flowspace.common.enums.WorkspaceRole;
 import com.flowspace.notification.service.NotificationService;
 import com.flowspace.workspace.service.MemberTaskVO;
 

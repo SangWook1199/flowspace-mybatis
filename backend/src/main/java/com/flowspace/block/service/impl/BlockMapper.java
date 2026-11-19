@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.flowspace.block.service.BlockVO;
-import com.flowspace.entity.enums.BlockType;
+import com.flowspace.common.enums.BlockType;
 import com.flowspace.page.service.PageVO;
 
 // 블록 Mapper (Block_SQL.xml)

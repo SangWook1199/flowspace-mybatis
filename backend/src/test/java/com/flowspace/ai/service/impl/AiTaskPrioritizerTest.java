@@ -10,7 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 // 우선순위 정리 규칙(HIGH는 30% 이하, 핵심 작업 먼저, 핵심은 LOW로 두지 않기)을 확인해요.
 class AiTaskPrioritizerTest {

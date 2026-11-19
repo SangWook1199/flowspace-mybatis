@@ -1,6 +1,5 @@
 package com.flowspace.user.dto.response;
 
-import com.flowspace.entity.User;
 import com.flowspace.user.service.UserLookupVO;
 
 // @formatter:off
@@ -19,16 +18,6 @@ public record UserLookupResponse(
     // AVAILABLE: 초대할 수 있음 / MEMBER: 이미 이 워크스페이스 멤버 / INVITED: 이미 초대함(대기 중) / SELF: 나 자신
     public enum Status {
         AVAILABLE, MEMBER, INVITED, SELF
-    }
-
-    public static UserLookupResponse of(User user, Status status) {
-        return new UserLookupResponse(
-            user.getUserId(),
-            user.getNickname(),
-            user.getEmail(),
-            user.getProfileFile() == null ? null : user.getProfileFile().getFileUrl(),
-            status
-        );
     }
 
     // UserLookupVO 기반 응답 생성

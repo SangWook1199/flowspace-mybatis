@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.flowspace.ai.service.AiDraftLimits;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

@@ -7,7 +7,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.flowspace.entity.enums.NotificationType;
+import com.flowspace.common.enums.NotificationType;
 import com.flowspace.notification.service.DueSoonTargetVO;
 import com.flowspace.notification.service.NotificationVO;
 

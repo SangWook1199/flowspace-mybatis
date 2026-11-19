@@ -1,6 +1,6 @@
 package com.flowspace.block.dto.request;
 
-import com.flowspace.entity.enums.BlockType;
+import com.flowspace.common.enums.BlockType;
 import jakarta.validation.constraints.Size;
 
 // @formatter:off

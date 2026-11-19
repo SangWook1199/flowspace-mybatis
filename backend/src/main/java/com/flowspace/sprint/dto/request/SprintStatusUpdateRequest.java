@@ -1,6 +1,6 @@
 package com.flowspace.sprint.dto.request;
 
-import com.flowspace.entity.enums.SprintStatus;
+import com.flowspace.common.enums.SprintStatus;
 import jakarta.validation.constraints.NotNull;
 
 // @formatter:off

@@ -1,7 +1,6 @@
 package com.flowspace.notification.dto.response;
 
-import com.flowspace.entity.Notification;
-import com.flowspace.entity.enums.NotificationType;
+import com.flowspace.common.enums.NotificationType;
 import com.flowspace.notification.service.NotificationVO;
 
 // @formatter:off
@@ -26,26 +25,6 @@ public record NotificationResponse(
     String createdAt
 
 ) {
-
-    public static NotificationResponse from(Notification notification) {
-        return new NotificationResponse(
-            notification.getNotificationId(),
-            notification.getType(),
-            notification.getMessage(),
-
-            notification.getWorkspace() == null ? null : notification.getWorkspace().getWorkspaceId(),
-            notification.getWorkspace() == null ? null : notification.getWorkspace().getName(),
-
-            notification.getActor() == null ? null : notification.getActor().getUserId(),
-            notification.getActor() == null ? null : notification.getActor().getNickname(),
-
-            notification.getRefId(),
-            notification.getLinkPath(),
-
-            Boolean.TRUE.equals(notification.getIsRead()),
-            notification.getCreatedAt() == null ? null : notification.getCreatedAt().toString()
-        );
-    }
 
     // NotificationVO 기반 응답 생성
     public static NotificationResponse from(NotificationVO notification) {

@@ -5,8 +5,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.flowspace.entity.enums.WorkspaceRole;
-import com.flowspace.entity.enums.InviteStatus;
+import com.flowspace.common.enums.WorkspaceRole;
+import com.flowspace.common.enums.InviteStatus;
 import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.MemberTaskCountVO;
 import com.flowspace.workspace.service.MemberTaskVO;

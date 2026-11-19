@@ -1,6 +1,6 @@
 package com.flowspace.database.dto.request;
 
-import com.flowspace.entity.enums.DatabaseViewType;
+import com.flowspace.common.enums.DatabaseViewType;
 import jakarta.validation.constraints.NotNull;
 
 // @formatter:off

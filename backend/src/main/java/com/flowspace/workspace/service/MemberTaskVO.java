@@ -2,7 +2,7 @@ package com.flowspace.workspace.service;
 
 import java.time.LocalDate;
 
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

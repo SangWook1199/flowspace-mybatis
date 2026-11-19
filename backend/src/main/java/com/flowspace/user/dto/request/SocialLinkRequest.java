@@ -1,6 +1,6 @@
 package com.flowspace.user.dto.request;
 
-import com.flowspace.entity.enums.Provider;
+import com.flowspace.common.enums.Provider;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

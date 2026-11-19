@@ -1,7 +1,7 @@
 package com.flowspace.calendar.dto.response;
 
 import com.flowspace.calendar.service.EventVO;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.WorkspaceColor;
 
 import java.time.LocalDateTime;
 

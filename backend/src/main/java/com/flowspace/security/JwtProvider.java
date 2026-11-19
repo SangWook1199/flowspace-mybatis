@@ -1,7 +1,6 @@
 package com.flowspace.security;
 
-import com.flowspace.entity.User;
-import com.flowspace.entity.enums.Provider;
+import com.flowspace.common.enums.Provider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -32,11 +31,7 @@ public class JwtProvider {
         secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createAccessToken(User user) {
-        return createAccessToken(user.getUserId(), user.getEmail(), user.getProvider());
-    }
-
-    // 엔티티 없이 번호·이메일·가입 방식만으로 만들어요 (MyBatis로 읽은 사용자)
+    // 액세스 토큰 생성 (사용자 번호·이메일·가입 방식)
     public String createAccessToken(Long userId, String email, Provider provider) {
         Date now = new Date();
 
@@ -50,16 +45,7 @@ public class JwtProvider {
                 .compact();
     }
 
-    public String createRefreshToken(User user) {
-        return createRefreshToken(user, refreshTokenExpiration);
-    }
-
-    // 유효 기간(ms)을 직접 정해서 만들어요 (로그인 상태 유지 여부에 따라 길이가 달라져요)
-    public String createRefreshToken(User user, long ttlMillis) {
-        return createRefreshToken(user.getUserId(), ttlMillis);
-    }
-
-    // 엔티티 없이 사용자 번호만으로 만들어요 (MyBatis로 읽은 사용자)
+    // 리프레시 토큰 생성 (유효 기간 ms, 로그인 상태 유지 여부에 따라 다름)
     public String createRefreshToken(Long userId, long ttlMillis) {
         Date now = new Date();
 

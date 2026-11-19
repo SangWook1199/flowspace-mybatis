@@ -1,6 +1,6 @@
 package com.flowspace.user.service;
 
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.WorkspaceRole;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

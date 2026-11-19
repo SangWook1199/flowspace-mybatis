@@ -3,7 +3,7 @@ package com.flowspace.block.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.BlockType;
+import com.flowspace.common.enums.BlockType;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

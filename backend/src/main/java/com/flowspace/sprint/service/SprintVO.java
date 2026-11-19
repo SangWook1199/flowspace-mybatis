@@ -3,8 +3,8 @@ package com.flowspace.sprint.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.SprintStatus;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.SprintStatus;
+import com.flowspace.common.enums.WorkspaceColor;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

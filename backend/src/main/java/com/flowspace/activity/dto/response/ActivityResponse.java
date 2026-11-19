@@ -2,9 +2,8 @@ package com.flowspace.activity.dto.response;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.Activity;
-import com.flowspace.entity.enums.ActivityTargetType;
-import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.common.enums.ActivityTargetType;
+import com.flowspace.common.enums.ActivityType;
 import com.flowspace.activity.service.ActivityVO;
 
 // @formatter:off
@@ -30,33 +29,6 @@ public record ActivityResponse(
     LocalDateTime createdAt
 
 ) {
-
-    public static ActivityResponse from(Activity activity) {
-        return from(activity, null, null);
-    }
-
-    public static ActivityResponse from(Activity activity, String targetName, String targetLink) {
-        return new ActivityResponse(
-            activity.getActivityId(),
-
-            activity.getUser().getUserId(),
-            activity.getUser().getNickname(),
-            activity.getUser().getProfileFile() == null
-                ? null
-                : activity.getUser().getProfileFile().getFileId(),
-            activity.getUser().getProfileFile() == null
-                ? null
-                : activity.getUser().getProfileFile().getFileUrl(),
-
-            activity.getType(),
-            activity.getTargetType(),
-            activity.getTargetId(),
-            targetName,
-            targetLink,
-
-            activity.getCreatedAt()
-        );
-    }
 
     // ActivityVO 기반 응답 생성 (대상 이름·경로는 서비스에서 전달)
     public static ActivityResponse from(ActivityVO activity, String targetName, String targetLink) {

@@ -2,8 +2,7 @@ package com.flowspace.workspace.dto.response;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.WorkspaceMember;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.WorkspaceRole;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 
 // @formatter:off
@@ -21,23 +20,6 @@ public record WorkspaceMemberResponse(
     LocalDateTime lastActiveAt
 
 ) {
-
-    public static WorkspaceMemberResponse from(WorkspaceMember member, boolean online) {
-        return new WorkspaceMemberResponse(
-            member.getUser().getUserId(),
-            member.getUser().getNickname(),
-            member.getUser().getNickname(),
-            member.getUser().getProfileFile() == null
-                ? null
-                : member.getUser().getProfileFile().getFileId(),
-            member.getUser().getProfileFile() == null
-                ? null
-                : member.getUser().getProfileFile().getFileUrl(),
-            member.getRole(),
-            online,
-            member.getUser().getLastActiveAt()
-        );
-    }
 
     // WorkspaceMemberVO 기반 응답 생성
     public static WorkspaceMemberResponse from(WorkspaceMemberVO member, boolean online) {

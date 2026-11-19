@@ -19,8 +19,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.flowspace.activity.service.ActivityService;
-import com.flowspace.entity.enums.ActivityTargetType;
-import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.common.enums.ActivityTargetType;
+import com.flowspace.common.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.retrospective.service.RetrospectiveVO;

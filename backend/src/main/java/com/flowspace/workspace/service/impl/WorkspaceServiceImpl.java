@@ -11,7 +11,7 @@ import com.flowspace.user.service.UserVO;
 
 import com.flowspace.workspace.dto.request.*;
 import com.flowspace.workspace.dto.response.*;
-import com.flowspace.entity.enums.*;
+import com.flowspace.common.enums.*;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import lombok.RequiredArgsConstructor;

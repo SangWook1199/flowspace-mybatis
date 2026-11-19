@@ -2,7 +2,7 @@ package com.flowspace.database.dto.response;
 
 import java.util.List;
 
-import com.flowspace.entity.enums.DatabaseViewType;
+import com.flowspace.common.enums.DatabaseViewType;
 
 // @formatter:off
 

@@ -1,7 +1,7 @@
 package com.flowspace.database.dto.response;
 
 import com.flowspace.database.service.BlockDatabaseVO;
-import com.flowspace.entity.enums.DatabaseViewType;
+import com.flowspace.common.enums.DatabaseViewType;
 
 // @formatter:off
 

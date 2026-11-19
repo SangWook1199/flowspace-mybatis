@@ -11,10 +11,10 @@ import com.flowspace.database.service.BlockDatabaseColumnOptionVO;
 import com.flowspace.database.service.BlockDatabaseColumnVO;
 import com.flowspace.database.service.BlockDatabaseRowVO;
 import com.flowspace.database.service.BlockDatabaseVO;
-import com.flowspace.entity.enums.DatabaseColumnType;
-import com.flowspace.entity.enums.DatabaseViewType;
-import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.DatabaseColumnType;
+import com.flowspace.common.enums.DatabaseViewType;
+import com.flowspace.common.enums.TaskStatusCategory;
+import com.flowspace.common.enums.WorkspaceColor;
 import com.flowspace.page.service.PageVO;
 
 // 데이터베이스 블록 Mapper (BlockDatabase_SQL.xml)

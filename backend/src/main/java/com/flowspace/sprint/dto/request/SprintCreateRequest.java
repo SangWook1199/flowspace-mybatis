@@ -1,7 +1,7 @@
 package com.flowspace.sprint.dto.request;
 
-import com.flowspace.entity.enums.SprintStatus;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.SprintStatus;
+import com.flowspace.common.enums.WorkspaceColor;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

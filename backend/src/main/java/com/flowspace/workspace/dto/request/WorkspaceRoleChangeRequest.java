@@ -1,6 +1,6 @@
 package com.flowspace.workspace.dto.request;
 
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.WorkspaceRole;
 
 import jakarta.validation.constraints.NotNull;
 

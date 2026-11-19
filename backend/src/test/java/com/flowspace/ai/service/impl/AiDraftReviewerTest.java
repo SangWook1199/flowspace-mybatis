@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import com.flowspace.ai.dto.request.AiDraft;
 import com.flowspace.ai.service.AiDraftContext;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 // 고칠 수 없는 눈에 띄는 흠(늦은 준비 작업, 요청하지 않은 기능, 'A 또는 B', 놀고 있는 멤버)을 알아보는 규칙을 확인해요.
 class AiDraftReviewerTest {

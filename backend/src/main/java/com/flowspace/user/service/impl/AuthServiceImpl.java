@@ -24,7 +24,7 @@ import com.flowspace.user.dto.request.SocialLinkRequest;
 import com.flowspace.user.dto.response.UserResponse;
 import com.flowspace.user.dto.response.TokenResponse;
 import com.flowspace.user.dto.request.TokenRequest;
-import com.flowspace.entity.enums.Provider;
+import com.flowspace.common.enums.Provider;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.security.JwtProvider;

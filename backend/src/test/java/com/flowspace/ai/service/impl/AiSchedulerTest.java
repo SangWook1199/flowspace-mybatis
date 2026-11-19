@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.flowspace.ai.dto.request.AiDraft;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 // 날짜 계산 규칙(담당자별 이어 붙이기, 작업 순서 규칙, 스프린트 끝 처리)을 확인해요.
 class AiSchedulerTest {

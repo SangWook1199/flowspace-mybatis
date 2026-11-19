@@ -39,10 +39,10 @@ import com.flowspace.task.dto.request.SubTaskCreateRequest;
 import com.flowspace.task.dto.request.SubTaskReorderRequest;
 import com.flowspace.task.dto.response.SubTaskResponse;
 import com.flowspace.task.dto.request.SubTaskUpdateRequest;
-import com.flowspace.entity.enums.ActivityTargetType;
-import com.flowspace.entity.enums.ActivityType;
-import com.flowspace.entity.enums.NotificationType;
-import com.flowspace.entity.enums.TaskStatusCategory;
+import com.flowspace.common.enums.ActivityTargetType;
+import com.flowspace.common.enums.ActivityType;
+import com.flowspace.common.enums.NotificationType;
+import com.flowspace.common.enums.TaskStatusCategory;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 

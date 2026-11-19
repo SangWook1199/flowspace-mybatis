@@ -3,7 +3,7 @@ package com.flowspace.retrospective.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.SprintStatus;
+import com.flowspace.common.enums.SprintStatus;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

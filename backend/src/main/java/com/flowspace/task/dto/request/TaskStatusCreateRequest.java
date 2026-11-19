@@ -1,7 +1,7 @@
 package com.flowspace.task.dto.request;
 
-import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.TaskStatusCategory;
+import com.flowspace.common.enums.WorkspaceColor;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

@@ -609,7 +609,7 @@ DELIMITER ;
 --   3) 연결된 기록 삭제 (작업 담당, 알림, 토큰, 소셜 계정, 대기 중인 초대)  4) 개인정보 익명 처리 (이메일은 재가입 가능한 값으로 변경)
 -- 본인 확인과 다른 멤버가 있는 소유 워크스페이스 확인은 Java에서 선처리
 --   p_user_id   탈퇴할 사용자 번호
---   p_nickname  탈퇴 후 표시 이름 (User.WITHDRAWN_NICKNAME)
+--   p_nickname  탈퇴 후 표시 이름 (AccountServiceImpl.WITHDRAWN_NICKNAME)
 
 DROP PROCEDURE IF EXISTS sp_withdraw_user;
 

@@ -2,8 +2,8 @@ package com.flowspace.activity.service;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.ActivityTargetType;
-import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.common.enums.ActivityTargetType;
+import com.flowspace.common.enums.ActivityType;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

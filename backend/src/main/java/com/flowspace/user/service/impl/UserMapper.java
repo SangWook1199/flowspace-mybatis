@@ -6,7 +6,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.flowspace.entity.enums.Provider;
+import com.flowspace.common.enums.Provider;
 import com.flowspace.user.service.MailTokenVO;
 import com.flowspace.user.service.RefreshTokenVO;
 import com.flowspace.user.service.UserLookupVO;

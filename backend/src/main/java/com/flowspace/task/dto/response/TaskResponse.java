@@ -1,10 +1,7 @@
 package com.flowspace.task.dto.response;
 
 import com.flowspace.comment.dto.response.CommentResponse;
-import com.flowspace.entity.SubTask;
-import com.flowspace.entity.Task;
-import com.flowspace.entity.TaskAssignee;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 import com.flowspace.task.service.TaskVO;
 
 import java.math.BigDecimal;
@@ -44,37 +41,6 @@ public record TaskResponse(
     List<CommentResponse> comments
 
 ) {
-
-    public static TaskResponse from(
-        Task task,
-        List<TaskAssignee> assignees,
-        List<SubTask> subtasks,
-        List<CommentResponse> comments
-    ) {
-        return new TaskResponse(
-            task.getTaskId(),
-            task.getTaskNumber(),
-            task.getWorkspace().getWorkspaceId(),
-            task.getSprint() == null ? null : task.getSprint().getSprintId(),
-            task.getStatus().getStatusId(),
-            task.getStatus().getName(),
-            task.getPosition(),
-            assignees.stream()
-                .map(AssigneeItem::from)
-                .toList(),
-            task.getTitle(),
-            task.getDescription(),
-            task.getStartDate(),
-            task.getEndDate(),
-            task.getPriority(),
-            task.getCompletedAt(),
-            task.getCreatedAt(),
-            subtasks.stream()
-                .map(SubTaskResponse::from)
-                .toList(),
-            comments
-        );
-    }
 
     // TaskVO 기반 응답 생성
     public static TaskResponse from(

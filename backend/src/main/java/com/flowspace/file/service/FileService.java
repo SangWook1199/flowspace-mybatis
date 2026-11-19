@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.flowspace.file.dto.response.CoverResponse;
 
 // 파일 저장·복사·삭제 서비스 (프로필, 페이지 커버, 블록 이미지, 작업 관련 문서)
-// 엔티티 대신 번호를 받고 FileVO 반환
+// 번호를 받고 FileVO 반환
 public interface FileService {
 
     // 파일 업로드 (파일 블록처럼 종류를 가리지 않는 첨부)

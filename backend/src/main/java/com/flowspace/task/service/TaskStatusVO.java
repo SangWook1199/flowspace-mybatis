@@ -1,7 +1,7 @@
 package com.flowspace.task.service;
 
-import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.TaskStatusCategory;
+import com.flowspace.common.enums.WorkspaceColor;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

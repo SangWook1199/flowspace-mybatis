@@ -3,7 +3,7 @@ package com.flowspace.workspace.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.WorkspaceColor;
 
 // @formatter:off
 

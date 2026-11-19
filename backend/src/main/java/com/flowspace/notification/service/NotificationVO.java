@@ -2,7 +2,7 @@ package com.flowspace.notification.service;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.NotificationType;
+import com.flowspace.common.enums.NotificationType;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

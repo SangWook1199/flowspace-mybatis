@@ -27,7 +27,7 @@ import com.flowspace.block.dto.response.BlockSyncResponse;
 import com.flowspace.block.dto.response.BlockSyncResponse.BlockSyncResult;
 import com.flowspace.block.service.BlockService;
 import com.flowspace.block.service.BlockVO;
-import com.flowspace.entity.enums.BlockType;
+import com.flowspace.common.enums.BlockType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.file.service.FileService;

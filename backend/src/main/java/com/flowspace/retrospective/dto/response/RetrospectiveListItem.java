@@ -2,7 +2,7 @@ package com.flowspace.retrospective.dto.response;
 
 import java.time.LocalDate;
 
-import com.flowspace.entity.enums.SprintStatus;
+import com.flowspace.common.enums.SprintStatus;
 import com.flowspace.retrospective.service.RetrospectiveVO;
 
 // @formatter:off

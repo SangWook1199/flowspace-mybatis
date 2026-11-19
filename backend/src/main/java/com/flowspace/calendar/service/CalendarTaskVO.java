@@ -2,7 +2,7 @@ package com.flowspace.calendar.service;
 
 import java.time.LocalDate;
 
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.WorkspaceColor;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

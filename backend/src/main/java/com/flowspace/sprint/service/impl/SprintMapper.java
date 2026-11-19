@@ -5,7 +5,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.flowspace.entity.enums.SprintStatus;
+import com.flowspace.common.enums.SprintStatus;
 
 import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;

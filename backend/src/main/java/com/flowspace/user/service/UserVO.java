@@ -2,7 +2,7 @@ package com.flowspace.user.service;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.Provider;
+import com.flowspace.common.enums.Provider;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

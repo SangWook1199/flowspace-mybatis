@@ -19,7 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.workspace.dto.request.WorkspaceInviteRequest;

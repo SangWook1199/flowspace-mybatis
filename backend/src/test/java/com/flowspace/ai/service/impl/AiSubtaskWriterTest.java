@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import com.flowspace.ai.dto.request.AiDraft;
 import com.flowspace.ai.dto.response.AiProgressInfo;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 // 작업마다 기본적인 하위 작업이 2개 이상 붙는지 확인해요. 모델이 못 만들거나 이상한 글을 줘도 기본 항목으로 채워지는지도 봐요.
 class AiSubtaskWriterTest {

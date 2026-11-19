@@ -1,16 +1,13 @@
 package com.flowspace.notification.service;
 
 import java.util.Collection;
-import java.util.Objects;
 
-import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
-import com.flowspace.entity.enums.NotificationType;
+import com.flowspace.common.enums.NotificationType;
 import com.flowspace.notification.dto.response.NotificationPageResponse;
 import com.flowspace.notification.dto.response.UnreadCountResponse;
 
 // 알림 서비스
-// 다른 서비스는 엔티티 대신 번호(받는 사람, 보낸 사람, 워크스페이스)로 알림 전송
+// 다른 서비스는 받는 사람·보낸 사람·워크스페이스 번호로 알림 전송
 public interface NotificationService {
 
     // ---------- 알림 만들기 (다른 서비스에서 호출) ----------
@@ -58,20 +55,5 @@ public interface NotificationService {
     static String taskLink(Long sprintId, Long taskId) {
         String owner = sprintId == null ? "backlog" : String.valueOf(sprintId);
         return "/sprints/" + owner + "/tasks?task=" + taskId;
-    }
-
-    // ---------- JPA 기능용 임시 메서드 (해당 기능 전환 후 삭제) ----------
-
-    default void send(User recipient, User actor, Workspace workspace, NotificationType type, String message,
-        Long refId, String linkPath) {
-        send(recipient == null ? null : recipient.getUserId(), actor == null ? null : actor.getUserId(),
-            workspace == null ? null : workspace.getWorkspaceId(), type, message, refId, linkPath);
-    }
-
-    default void sendAll(Collection<User> recipients, User actor, Workspace workspace, NotificationType type,
-        String message, Long refId, String linkPath) {
-        sendAll(recipients.stream().filter(Objects::nonNull).map(User::getUserId).toList(),
-            actor == null ? null : actor.getUserId(), workspace == null ? null : workspace.getWorkspaceId(), type,
-            message, refId, linkPath);
     }
 }

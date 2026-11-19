@@ -15,8 +15,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowspace.activity.service.ActivityService;
 import com.flowspace.page.dto.response.PageDetailResponse;
-import com.flowspace.entity.enums.ActivityTargetType;
-import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.common.enums.ActivityTargetType;
+import com.flowspace.common.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.retrospective.dto.response.ParticipantItem;
@@ -48,7 +48,7 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
     private final WorkspaceService workspaceService;
     private final ActivityService activityService;
 
-    // 회고 페이지 내용 조회용 (JPA 페이지 서비스)
+    // 회고 페이지 내용 조회용
     private final PageService pageService;
 
     // 회고 단건 조회

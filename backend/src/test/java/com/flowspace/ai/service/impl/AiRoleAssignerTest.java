@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.flowspace.ai.service.AiDraftContext;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 
 // 역할에 맞지 않는 담당자를 서버가 바로잡는 규칙을 확인해요.
 class AiRoleAssignerTest {

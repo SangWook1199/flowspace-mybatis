@@ -1,6 +1,6 @@
 package com.flowspace.database.dto.request;
 
-import com.flowspace.entity.enums.DatabaseColumnType;
+import com.flowspace.common.enums.DatabaseColumnType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 

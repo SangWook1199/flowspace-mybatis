@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.flowspace.activity.service.ActivityService;
-import com.flowspace.entity.enums.ActivityTargetType;
-import com.flowspace.entity.enums.ActivityType;
-import com.flowspace.entity.enums.NotificationType;
-import com.flowspace.entity.enums.SprintStatus;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.ActivityTargetType;
+import com.flowspace.common.enums.ActivityType;
+import com.flowspace.common.enums.NotificationType;
+import com.flowspace.common.enums.SprintStatus;
+import com.flowspace.common.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.notification.service.NotificationService;

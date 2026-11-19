@@ -20,7 +20,7 @@ import com.flowspace.ai.service.AiDraftJobService;
 import com.flowspace.ai.service.AiJobStatus;
 import com.flowspace.ai.service.AiProjectApplyService;
 import com.flowspace.config.AiProperties;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.user.service.UserVO;

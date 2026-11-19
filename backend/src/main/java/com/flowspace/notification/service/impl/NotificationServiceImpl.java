@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.flowspace.entity.enums.NotificationType;
+import com.flowspace.common.enums.NotificationType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.notification.dto.response.NotificationPageResponse;

@@ -2,8 +2,8 @@ package com.flowspace.workspace.service;
 
 import java.time.LocalDateTime;
 
-import com.flowspace.entity.enums.WorkspaceColor;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.WorkspaceColor;
+import com.flowspace.common.enums.WorkspaceRole;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

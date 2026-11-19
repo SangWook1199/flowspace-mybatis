@@ -1,6 +1,6 @@
 package com.flowspace.calendar.dto.request;
 
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.WorkspaceColor;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 

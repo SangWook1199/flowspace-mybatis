@@ -1,7 +1,7 @@
 package com.flowspace.database.service;
 
 import java.time.LocalDateTime;
-import com.flowspace.entity.enums.DatabaseColumnType;
+import com.flowspace.common.enums.DatabaseColumnType;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

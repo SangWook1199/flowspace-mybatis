@@ -18,10 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.flowspace.user.dto.response.WithdrawCheckResponse;
 import com.flowspace.user.dto.response.WithdrawCheckResponse.WorkspaceBrief;
 import com.flowspace.user.dto.request.WithdrawRequest;
-import com.flowspace.entity.User;
-import com.flowspace.entity.enums.NotificationType;
-import com.flowspace.entity.enums.Provider;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.common.enums.NotificationType;
+import com.flowspace.common.enums.Provider;
+import com.flowspace.common.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.websocket.NotificationWebSocketHandler;
@@ -34,6 +33,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional
 public class AccountServiceImpl implements AccountService {
+
+    // 탈퇴 후 표시 이름
+    private static final String WITHDRAWN_NICKNAME = "탈퇴한 사용자";
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -78,7 +80,7 @@ public class AccountServiceImpl implements AccountService {
                 user.getNickname() + "님이 탈퇴하면서 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
         }
 
-        userMapper.updateUserWithdraw(user.getUserId(), User.WITHDRAWN_NICKNAME);
+        userMapper.updateUserWithdraw(user.getUserId(), WITHDRAWN_NICKNAME);
 
         Long userId = user.getUserId();
 

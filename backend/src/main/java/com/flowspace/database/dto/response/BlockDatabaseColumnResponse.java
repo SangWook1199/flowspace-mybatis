@@ -3,7 +3,7 @@ package com.flowspace.database.dto.response;
 import java.util.List;
 
 import com.flowspace.database.service.BlockDatabaseColumnVO;
-import com.flowspace.entity.enums.DatabaseColumnType;
+import com.flowspace.common.enums.DatabaseColumnType;
 
 // @formatter:off
 

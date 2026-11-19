@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.flowspace.entity.User;
+import com.flowspace.common.enums.Provider;
 
 // 토큰 종류 구분(access / refresh)과 변조·만료 거절을 확인해요.
 class JwtProviderTest {
@@ -18,7 +18,6 @@ class JwtProviderTest {
     private static final String SECRET = "test-secret-key-test-secret-key-test-secret-key-1234";
 
     private JwtProvider jwtProvider;
-    private User user;
 
     @BeforeEach
     void setUp() {
@@ -27,14 +26,12 @@ class JwtProviderTest {
         ReflectionTestUtils.setField(jwtProvider, "accessTokenExpiration", 60_000L);
         ReflectionTestUtils.setField(jwtProvider, "refreshTokenExpiration", 600_000L);
         jwtProvider.init();
-
-        user = User.builder().userId(7L).email("user@example.com").nickname("유저").build();
     }
 
     @Test
     @DisplayName("access token은 access로만 인정되고 refresh로는 인정되지 않는다")
     void accessTokenIsOnlyAccess() {
-        String token = jwtProvider.createAccessToken(user);
+        String token = jwtProvider.createAccessToken(7L, "user@example.com", Provider.LOCAL);
 
         assertTrue(jwtProvider.validateToken(token));
         assertTrue(jwtProvider.isAccessToken(token));
@@ -46,7 +43,7 @@ class JwtProviderTest {
     @Test
     @DisplayName("refresh token은 일반 API 인증(access)으로 쓸 수 없다")
     void refreshTokenIsNotAccess() {
-        String token = jwtProvider.createRefreshToken(user);
+        String token = jwtProvider.createRefreshToken(7L, jwtProvider.getRefreshTokenExpiration());
 
         assertTrue(jwtProvider.validateToken(token));
         assertTrue(jwtProvider.isRefreshToken(token));
@@ -58,7 +55,7 @@ class JwtProviderTest {
     @Test
     @DisplayName("만료된 토큰은 거절한다")
     void expiredTokenIsRejected() {
-        String expired = jwtProvider.createRefreshToken(user, -1_000L);
+        String expired = jwtProvider.createRefreshToken(7L, -1_000L);
 
         assertFalse(jwtProvider.validateToken(expired));
         assertFalse(jwtProvider.isRefreshToken(expired));
@@ -68,7 +65,7 @@ class JwtProviderTest {
     @Test
     @DisplayName("서명이 바뀐 토큰과 엉뚱한 문자열은 거절한다")
     void tamperedTokenIsRejected() {
-        String token = jwtProvider.createAccessToken(user);
+        String token = jwtProvider.createAccessToken(7L, "user@example.com", Provider.LOCAL);
         String tampered = token.substring(0, token.length() - 2) + (token.endsWith("AA") ? "BB" : "AA");
 
         assertFalse(jwtProvider.validateToken(tampered));
@@ -86,6 +83,6 @@ class JwtProviderTest {
         ReflectionTestUtils.setField(other, "refreshTokenExpiration", 600_000L);
         other.init();
 
-        assertFalse(jwtProvider.validateToken(other.createAccessToken(user)));
+        assertFalse(jwtProvider.validateToken(other.createAccessToken(7L, "user@example.com", Provider.LOCAL)));
     }
 }

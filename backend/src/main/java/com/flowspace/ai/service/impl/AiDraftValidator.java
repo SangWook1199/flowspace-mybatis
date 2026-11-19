@@ -13,7 +13,7 @@ import com.flowspace.ai.dto.request.AiDraft;
 import com.flowspace.ai.service.AiDraftContext;
 import com.flowspace.ai.service.AiDraftLimits;
 import com.flowspace.ai.service.AiRawDraft;
-import com.flowspace.entity.enums.TaskPriority;
+import com.flowspace.common.enums.TaskPriority;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 

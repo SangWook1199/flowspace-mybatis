@@ -2,7 +2,7 @@ package com.flowspace.block.dto.request;
 
 import java.util.List;
 
-import com.flowspace.entity.enums.BlockType;
+import com.flowspace.common.enums.BlockType;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

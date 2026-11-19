@@ -1,8 +1,8 @@
 package com.flowspace.database.dto.response;
 
 import com.flowspace.database.service.BlockDatabaseColumnOptionVO;
-import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.TaskStatusCategory;
+import com.flowspace.common.enums.WorkspaceColor;
 
 // @formatter:off
 

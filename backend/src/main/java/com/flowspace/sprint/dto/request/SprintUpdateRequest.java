@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.common.enums.WorkspaceColor;
 
 // @formatter:off
 

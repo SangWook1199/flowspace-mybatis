@@ -1,7 +1,6 @@
 package com.flowspace.workspace.dto.response;
 
-import com.flowspace.entity.WorkspaceInvite;
-import com.flowspace.entity.enums.InviteStatus;
+import com.flowspace.common.enums.InviteStatus;
 import com.flowspace.workspace.service.InviteVO;
 
 // @formatter:off
@@ -15,16 +14,6 @@ public record WorkspaceInviteResponse(
         String email,
         InviteStatus status
 ) {
-
-    public static WorkspaceInviteResponse from(WorkspaceInvite invite) {
-        return new WorkspaceInviteResponse(
-                invite.getInviteId(),
-                invite.getWorkspace().getWorkspaceId(),
-                invite.getInviter().getUserId(),
-                invite.getEmail(),
-                invite.getStatus()
-        );
-    }
 
     // InviteVO 기반 응답 생성
     public static WorkspaceInviteResponse from(InviteVO invite) {
