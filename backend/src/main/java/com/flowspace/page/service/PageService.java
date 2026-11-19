@@ -41,7 +41,7 @@ public interface PageService {
     // 휴지통 비우기 (회고 페이지는 남겨둠)
     void emptyTrash(Long workspaceId, String email);
 
-    // 휴지통에 들어간 지 retentionDays일이 지난 페이지를 영구 삭제 (스케줄러가 호출), 반환값: 삭제를 시도한 대상 수
+    // 보관 기간이 지난 휴지통 페이지 영구 삭제 (스케줄러용, 반환: 대상 수)
     int purgeExpiredTrash(int retentionDays);
 
     // 페이지 순서 변경

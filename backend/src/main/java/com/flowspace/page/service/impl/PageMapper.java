@@ -63,4 +63,26 @@ public interface PageMapper {
 
     // 휴지통으로 가는 페이지를 가리키는 데이터베이스 행 삭제 (함께 이동하는 페이지 안의 데이터베이스는 제외)
     int deleteOutsideDatabaseRows(@Param("pageIds") List<Long> pageIds, @Param("subtreeIds") List<Long> subtreeIds);
+
+    // ---------- 상세 조회 ----------
+
+    // 휴지통이 아닌 하위 페이지 (번호·제목·아이콘)
+    List<PageVO> selectChildPageList(Long pageId);
+
+    // ---------- 영구 삭제 ----------
+
+    // 보관 기간이 지난 휴지통 페이지 (모든 워크스페이스)
+    List<PageVO> selectExpiredTrashList(LocalDateTime cutoff);
+
+    // 주어진 페이지 중 회고 페이지 번호
+    List<Long> selectRetrospectivePageIds(@Param("pageIds") List<Long> pageIds);
+
+    // 페이지 커버·블록 이미지 파일 번호 (중복 제외)
+    List<Long> selectPageFileIds(@Param("pageIds") List<Long> pageIds);
+
+    // 페이지를 가리키는 데이터베이스 행 삭제
+    int deleteDatabaseRowsByPages(@Param("pageIds") List<Long> pageIds);
+
+    // 페이지 삭제 (블록·데이터베이스는 CASCADE)
+    int deletePage(Long pageId);
 }

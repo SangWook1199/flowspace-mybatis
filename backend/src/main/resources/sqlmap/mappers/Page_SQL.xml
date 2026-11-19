@@ -60,8 +60,8 @@
     <!-- 페이지 등록 (휴지통 여부·버전·생성 시각은 DB 기본값) -->
     <insert id="insertPage" parameterType="com.flowspace.page.service.PageVO"
             useGeneratedKeys="true" keyProperty="pageId">
-        INSERT INTO pages (workspace_id, parent_page_id, title, icon, position, created_by)
-        VALUES (#{workspaceId}, #{parentPageId}, #{title}, #{icon}, #{position}, #{createdBy})
+        INSERT INTO pages (workspace_id, parent_page_id, title, icon, cover_file_id, position, created_by)
+        VALUES (#{workspaceId}, #{parentPageId}, #{title}, #{icon}, #{coverFileId}, #{position}, #{createdBy})
     </insert>
 
     <!-- 제목·아이콘·상위 페이지 수정 (상위 페이지 null이면 최상위) -->
@@ -133,6 +133,75 @@
         <foreach collection="subtreeIds" item="subtreeId" open="(" separator="," close=")">
             #{subtreeId}
         </foreach>
+    </delete>
+
+    <!-- ==================== 상세 조회 ==================== -->
+
+    <!-- 휴지통이 아닌 하위 페이지 -->
+    <select id="selectChildPageList" resultType="com.flowspace.page.service.PageVO">
+        SELECT page_id,
+               title,
+               icon
+        FROM pages
+        WHERE parent_page_id = #{pageId}
+          AND is_deleted = FALSE
+        ORDER BY page_id
+    </select>
+
+    <!-- ==================== 영구 삭제 ==================== -->
+
+    <!-- 보관 기간이 지난 휴지통 페이지 (모든 워크스페이스) -->
+    <select id="selectExpiredTrashList" resultType="com.flowspace.page.service.PageVO">
+        SELECT page_id,
+               workspace_id,
+               parent_page_id
+        FROM pages
+        WHERE is_deleted = TRUE
+          AND deleted_at <![CDATA[ < ]]> #{cutoff}
+    </select>
+
+    <!-- 주어진 페이지 중 회고 페이지 번호 -->
+    <select id="selectRetrospectivePageIds" resultType="long">
+        SELECT page_id
+        FROM retrospectives
+        WHERE page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+    </select>
+
+    <!-- 페이지 커버·블록 이미지 파일 번호 (UNION으로 중복 제외) -->
+    <select id="selectPageFileIds" resultType="long">
+        SELECT cover_file_id
+        FROM pages
+        WHERE cover_file_id IS NOT NULL
+          AND page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+        UNION
+        SELECT image_file_id
+        FROM blocks
+        WHERE image_file_id IS NOT NULL
+          AND page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+    </select>
+
+    <!-- 페이지를 가리키는 데이터베이스 행 삭제 -->
+    <delete id="deleteDatabaseRowsByPages">
+        DELETE FROM block_database_rows
+        WHERE page_id IN
+        <foreach collection="pageIds" item="pageId" open="(" separator="," close=")">
+            #{pageId}
+        </foreach>
+    </delete>
+
+    <!-- 페이지 삭제 (블록·데이터베이스는 CASCADE) -->
+    <delete id="deletePage">
+        DELETE FROM pages
+        WHERE page_id = #{pageId}
     </delete>
 
 </mapper>

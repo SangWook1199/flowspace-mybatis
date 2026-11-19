@@ -10,15 +10,17 @@ CREATE PROCEDURE sp_page_subtree(IN p_page_id BIGINT)
     READS SQL DATA
 BEGIN
     WITH RECURSIVE subtree AS (
-        SELECT page_id, parent_page_id, is_deleted, deleted_at, 0 AS depth
+        SELECT page_id, parent_page_id, title, icon, cover_file_id, position, is_deleted, deleted_at,
+               0 AS depth
           FROM pages
          WHERE page_id = p_page_id
         UNION ALL
-        SELECT c.page_id, c.parent_page_id, c.is_deleted, c.deleted_at, s.depth + 1
+        SELECT c.page_id, c.parent_page_id, c.title, c.icon, c.cover_file_id, c.position, c.is_deleted,
+               c.deleted_at, s.depth + 1
           FROM pages c
           JOIN subtree s ON c.parent_page_id = s.page_id
     )
-    SELECT page_id, parent_page_id, is_deleted, deleted_at, depth
+    SELECT page_id, parent_page_id, title, icon, cover_file_id, position, is_deleted, deleted_at, depth
       FROM subtree
      ORDER BY depth, page_id;
 END //

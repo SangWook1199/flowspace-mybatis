@@ -1,17 +1,8 @@
 package com.flowspace.page.service.impl;
 
-import com.flowspace.page.service.PageVO;
-import com.flowspace.workspace.service.WorkspaceService;
-import com.flowspace.page.service.PageService;
-
-import com.flowspace.file.service.FileService;
-import com.flowspace.file.service.FileVO;
-
-import com.flowspace.activity.service.ActivityService;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -28,76 +19,56 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
+import com.flowspace.activity.service.ActivityService;
+import com.flowspace.block.dto.response.BlockResponse;
+import com.flowspace.block.service.BlockService;
+import com.flowspace.block.service.BlockVO;
 import com.flowspace.comment.dto.response.CommentResponse;
 import com.flowspace.comment.service.CommentService;
-import com.flowspace.page.dto.request.PageCoverUpdateRequest;
-import com.flowspace.page.dto.request.PageCreateRequest;
-import com.flowspace.page.dto.response.PageDetailResponse;
-import com.flowspace.page.dto.request.PageDuplicateRequest;
-import com.flowspace.page.dto.request.PageReorderRequest;
-import com.flowspace.page.dto.response.PageResponse;
-import com.flowspace.page.dto.request.PageUpdateRequest;
-import com.flowspace.entity.Block;
-import com.flowspace.entity.BlockDatabase;
-import com.flowspace.entity.BlockDatabaseCell;
-import com.flowspace.entity.BlockDatabaseColumn;
-import com.flowspace.entity.BlockDatabaseColumnOption;
-import com.flowspace.entity.BlockDatabaseRow;
-import com.flowspace.entity.File;
-import com.flowspace.entity.Page;
-import com.flowspace.entity.User;
-import com.flowspace.entity.WorkspaceMember;
-import com.flowspace.entity.Workspace;
+import com.flowspace.database.service.BlockDatabaseColumnVO;
+import com.flowspace.database.service.BlockDatabaseRowVO;
+import com.flowspace.database.service.BlockDatabaseVO;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.BlockType;
 import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.BlockDatabaseCellRepository;
-import com.flowspace.repository.BlockDatabaseColumnOptionRepository;
-import com.flowspace.repository.BlockDatabaseColumnRepository;
-import com.flowspace.repository.BlockDatabaseRepository;
-import com.flowspace.repository.BlockDatabaseRowRepository;
-import com.flowspace.repository.BlockRepository;
-import com.flowspace.repository.PageRepository;
-import com.flowspace.repository.RetrospectiveRepository;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
-import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.file.service.FileService;
+import com.flowspace.file.service.FileVO;
+import com.flowspace.page.dto.request.PageCoverUpdateRequest;
+import com.flowspace.page.dto.request.PageCreateRequest;
+import com.flowspace.page.dto.request.PageDuplicateRequest;
+import com.flowspace.page.dto.request.PageReorderRequest;
+import com.flowspace.page.dto.request.PageUpdateRequest;
+import com.flowspace.page.dto.response.PageDetailResponse;
+import com.flowspace.page.dto.response.PageResponse;
+import com.flowspace.page.service.PageService;
+import com.flowspace.page.service.PageVO;
+import com.flowspace.workspace.service.WorkspaceService;
 
 import lombok.RequiredArgsConstructor;
-import com.flowspace.repository.FileRepository;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class PageServiceImpl implements PageService {
 
-    // ↓ JPA 기능용 (영구 삭제·휴지통 비우기·복제·상세 조회, 해당 기능 전환 후 정리)
-    private final PageRepository pageRepository;
-    private final WorkspaceRepository workspaceRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final BlockRepository blockRepository;
-    private final UserRepository userRepository;
-    private final FileService fileService;
-    private final FileRepository fileRepository;
-    private final BlockDatabaseRowRepository blockDatabaseRowRepository;
-    private final BlockDatabaseRepository blockDatabaseRepository;
-    private final BlockDatabaseColumnRepository blockDatabaseColumnRepository;
-    private final BlockDatabaseColumnOptionRepository blockDatabaseColumnOptionRepository;
-    private final BlockDatabaseCellRepository blockDatabaseCellRepository;
-    private final RetrospectiveRepository retrospectiveRepository;
-
-    private final ActivityService activityService;
-    private final WorkspaceService workspaceService;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // 페이지 SQL
     private final PageMapper pageMapper;
-    private final CommentService commentService;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    // 페이지 복제 SQL
+    private final PageCopyMapper pageCopyMapper;
+
+    private final WorkspaceService workspaceService;
+    private final ActivityService activityService;
+    private final CommentService commentService;
+    private final FileService fileService;
+
+    // 상세 조회용 블록 목록
+    private final BlockService blockService;
 
     // 페이지 생성
     @Override
@@ -237,174 +208,123 @@ public class PageServiceImpl implements PageService {
         return toResponse(pageId);
     }
 
-    // 휴지통 페이지 영구 삭제
+    // 휴지통 페이지 영구 삭제 (관리자 이상, 하위 페이지 포함, 회고 페이지가 있으면 거절)
     @Override
     public void deletePagePermanently(Long pageId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findPage(pageId);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedTrue(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
-            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        if (!Boolean.TRUE.equals(page.getIsDeleted())) {
+            throw new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND);
         }
 
-        List<Page> subtree = collectSubtree(page);
+        requireAdmin(page.getWorkspaceId(), email);
 
-        for (Page target : subtree) {
-            if (retrospectiveRepository.existsByPage(target)) {
-                throw new FlowSpaceException(ErrorCode.RETROSPECTIVE_PAGE_PROTECTED);
-            }
+        List<PageVO> subtree = pageMapper.selectPageSubtree(pageId);
+
+        List<Long> subtreeIds = subtree.stream().map(PageVO::getPageId).toList();
+
+        if (!pageMapper.selectRetrospectivePageIds(subtreeIds).isEmpty()) {
+            throw new FlowSpaceException(ErrorCode.RETROSPECTIVE_PAGE_PROTECTED);
         }
 
-        List<Page> ordered = new ArrayList<>(subtree);
-        Collections.reverse(ordered);
-
-        for (Page target : ordered) {
-            purgePage(target);
-        }
+        purgePages(subtree);
     }
 
-    // 휴지통 비우기 (회고 페이지는 남겨둠)
+    // 휴지통 비우기 (관리자 이상, 회고 페이지는 남겨둠)
     @Override
     public void emptyTrash(Long workspaceId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        requireAdmin(workspaceId, email);
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
-            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
-        }
-
-        purgeTrashed(pageRepository.findByWorkspaceAndIsDeletedTrueOrderByDeletedAtDesc(workspace));
+        purgeTrashed(pageMapper.selectPageList(workspaceId, true));
     }
 
-    // 휴지통에 들어간 지 retentionDays일이 지난 페이지를 모든 워크스페이스에서 영구 삭제 (스케줄러가 호출)
-    // 반환값: 삭제를 시도한 대상 수
+    // 보관 기간이 지난 휴지통 페이지 영구 삭제 (스케줄러용, 반환: 대상 수)
     @Override
     public int purgeExpiredTrash(int retentionDays) {
 
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
-        List<Page> expired = pageRepository.findByIsDeletedTrueAndDeletedAtBefore(cutoff);
+        List<PageVO> expired = pageMapper.selectExpiredTrashList(LocalDateTime.now().minusDays(retentionDays));
 
         purgeTrashed(expired);
 
         return expired.size();
     }
 
-    // 휴지통 페이지 영구 삭제 (회고 페이지와 그 상위 페이지는 유지)
-    private void purgeTrashed(List<Page> trashed) {
+    // 휴지통 페이지 영구 삭제 (회고 페이지와 휴지통 안의 그 상위 페이지는 유지)
+    private void purgeTrashed(List<PageVO> trashed) {
 
-        Map<Long, Page> trashedById = new HashMap<>();
-        for (Page page : trashed) {
+        if (trashed.isEmpty()) {
+            return;
+        }
+
+        Map<Long, PageVO> trashedById = new HashMap<>();
+
+        for (PageVO page : trashed) {
             trashedById.put(page.getPageId(), page);
         }
 
         Set<Long> protectedIds = new HashSet<>();
-        for (Page page : trashed) {
-            if (!retrospectiveRepository.existsByPage(page)) {
-                continue;
-            }
 
-            Page current = page;
-            while (current != null && trashedById.containsKey(current.getPageId())) {
-                protectedIds.add(current.getPageId());
-                current = current.getParentPage();
+        for (Long retrospectiveId : pageMapper.selectRetrospectivePageIds(new ArrayList<>(trashedById.keySet()))) {
+            Long current = retrospectiveId;
+
+            while (current != null && trashedById.containsKey(current)) {
+                protectedIds.add(current);
+                current = trashedById.get(current).getParentPageId();
             }
         }
 
-        List<Page> targets = new ArrayList<>(trashed);
-        targets.removeIf(page -> protectedIds.contains(page.getPageId()));
-        targets.sort((a, b) -> depthOf(b) - depthOf(a));
+        purgePages(trashed.stream().filter(page -> !protectedIds.contains(page.getPageId())).toList());
+    }
 
-        for (Page target : targets) {
-            purgePage(target);
+    // 페이지 영구 삭제 (가리키는 데이터베이스 행 삭제, 하위 페이지부터 삭제, 커버·블록 이미지 파일 정리)
+    private void purgePages(List<PageVO> pages) {
+
+        if (pages.isEmpty()) {
+            return;
+        }
+
+        List<Long> pageIds = pages.stream().map(PageVO::getPageId).toList();
+        List<Long> fileIds = pageMapper.selectPageFileIds(pageIds);
+
+        pageMapper.deleteDatabaseRowsByPages(pageIds);
+
+        for (PageVO page : childrenFirst(pages)) {
+            pageMapper.deletePage(page.getPageId());
+        }
+
+        for (Long fileId : fileIds) {
+            fileService.delete(fileId);
         }
     }
 
-    // 페이지 한 개를 실제로 삭제 (블록/데이터베이스는 DB 연쇄 삭제, 파일은 직접 정리)
-    private void purgePage(Page page) {
+    // 하위 페이지가 먼저 오는 순서 (목록 안의 상위 페이지 수가 많은 순)
+    private List<PageVO> childrenFirst(List<PageVO> pages) {
 
-        List<File> files = new ArrayList<>();
+        Map<Long, PageVO> byId = new HashMap<>();
 
-        if (page.getCoverFile() != null) {
-            files.add(page.getCoverFile());
+        for (PageVO page : pages) {
+            byId.put(page.getPageId(), page);
         }
 
-        for (File imageFile : blockRepository.findImageFilesByPage(page)) {
-            if (!files.contains(imageFile)) {
-                files.add(imageFile);
+        Map<Long, Integer> depths = new HashMap<>();
+
+        for (PageVO page : pages) {
+            int depth = 0;
+            Long current = page.getParentPageId();
+
+            while (current != null && byId.containsKey(current)) {
+                depth++;
+                current = byId.get(current).getParentPageId();
             }
+
+            depths.put(page.getPageId(), depth);
         }
 
-        blockDatabaseRowRepository.deleteAll(blockDatabaseRowRepository.findByPage(page));
-
-        pageRepository.delete(page);
-        pageRepository.flush();
-
-        for (File file : files) {
-            fileService.delete(file.getFileId());
-        }
-    }
-
-    // 페이지 깊이 계산
-    private int depthOf(Page page) {
-
-        int depth = 0;
-        Page current = page.getParentPage();
-
-        while (current != null) {
-            depth++;
-            current = current.getParentPage();
-        }
-
-        return depth;
-    }
-
-    // 삭제 여부와 상관없이 본인과 모든 하위 페이지 (상위가 먼저 오는 순서)
-    private List<Page> collectSubtree(Page root) {
-
-        List<Page> result = new ArrayList<>();
-        result.add(root);
-
-        for (int i = 0; i < result.size(); i++) {
-            result.addAll(pageRepository.findByParentPage(result.get(i)));
-        }
-
-        return result;
-    }
-
-    // 삭제되지 않은 본인과 하위 페이지 (상위가 먼저 오는 순서)
-    private List<Page> collectActiveSubtree(Page root) {
-
-        List<Page> result = new ArrayList<>();
-        result.add(root);
-
-        for (int i = 0; i < result.size(); i++) {
-            result.addAll(pageRepository.findByParentPageAndIsDeletedFalse(result.get(i)));
-        }
-
-        return result;
-    }
-
-    // 같은 상위 페이지 아래의 페이지 개수 (새 페이지를 맨 뒤에 두기 위해 사용)
-    private int countSiblings(Workspace workspace, Page parent) {
-
-        long count = parent == null ? pageRepository.countByWorkspaceAndParentPageIsNullAndIsDeletedFalse(workspace)
-            : pageRepository.countByWorkspaceAndParentPageAndIsDeletedFalse(workspace, parent);
-
-        return (int) count;
+        return pages.stream()
+            .sorted(Comparator.comparing((PageVO page) -> depths.get(page.getPageId())).reversed())
+            .toList();
     }
 
     // 페이지 순서 변경 (같은 상위 페이지 아래의 페이지만)
@@ -451,156 +371,169 @@ public class PageServiceImpl implements PageService {
         }
     }
 
-    // 페이지 복제 (하위 페이지, 블록, 데이터베이스까지 함께 복사)
+    // 페이지 복제 (휴지통이 아닌 하위 페이지, 블록, 데이터베이스까지 함께 복사)
     @Override
     public PageResponse duplicatePage(Long pageId, PageDuplicateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        Long userId = findUserId(email);
+        PageVO source = findActivePage(pageId);
+        Long workspaceId = source.getWorkspaceId();
 
-        Page source = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+        workspaceService.getWorkspace(workspaceId, email);
 
-        Workspace workspace = source.getWorkspace();
+        List<PageVO> sources = activeSubtree(pageId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        List<Page> sources = collectActiveSubtree(source);
-
-        Page newParent = source.getParentPage();
+        Long newParentId = source.getParentPageId();
 
         if (request != null && request.parentPageId() != null) {
+            PageVO newParent = findActivePage(request.parentPageId());
 
-            newParent = pageRepository.findByPageIdAndIsDeletedFalse(request.parentPageId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-            if (!newParent.getWorkspace().getWorkspaceId().equals(workspace.getWorkspaceId())) {
+            if (!newParent.getWorkspaceId().equals(workspaceId)) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
 
-            for (Page target : sources) {
-                if (target.getPageId().equals(newParent.getPageId())) {
-                    throw new FlowSpaceException(ErrorCode.INVALID_PAGE_PARENT);
-                }
+            if (sources.stream().anyMatch(target -> target.getPageId().equals(newParent.getPageId()))) {
+                throw new FlowSpaceException(ErrorCode.INVALID_PAGE_PARENT);
+            }
+
+            newParentId = newParent.getPageId();
+        }
+
+        Map<Long, Long> pageIdMap = new LinkedHashMap<>();
+
+        for (PageVO target : sources) {
+            boolean isRoot = target.getPageId().equals(pageId);
+            Long parentId = isRoot ? newParentId : pageIdMap.get(target.getParentPageId());
+
+            PageVO copy = new PageVO();
+            copy.setWorkspaceId(workspaceId);
+            copy.setParentPageId(parentId);
+            copy.setTitle(target.getTitle());
+            copy.setIcon(target.getIcon());
+            copy.setCoverFileId(copyFile(target.getCoverFileId(), workspaceId, userId));
+            copy.setPosition(isRoot ? pageMapper.selectSiblingCount(workspaceId, parentId) : target.getPosition());
+            copy.setCreatedBy(userId);
+
+            pageMapper.insertPage(copy);
+
+            pageIdMap.put(target.getPageId(), copy.getPageId());
+        }
+
+        for (PageVO target : sources) {
+            copyBlocks(target.getPageId(), pageIdMap.get(target.getPageId()), pageIdMap, workspaceId, userId);
+        }
+
+        Long rootCopyId = pageIdMap.get(pageId);
+
+        activityService.log(workspaceId, userId, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE, rootCopyId);
+
+        return toResponse(rootCopyId);
+    }
+
+    // 휴지통이 아닌 본인과 하위 페이지 (휴지통 페이지 아래는 제외, 상위가 먼저)
+    private List<PageVO> activeSubtree(Long pageId) {
+
+        Set<Long> includedIds = new HashSet<>();
+        List<PageVO> result = new ArrayList<>();
+
+        for (PageVO page : pageMapper.selectPageSubtree(pageId)) {
+            boolean reachable = page.getDepth() == 0 || includedIds.contains(page.getParentPageId());
+
+            if (reachable && !Boolean.TRUE.equals(page.getIsDeleted())) {
+                includedIds.add(page.getPageId());
+                result.add(page);
             }
         }
 
-        Map<Long, Page> copies = new LinkedHashMap<>();
-
-        for (Page target : sources) {
-
-            boolean isRoot = target.getPageId().equals(source.getPageId());
-
-            Page parent = isRoot ? newParent : copies.get(target.getParentPage().getPageId());
-
-            File cover = target.getCoverFile() == null ? null
-                : fileEntity(fileService.copy(target.getCoverFile().getFileId(), workspace.getWorkspaceId(),
-                    user.getUserId()));
-
-            Page copy = Page.builder().workspace(workspace).parentPage(parent).title(target.getTitle())
-                .icon(target.getIcon()).coverFile(cover)
-                .position(isRoot ? countSiblings(workspace, parent) : target.getPosition()).createdBy(user).build();
-
-            copies.put(target.getPageId(), pageRepository.save(copy));
-        }
-
-        for (Page target : sources) {
-            copyBlocks(target, copies.get(target.getPageId()), copies, user);
-        }
-
-        Page rootCopy = copies.get(source.getPageId());
-
-        activityService.log(workspace, user, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE,
-            rootCopy.getPageId());
-
-        return toResponse(rootCopy);
+        return result;
     }
 
-    // 페이지의 블록 복사
-    private void copyBlocks(Page source, Page target, Map<Long, Page> pageCopies, User user) {
+    // 페이지의 블록 복사 (이미지 파일 복사, 하위 페이지 링크 교체, 상위 블록 연결)
+    private void copyBlocks(Long sourcePageId, Long copyPageId, Map<Long, Long> pageIdMap, Long workspaceId,
+        Long userId) {
 
-        List<Block> blocks = blockRepository.findByPageOrderByPositionAsc(source);
+        List<BlockVO> blocks = pageCopyMapper.selectBlockList(sourcePageId);
 
-        Map<Long, Block> blockCopies = new HashMap<>();
+        Map<Long, Long> blockIdMap = new HashMap<>();
 
-        for (Block block : blocks) {
+        for (BlockVO block : blocks) {
+            BlockVO copy = new BlockVO();
+            copy.setPageId(copyPageId);
+            copy.setTaskId(block.getTaskId());
+            copy.setEventId(block.getEventId());
+            copy.setSprintId(block.getSprintId());
+            copy.setImageFileId(copyFile(block.getImageFileId(), workspaceId, userId));
+            copy.setType(block.getType());
+            copy.setPosition(block.getPosition());
+            copy.setContent(remapPageId(block.getContent(), pageIdMap));
+            copy.setCreatedBy(userId);
 
-            File image = block.getImageFile() == null ? null
-                : fileEntity(fileService.copy(block.getImageFile().getFileId(), target.getWorkspace().getWorkspaceId(),
-                    user.getUserId()));
+            pageCopyMapper.insertBlock(copy);
 
-            Block copy = Block.builder().page(target).task(block.getTask()).event(block.getEvent())
-                .sprint(block.getSprint()).imageFile(image).type(block.getType()).position(block.getPosition())
-                .content(remapPageId(block.getContent(), pageCopies)).createdBy(user).build();
-
-            blockRepository.save(copy);
-
-            blockCopies.put(block.getBlockId(), copy);
+            blockIdMap.put(block.getBlockId(), copy.getBlockId());
 
             if (block.getType() == BlockType.DATABASE) {
-                blockDatabaseRepository.findByBlock(block)
-                    .ifPresent(database -> copyDatabase(database, copy, pageCopies));
+                copyDatabase(block.getBlockId(), copy.getBlockId(), pageIdMap);
             }
         }
 
-        for (Block block : blocks) {
-            if (block.getParentBlock() != null) {
-                blockCopies.get(block.getBlockId())
-                    .updateParent(blockCopies.get(block.getParentBlock().getBlockId()));
-            }
-        }
-    }
-
-    // 데이터베이스 복사 (컬럼, 옵션, 행, 셀)
-    private void copyDatabase(BlockDatabase source, Block newBlock, Map<Long, Page> pageCopies) {
-
-        BlockDatabase database = blockDatabaseRepository.save(
-            BlockDatabase.builder().block(newBlock).title(source.getTitle()).viewType(source.getViewType()).build());
-
-        Map<Long, BlockDatabaseColumn> columnCopies = new HashMap<>();
-
-        for (BlockDatabaseColumn column : blockDatabaseColumnRepository.findByDatabaseOrderByPositionAsc(source)) {
-
-            BlockDatabaseColumn columnCopy = blockDatabaseColumnRepository
-                .save(BlockDatabaseColumn.builder().database(database).name(column.getName()).type(column.getType())
-                    .position(column.getPosition()).width(column.getWidth()).build());
-
-            columnCopies.put(column.getColumnId(), columnCopy);
-
-            for (BlockDatabaseColumnOption option : blockDatabaseColumnOptionRepository
-                .findByColumnOrderByPositionAsc(column)) {
-
-                blockDatabaseColumnOptionRepository.save(BlockDatabaseColumnOption.builder().column(columnCopy)
-                    .value(option.getValue()).color(option.getColor()).statusGroup(option.getStatusGroup())
-                    .position(option.getPosition()).build());
-            }
-        }
-
-        for (BlockDatabaseRow row : blockDatabaseRowRepository.findByDatabaseOrderByPositionAsc(source)) {
-
-            Page rowPage = row.getPage() == null ? null
-                : pageCopies.getOrDefault(row.getPage().getPageId(), row.getPage());
-
-            BlockDatabaseRow rowCopy = blockDatabaseRowRepository.save(BlockDatabaseRow.builder()
-                .database(database).page(rowPage).position(row.getPosition()).build());
-
-            for (BlockDatabaseCell cell : blockDatabaseCellRepository.findByRowOrderByColumnPositionAsc(row)) {
-
-                BlockDatabaseColumn columnCopy = columnCopies.get(cell.getColumn().getColumnId());
-
-                if (columnCopy == null) {
-                    continue;
-                }
-
-                blockDatabaseCellRepository.save(BlockDatabaseCell.builder().row(rowCopy).column(columnCopy)
-                    .value(cell.getValue()).build());
+        for (BlockVO block : blocks) {
+            if (block.getParentBlockId() != null) {
+                pageCopyMapper.updateBlockParent(blockIdMap.get(block.getBlockId()),
+                    blockIdMap.get(block.getParentBlockId()));
             }
         }
     }
 
-    // 하위 페이지 링크 블록({"pageId": N})의 페이지 ID를 복제본으로 교체
-    private String remapPageId(String content, Map<Long, Page> pageCopies) {
+    // 데이터베이스 복사 (컬럼, 옵션, 행, 셀, 행 페이지는 복제본으로 교체)
+    private void copyDatabase(Long sourceBlockId, Long copyBlockId, Map<Long, Long> pageIdMap) {
+
+        BlockDatabaseVO source = pageCopyMapper.selectDatabaseByBlock(sourceBlockId);
+
+        if (source == null) {
+            return;
+        }
+
+        BlockDatabaseVO database = new BlockDatabaseVO();
+        database.setBlockId(copyBlockId);
+        database.setTitle(source.getTitle());
+        database.setViewType(source.getViewType());
+
+        pageCopyMapper.insertDatabase(database);
+
+        Map<Long, Long> columnIdMap = new HashMap<>();
+
+        for (BlockDatabaseColumnVO column : pageCopyMapper.selectColumnList(source.getDatabaseId())) {
+            BlockDatabaseColumnVO copy = new BlockDatabaseColumnVO();
+            copy.setDatabaseId(database.getDatabaseId());
+            copy.setName(column.getName());
+            copy.setType(column.getType());
+            copy.setPosition(column.getPosition());
+            copy.setWidth(column.getWidth());
+
+            pageCopyMapper.insertColumn(copy);
+
+            columnIdMap.put(column.getColumnId(), copy.getColumnId());
+
+            pageCopyMapper.insertOptionCopies(column.getColumnId(), copy.getColumnId());
+        }
+
+        for (BlockDatabaseRowVO row : pageCopyMapper.selectRowList(source.getDatabaseId())) {
+            BlockDatabaseRowVO copy = new BlockDatabaseRowVO();
+            copy.setDatabaseId(database.getDatabaseId());
+            copy.setPageId(row.getPageId() == null ? null : pageIdMap.getOrDefault(row.getPageId(), row.getPageId()));
+            copy.setPosition(row.getPosition());
+
+            pageCopyMapper.insertRow(copy);
+
+            if (!columnIdMap.isEmpty()) {
+                pageCopyMapper.insertCellCopies(row.getRowId(), copy.getRowId(), columnIdMap);
+            }
+        }
+    }
+
+    // 하위 페이지 링크 블록({"pageId": N})의 페이지 번호를 복제본으로 교체
+    private String remapPageId(String content, Map<Long, Long> pageIdMap) {
 
         if (content == null || content.isBlank()) {
             return content;
@@ -612,10 +545,10 @@ public class PageServiceImpl implements PageService {
             if (node instanceof ObjectNode object && object.hasNonNull("pageId")
                 && object.get("pageId").canConvertToLong()) {
 
-                Page copy = pageCopies.get(object.get("pageId").asLong());
+                Long copyId = pageIdMap.get(object.get("pageId").asLong());
 
-                if (copy != null) {
-                    object.put("pageId", copy.getPageId());
+                if (copyId != null) {
+                    object.put("pageId", copyId);
                     return OBJECT_MAPPER.writeValueAsString(object);
                 }
             }
@@ -627,33 +560,37 @@ public class PageServiceImpl implements PageService {
         }
     }
 
-    // 페이지 정보와 블록 전체 조회
+    // 파일 복사 후 새 파일 번호 (원본이 없으면 null)
+    private Long copyFile(Long fileId, Long workspaceId, Long userId) {
+
+        if (fileId == null) {
+            return null;
+        }
+
+        FileVO copy = fileService.copy(fileId, workspaceId, userId);
+
+        return copy == null ? null : copy.getFileId();
+    }
+
+    // 페이지 정보 + 블록(댓글 포함) + 하위 페이지 조회
     @Transactional(readOnly = true)
     @Override
     public PageDetailResponse getPageDetail(Long pageId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        PageVO page = findActivePage(pageId);
+        workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        List<Block> blocks = blockRepository.findWithImageAndDatabaseByPageOrderByPositionAsc(page);
+        List<BlockResponse> blocks = blockService.getBlocks(pageId, email);
 
         Map<Long, List<CommentResponse>> commentsByBlock =
-            commentService.getBlockCommentMap(blocks.stream().map(Block::getBlockId).toList());
+            commentService.getBlockCommentMap(blocks.stream().map(BlockResponse::blockId).toList());
 
         List<PageDetailResponse.BlockItem> blockItems = blocks.stream()
             .map(block -> PageDetailResponse.BlockItem.from(block,
-                commentsByBlock.getOrDefault(block.getBlockId(), List.of())))
+                commentsByBlock.getOrDefault(block.blockId(), List.of())))
             .toList();
 
-        List<Page> childPages = pageRepository.findByParentPageAndIsDeletedFalse(page);
-
-        return PageDetailResponse.from(page, blockItems, childPages);
+        return PageDetailResponse.from(page, blockItems, pageMapper.selectChildPageList(pageId));
     }
 
     // 페이지 커버 업로드 (기존 커버 삭제 후 저장)
@@ -707,18 +644,7 @@ public class PageServiceImpl implements PageService {
         return toResponse(pageId);
     }
 
-    // FileVO를 JPA File 엔티티 참조로 변환 (복제 전환 후 삭제)
-    // getReferenceById는 실제 사용 시점에 조회, 원본이 없으면 null
-    private File fileEntity(FileVO file) {
-        return file == null ? null : fileRepository.getReferenceById(file.getFileId());
-    }
-
-    // 페이지 엔티티 응답 변환 (회고 페이지 여부 포함)
-    private PageResponse toResponse(Page page) {
-        return PageResponse.from(page, retrospectiveRepository.existsByPage(page));
-    }
-
-    // ---------- MyBatis로 바꾼 기능의 도우미 ----------
+    // ---------- 조회 + 없으면 예외 ----------
 
     // 페이지 한 개 (휴지통 포함, 없으면 예외)
     private PageVO findPage(Long pageId) {
@@ -753,6 +679,16 @@ public class PageServiceImpl implements PageService {
         }
 
         return userId;
+    }
+
+    // 관리자 이상 확인
+    private void requireAdmin(Long workspaceId, String email) {
+
+        WorkspaceRole role = workspaceService.getWorkspace(workspaceId, email).role();
+
+        if (!role.isAtLeast(WorkspaceRole.ADMIN)) {
+            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     // 순환 참조 검증 (새 상위 페이지에서 올라가며 자기 자신 확인)

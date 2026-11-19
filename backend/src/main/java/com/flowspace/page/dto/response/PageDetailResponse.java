@@ -3,12 +3,13 @@ package com.flowspace.page.dto.response;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.flowspace.block.dto.response.BlockResponse;
 import com.flowspace.comment.dto.response.CommentResponse;
-import com.flowspace.entity.Block;
-import com.flowspace.entity.Page;
+import com.flowspace.page.service.PageVO;
 
 // @formatter:off
 
+// 페이지 상세 응답 DTO (페이지 정보 + 블록 + 하위 페이지)
 public record PageDetailResponse(
 
     Long pageId,
@@ -21,6 +22,7 @@ public record PageDetailResponse(
 
 ) {
 
+    // 블록 (댓글 포함)
     public record BlockItem(
 
         Long blockId,
@@ -38,26 +40,26 @@ public record PageDetailResponse(
     ) {
 
         public static BlockItem from(
-            Block block,
+            BlockResponse block,
             List<CommentResponse> comments
         ) {
             return new BlockItem(
-                block.getBlockId(),
-                block.getType().name(),
-                block.getPosition(),
-                block.getContent(),
-                block.getTask() == null ? null : block.getTask().getTaskId(),
-                block.getEvent() == null ? null : block.getEvent().getEventId(),
-                block.getSprint() == null ? null : block.getSprint().getSprintId(),
-                block.getDatabase() == null ? null : block.getDatabase().getDatabaseId(),
-                block.getImageFile() == null ? null : block.getImageFile().getFileUrl(),
-                block.getParentBlock() == null ? null : block.getParentBlock().getBlockId(),
+                block.blockId(),
+                block.type().name(),
+                block.position(),
+                block.content(),
+                block.taskId(),
+                block.eventId(),
+                block.sprintId(),
+                block.databaseId(),
+                block.imageUrl(),
+                block.parentBlockId(),
                 comments
             );
         }
-
     }
 
+    // 하위 페이지
     public record ChildPageItem(
 
         Long pageId,
@@ -66,33 +68,30 @@ public record PageDetailResponse(
 
     ) {
 
-        public static ChildPageItem from(Page page) {
+        public static ChildPageItem from(PageVO page) {
             return new ChildPageItem(
                 page.getPageId(),
                 page.getTitle(),
                 page.getIcon()
             );
         }
-
     }
 
     public static PageDetailResponse from(
-        Page page,
+        PageVO page,
         List<BlockItem> blockItems,
-        List<Page> childPages
+        List<PageVO> childPages
     ) {
-
         return new PageDetailResponse(
             page.getPageId(),
             page.getTitle(),
             page.getIcon(),
-            page.getCoverFile() == null ? null : page.getCoverFile().getFileUrl(),
+            page.getCoverUrl(),
             page.getVersion(),
             blockItems,
             childPages.stream().map(ChildPageItem::from).toList()
         );
     }
-
 }
 
 // @formatter:on

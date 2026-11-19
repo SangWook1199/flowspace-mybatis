@@ -153,9 +153,11 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 |---|---|---|---|---|
 | `sp_page_list` | 조인 | 워크스페이스, 휴지통 여부 | 페이지 목록과 커버 주소·회고 여부 | `PageMapper.selectPageList` |
 | `sp_page` | 조인 | 페이지 | 위와 같은데 한 개 (상위 페이지가 휴지통에 있는지 포함) | `PageMapper.selectPageById` |
-| `sp_page_subtree` | 재귀 조인 | 페이지 | 본인과 모든 하위 페이지 (`WITH RECURSIVE`) | `PageMapper.selectPageSubtree` |
+| `sp_page_subtree` | 재귀 조인 | 페이지 | 본인과 모든 하위 페이지 (`WITH RECURSIVE`, 휴지통·복원·영구 삭제·복제 공용) | `PageMapper.selectPageSubtree` |
 
 휴지통 보내기·복원은 하위 페이지 번호 **목록**을 받아 한 번에 바꾸는 SQL이라 `Page_SQL.xml`의 `<foreach>`로 했어요.
+영구 삭제(회고 페이지 확인, 파일 번호 모으기, 페이지 삭제)도 같은 방식이에요.
+페이지 복제에 쓰는 블록·데이터베이스 복사 SQL은 `PageCopy_SQL.xml`에 따로 모았어요. 옵션·셀은 원본을 읽어 바로 넣는 `INSERT … SELECT`예요.
 
 ### 블록 (`procedures/block`)
 

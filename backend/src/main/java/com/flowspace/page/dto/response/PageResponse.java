@@ -1,6 +1,5 @@
 package com.flowspace.page.dto.response;
 
-import com.flowspace.entity.Page;
 import com.flowspace.page.service.PageVO;
 
 import java.time.LocalDateTime;
@@ -42,24 +41,6 @@ public record PageResponse(
             page.getUpdatedAt(),
             page.getDeletedAt(),
             Boolean.TRUE.equals(page.getRetrospective())
-        );
-    }
-
-    // JPA 페이지 복제용 (복제 전환 후 삭제)
-    public static PageResponse from(Page page, boolean retrospective) {
-        return new PageResponse(
-            page.getPageId(),
-            page.getWorkspace().getWorkspaceId(),
-            page.getParentPage() == null ? null : page.getParentPage().getPageId(),
-            page.getTitle(),
-            page.getIcon(),
-            page.getCoverFile() == null ? null : page.getCoverFile().getFileUrl(),
-            page.getPosition(),
-            page.getCreatedBy().getUserId(),
-            page.getCreatedAt(),
-            page.getUpdatedAt(),
-            page.getDeletedAt(),
-            retrospective
         );
     }
 }
