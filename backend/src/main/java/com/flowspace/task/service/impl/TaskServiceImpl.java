@@ -9,6 +9,8 @@ import com.flowspace.task.service.TaskService;
 import com.flowspace.task.service.TaskStatusVO;
 import com.flowspace.task.service.TaskVO;
 import com.flowspace.task.dto.response.AssigneeItem;
+import com.flowspace.user.service.UserVO;
+import com.flowspace.workspace.service.WorkspaceService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,19 +39,12 @@ import com.flowspace.task.dto.request.SubTaskCreateRequest;
 import com.flowspace.task.dto.request.SubTaskReorderRequest;
 import com.flowspace.task.dto.response.SubTaskResponse;
 import com.flowspace.task.dto.request.SubTaskUpdateRequest;
-import com.flowspace.entity.Sprint;
-import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.SprintRepository;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
-import com.flowspace.repository.WorkspaceRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -60,11 +55,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TaskServiceImpl implements TaskService {
 
-    private final SprintRepository sprintRepository;
-    private final WorkspaceRepository workspaceRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final WorkspaceService workspaceService;
     private final FileService fileService;
-    private final UserRepository userRepository;
 
     private final ActivityService activityService;
     private final NotificationService notificationService;
@@ -80,14 +72,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskStatusResponse createStatus(Long workspaceId, TaskStatusCreateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
 
         TaskStatusVO status = new TaskStatusVO();
         status.setWorkspaceId(workspaceId);
@@ -108,14 +93,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<TaskStatusResponse> getStatuses(Long workspaceId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
 
         return taskMapper.selectTaskStatusList(workspaceId).stream().map(TaskStatusResponse::from).toList();
     }
@@ -124,14 +102,11 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskStatusResponse updateStatusInfo(Long statusId, TaskStatusEditRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         Long workspaceId = request.workspaceId();
 
         TaskStatusVO status = findTaskStatus(workspaceId, statusId);
 
-        validateWorkspaceMember(workspaceId, user);
+        validateWorkspaceMember(workspaceId, email);
 
         if (status.getIsDefault()) {
 
@@ -162,12 +137,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void reorderStatuses(TaskStatusReorderRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         Long workspaceId = request.workspaceId();
 
-        validateWorkspaceMember(workspaceId, user);
+        validateWorkspaceMember(workspaceId, email);
 
         for (TaskStatusReorderRequest.Item item : request.statuses()) {
 
@@ -183,14 +155,11 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteStatus(Long statusId, TaskStatusDeleteRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         Long workspaceId = request.workspaceId();
 
         findTaskStatus(workspaceId, statusId);
 
-        validateWorkspaceMember(workspaceId, user);
+        validateWorkspaceMember(workspaceId, email);
 
         if (taskMapper.selectTaskStatusCount(workspaceId) <= 1) {
             throw new FlowSpaceException(ErrorCode.LAST_TASK_STATUS_CANNOT_DELETE);
@@ -209,47 +178,38 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse createTask(Long sprintId, TaskCreateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+        Long workspaceId = findSprintWorkspaceId(sprintId);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
 
-        return saveNewTask(sprint.getWorkspace(), sprint, request, user);
+        return saveNewTask(workspaceId, sprintId, request, user);
     }
 
     // 백로그 작업 생성 (스프린트 없음)
     @Override
     public TaskResponse createBacklogTask(Long workspaceId, TaskCreateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+        workspaceService.getWorkspace(workspaceId, email);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return saveNewTask(workspace, null, request, user);
+        return saveNewTask(workspaceId, null, request, user);
     }
 
     // Task 저장 공통 처리 (sprint가 null이면 Backlog Task)
-    private TaskResponse saveNewTask(Workspace workspace, Sprint sprint, TaskCreateRequest request, User user) {
+    private TaskResponse saveNewTask(Long workspaceId, Long sprintId, TaskCreateRequest request, UserVO user) {
 
-        TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
+        TaskStatusVO status = validateWorkspaceStatus(workspaceId, request.statusId());
 
-        BigDecimal position = BigDecimal
-            .valueOf(taskMapper.selectTaskCountByStatus(workspace.getWorkspaceId(), status.getStatusId()));
+        BigDecimal position = BigDecimal.valueOf(taskMapper.selectTaskCountByStatus(workspaceId, status.getStatusId()));
 
-        int taskNumber = taskMapper.selectMaxTaskNumber(workspace.getWorkspaceId()) + 1;
+        int taskNumber = taskMapper.selectMaxTaskNumber(workspaceId) + 1;
 
         TaskVO task = new TaskVO();
-        task.setWorkspaceId(workspace.getWorkspaceId());
-        task.setSprintId(sprint == null ? null : sprint.getSprintId());
+        task.setWorkspaceId(workspaceId);
+        task.setSprintId(sprintId);
         task.setStatusId(status.getStatusId());
         task.setCreatedBy(user.getUserId());
         task.setTaskNumber(taskNumber);
@@ -262,22 +222,18 @@ public class TaskServiceImpl implements TaskService {
 
         taskMapper.insertTask(task);
 
-        activityService.log(workspace.getWorkspaceId(), user.getUserId(), ActivityType.TASK_CREATED,
+        activityService.log(workspaceId, user.getUserId(), ActivityType.TASK_CREATED,
             ActivityTargetType.TASK, task.getTaskId());
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
 
         for (Long assigneeId : assigneeIds) {
 
-            User assignee = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+            validateAssignee(workspaceId, assigneeId);
 
-            workspaceMemberRepository.findByWorkspaceAndUser(workspace, assignee)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+            taskMapper.insertTaskAssignee(task.getTaskId(), assigneeId);
 
-            taskMapper.insertTaskAssignee(task.getTaskId(), assignee.getUserId());
-
-            notifyAssigned(task, workspace, assignee, user);
+            notifyAssigned(task, assigneeId, user);
         }
 
         return toTaskResponse(findTask(task.getTaskId()));
@@ -288,16 +244,11 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<TaskResponse> getTasksBySprint(Long sprintId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        Long workspaceId = findSprintWorkspaceId(sprintId);
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+        workspaceService.getWorkspace(workspaceId, email);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return toTaskResponses(sprint.getWorkspace().getWorkspaceId(), sprintId);
+        return toTaskResponses(workspaceId, sprintId);
     }
 
     // Task 단건 조회
@@ -305,16 +256,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse getTask(Long taskId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         TaskVO task = findTask(taskId);
 
-        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
         return toTaskResponse(task);
     }
@@ -323,27 +267,19 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse updateTask(Long taskId, TaskUpdateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
         TaskVO task = findTask(taskId);
 
-        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
         if (request.sprintId() != null) {
-            Sprint sprint = sprintRepository.findById(request.sprintId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
-
-            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspaceId())) {
+            if (!findSprintWorkspaceId(request.sprintId()).equals(task.getWorkspaceId())) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
         }
 
-        TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
+        TaskStatusVO status = validateWorkspaceStatus(task.getWorkspaceId(), request.statusId());
 
         boolean sprintChanged = !Objects.equals(task.getSprintId(), request.sprintId());
 
@@ -372,29 +308,25 @@ public class TaskServiceImpl implements TaskService {
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
 
-        List<User> keptAssignees = new ArrayList<>();
+        List<Long> keptAssigneeIds = new ArrayList<>();
 
         for (Long assigneeId : assigneeIds) {
 
-            User assignee = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+            validateAssignee(task.getWorkspaceId(), assigneeId);
 
-            workspaceMemberRepository.findByWorkspaceAndUser(workspace, assignee)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+            taskMapper.insertTaskAssignee(taskId, assigneeId);
 
-            taskMapper.insertTaskAssignee(taskId, assignee.getUserId());
-
-            if (previousAssigneeIds.contains(assignee.getUserId())) {
-                keptAssignees.add(assignee);
+            if (previousAssigneeIds.contains(assigneeId)) {
+                keptAssigneeIds.add(assigneeId);
             } else {
-                notifyAssigned(task, workspace, assignee, user);
+                notifyAssigned(task, assigneeId, user);
             }
         }
 
         taskMapper.updateSubTaskAssigneeClear(taskId, assigneeIds);
 
         if (statusChanged) {
-            notifyStatusChanged(task, workspace, status, user, keptAssignees);
+            notifyStatusChanged(task, status, user, keptAssigneeIds);
         }
 
         return toTaskResponse(findTask(taskId));
@@ -405,14 +337,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<TaskResponse> getBacklogTasks(Long workspaceId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
 
         return toTaskResponses(workspaceId, null);
     }
@@ -421,18 +346,13 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse updateTaskStatus(Long taskId, TaskStatusUpdateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
         TaskVO task = findTask(taskId);
 
-        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+        workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
+        TaskStatusVO status = validateWorkspaceStatus(task.getWorkspaceId(), request.statusId());
 
         if (task.getStatusId().equals(request.statusId())) {
             return toTaskResponse(task);
@@ -446,11 +366,11 @@ public class TaskServiceImpl implements TaskService {
         taskMapper.updateTask(task);
 
         if (status.getCategory() == TaskStatusCategory.DONE) {
-            activityService.log(workspace.getWorkspaceId(), user.getUserId(), ActivityType.TASK_COMPLETED,
+            activityService.log(task.getWorkspaceId(), user.getUserId(), ActivityType.TASK_COMPLETED,
                 ActivityTargetType.TASK, taskId);
         }
 
-        notifyStatusChanged(task, workspace, status, user, findAssigneeUsers(taskId));
+        notifyStatusChanged(task, status, user, taskMapper.selectTaskAssigneeUserIds(taskId));
 
         return toTaskResponse(findTask(taskId));
     }
@@ -459,16 +379,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteTask(Long taskId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         TaskVO task = findTask(taskId);
 
-        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
         List<Long> attachmentFileIds = taskAttachmentMapper.selectTaskAttachmentFileIds(taskId);
 
@@ -483,12 +396,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public SubTaskResponse createSubTask(Long taskId, SubTaskCreateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         TaskVO task = findTask(taskId);
 
-        validateTaskMember(task, user);
+        validateTaskMember(task, email);
 
         validateSubTaskAssignee(taskId, request.assigneeId());
 
@@ -508,10 +418,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<SubTaskResponse> getSubTasks(Long taskId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        validateTaskMember(findTask(taskId), user);
+        validateTaskMember(findTask(taskId), email);
 
         return taskMapper.selectSubTaskList(List.of(taskId)).stream().map(SubTaskResponse::from).toList();
     }
@@ -520,12 +427,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public SubTaskResponse updateSubTask(Long subTaskId, SubTaskUpdateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         SubTaskVO subTask = findSubTask(subTaskId);
 
-        validateTaskMember(findTask(subTask.getTaskId()), user);
+        validateTaskMember(findTask(subTask.getTaskId()), email);
 
         validateSubTaskAssignee(subTask.getTaskId(), request.assigneeId());
 
@@ -542,14 +446,11 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void reorderSubTasks(SubTaskReorderRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         for (SubTaskReorderRequest.Item item : request.subtasks()) {
 
             SubTaskVO subTask = findSubTask(item.subtaskId());
 
-            validateTaskMember(findTask(subTask.getTaskId()), user);
+            validateTaskMember(findTask(subTask.getTaskId()), email);
 
             taskMapper.updateSubTaskPosition(item.subtaskId(), item.position());
         }
@@ -559,12 +460,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteSubTask(Long subtaskId, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         SubTaskVO subTask = findSubTask(subtaskId);
 
-        validateTaskMember(findTask(subTask.getTaskId()), user);
+        validateTaskMember(findTask(subTask.getTaskId()), email);
 
         taskMapper.deleteSubTask(subtaskId);
     }
@@ -573,26 +471,16 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse updateTaskSprint(Long taskId, TaskSprintUpdateRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
         TaskVO task = findTask(taskId);
 
-        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
         if (Objects.equals(task.getSprintId(), request.sprintId())) {
             return toTaskResponse(task);
         }
 
         if (request.sprintId() != null) {
-            Sprint sprint = sprintRepository.findById(request.sprintId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
-
-            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspaceId())) {
+            if (!findSprintWorkspaceId(request.sprintId()).equals(task.getWorkspaceId())) {
                 throw new FlowSpaceException(ErrorCode.INVALID_SPRINT);
             }
         }
@@ -610,20 +498,15 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void reorderTasks(TaskReorderRequest request, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        UserVO user = findUser(email);
 
         for (TaskReorderRequest.Item item : request.tasks()) {
 
             TaskVO task = findTask(item.taskId());
 
-            Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+            workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
-            workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-            TaskStatusVO status = validateWorkspaceStatus(workspace, item.statusId());
+            TaskStatusVO status = validateWorkspaceStatus(task.getWorkspaceId(), item.statusId());
 
             boolean statusChanged = !task.getStatusId().equals(status.getStatusId());
 
@@ -634,29 +517,28 @@ public class TaskServiceImpl implements TaskService {
             taskMapper.updateTask(task);
 
             if (statusChanged) {
-                notifyStatusChanged(task, workspace, status, user, findAssigneeUsers(task.getTaskId()));
+                notifyStatusChanged(task, status, user, taskMapper.selectTaskAssigneeUserIds(task.getTaskId()));
             }
         }
     }
 
     // 담당자로 지정된 사람에게 알림
-    private void notifyAssigned(TaskVO task, Workspace workspace, User assignee, User actor) {
-        notificationService.send(assignee.getUserId(), actor.getUserId(), workspace.getWorkspaceId(),
+    private void notifyAssigned(TaskVO task, Long assigneeId, UserVO actor) {
+        notificationService.send(assigneeId, actor.getUserId(), task.getWorkspaceId(),
             NotificationType.TASK_ASSIGNED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업의 담당자로 지정했어요.", task.getTaskId(),
             NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
     }
 
     // 작업 상태 변경 알림 (변경한 본인 제외)
-    private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatusVO status, User actor,
-        List<User> targets) {
-        notificationService.sendAll(targets.stream().map(User::getUserId).toList(), actor.getUserId(),
-            workspace.getWorkspaceId(), NotificationType.TASK_STATUS_CHANGED,
+    private void notifyStatusChanged(TaskVO task, TaskStatusVO status, UserVO actor, List<Long> targetIds) {
+        notificationService.sendAll(targetIds, actor.getUserId(), task.getWorkspaceId(),
+            NotificationType.TASK_STATUS_CHANGED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
             task.getTaskId(), NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
     }
 
-    // 완료 시각: 완료 상태가 되면 처음 한 번만 기록하고, 완료가 아니면 비워요(엔티티의 syncCompletedAt과 같은 규칙)
+    // 완료 시각 동기화 (완료 상태가 되면 처음 한 번만 기록, 완료가 아니면 비움)
     private void syncCompletedAt(TaskVO task, TaskStatusVO status) {
 
         if (status.getCategory() != TaskStatusCategory.DONE) {
@@ -666,15 +548,10 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    // 작업 담당자 (알림 받을 사람)
-    private List<User> findAssigneeUsers(Long taskId) {
-        return userRepository.findAllById(taskMapper.selectTaskAssigneeUserIds(taskId));
-    }
-
     // 작업 상태가 해당 워크스페이스의 상태인지 확인 (아니면 INVALID_TASK_STATUS)
-    private TaskStatusVO validateWorkspaceStatus(Workspace workspace, Long statusId) {
+    private TaskStatusVO validateWorkspaceStatus(Long workspaceId, Long statusId) {
 
-        TaskStatusVO status = taskMapper.selectTaskStatusById(workspace.getWorkspaceId(), statusId);
+        TaskStatusVO status = taskMapper.selectTaskStatusById(workspaceId, statusId);
 
         if (status == null) {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
@@ -696,13 +573,9 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // 워크스페이스 멤버 확인
-    private void validateWorkspaceMember(Long workspaceId, User user) {
+    private void validateWorkspaceMember(Long workspaceId, String email) {
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
     }
 
     // Task 검색
@@ -710,14 +583,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<TaskSearchResponse> searchTasks(Long workspaceId, String keyword, String email) {
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        workspaceService.getWorkspace(workspaceId, email);
 
         String search = keyword == null ? "" : keyword;
 
@@ -782,6 +648,42 @@ public class TaskServiceImpl implements TaskService {
         return task;
     }
 
+    // 이메일로 사용자 (없으면 예외)
+    private UserVO findUser(String email) {
+
+        UserVO user = taskMapper.selectUserByEmail(email);
+
+        if (user == null) {
+            throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return user;
+    }
+
+    // 스프린트가 속한 워크스페이스 번호 (없으면 예외)
+    private Long findSprintWorkspaceId(Long sprintId) {
+
+        Long workspaceId = taskMapper.selectSprintWorkspaceId(sprintId);
+
+        if (workspaceId == null) {
+            throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
+        }
+
+        return workspaceId;
+    }
+
+    // 담당자 확인 (있는 사용자 + 워크스페이스 멤버)
+    private void validateAssignee(Long workspaceId, Long assigneeId) {
+
+        if (taskMapper.selectUserById(assigneeId) == null) {
+            throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        if (taskMapper.selectWorkspaceMemberCount(workspaceId, assigneeId) == 0) {
+            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
     // 하위 작업 한 건 (없으면 예외)
     private SubTaskVO findSubTask(Long subtaskId) {
 
@@ -794,16 +696,10 @@ public class TaskServiceImpl implements TaskService {
         return subTask;
     }
 
-    // 작업이 속한 워크스페이스의 멤버 확인 후 워크스페이스 반환
-    private Workspace validateTaskMember(TaskVO task, User user) {
+    // 작업이 속한 워크스페이스의 멤버 확인
+    private void validateTaskMember(TaskVO task, String email) {
 
-        Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        return workspace;
+        workspaceService.getWorkspace(task.getWorkspaceId(), email);
     }
 
     // 하위 작업 담당자는 작업 담당자 중에서만 지정 (담당자가 없으면 생략)
@@ -813,7 +709,9 @@ public class TaskServiceImpl implements TaskService {
             return;
         }
 
-        userRepository.findById(assigneeId).orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+        if (taskMapper.selectUserById(assigneeId) == null) {
+            throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
+        }
 
         if (taskMapper.selectTaskAssigneeCount(taskId, assigneeId) == 0) {
             throw new FlowSpaceException(ErrorCode.INVALID_SUBTASK_ASSIGNEE);

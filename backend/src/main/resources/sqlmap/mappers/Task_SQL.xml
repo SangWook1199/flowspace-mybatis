@@ -178,4 +178,24 @@
         {call sp_task_assignee_list_by_tasks(#{taskIds, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler})}
     </select>
 
+    <!-- 이메일로 사용자 (sp_user_by_email) -->
+    <select id="selectUserByEmail" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user_by_email(#{email})}
+    </select>
+
+    <!-- 번호로 사용자 (sp_user) -->
+    <select id="selectUserById" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user(#{userId})}
+    </select>
+
+    <!-- 스프린트가 속한 워크스페이스 번호 (sp_sprint_workspace_id) -->
+    <select id="selectSprintWorkspaceId" statementType="CALLABLE" resultType="long">
+        {call sp_sprint_workspace_id(#{sprintId})}
+    </select>
+
+    <!-- 워크스페이스 멤버 수 (sp_workspace_member_count) -->
+    <select id="selectWorkspaceMemberCount" statementType="CALLABLE" resultType="int">
+        {call sp_workspace_member_count(#{workspaceId}, #{userId})}
+    </select>
+
 </mapper>

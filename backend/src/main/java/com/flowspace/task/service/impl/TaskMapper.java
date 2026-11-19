@@ -9,6 +9,7 @@ import com.flowspace.task.service.SubTaskVO;
 import com.flowspace.task.service.TaskAssigneeVO;
 import com.flowspace.task.service.TaskStatusVO;
 import com.flowspace.task.service.TaskVO;
+import com.flowspace.user.service.UserVO;
 
 // 작업 Mapper (Task_SQL.xml)
 @Mapper
@@ -116,4 +117,18 @@ public interface TaskMapper {
 
     // 여러 작업의 담당자 (taskIds가 비어 있으면 호출하지 않음)
     List<TaskAssigneeVO> selectTaskAssigneeListByTaskIds(@Param("taskIds") List<Long> taskIds);
+
+    // ---------- 사용자·스프린트·멤버 확인 ----------
+
+    // 이메일로 사용자 (sp_user_by_email, 없으면 null)
+    UserVO selectUserByEmail(String email);
+
+    // 번호로 사용자 (sp_user, 없으면 null)
+    UserVO selectUserById(Long userId);
+
+    // 스프린트가 속한 워크스페이스 번호 (sp_sprint_workspace_id, 없으면 null)
+    Long selectSprintWorkspaceId(Long sprintId);
+
+    // 워크스페이스 멤버 수 (sp_workspace_member_count, 멤버면 1)
+    int selectWorkspaceMemberCount(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
 }
