@@ -62,6 +62,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 ## 프로시저 목록
 
 파일마다 Mapper 메서드 순서예요. "하는 일"은 프로시저 머리 주석 첫 줄이에요.
+`Ai_SQL.xml`(AI 초안 반영)은 다른 파일의 프로시저만 불러서 자기 프로시저 파일이 없어요.
 
 ### 스프린트 (`procedures/sprint.sql` ↔ `Sprint_SQL.xml`)
 
@@ -71,7 +72,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_sprint_progress_list` | 워크스페이스 스프린트 목록 + 진행 상황 (작업 수, 완료 작업 수) | `SprintMapper.selectSprintProgressList` |
 | `sp_sprint_progress` | 스프린트 한 건 + 진행 상황 (작업 수, 완료 작업 수) | `SprintMapper.selectSprintProgressById` |
 | `sp_sprint_count_by_status` | 워크스페이스에서 해당 상태인 스프린트 수 | `SprintMapper.selectSprintCountByStatus` |
-| `sp_sprint_insert` | 스프린트 등록 (생성 시각은 DB 기본값) | `SprintMapper.insertSprint` |
+| `sp_sprint_insert` | 스프린트 등록 (생성 시각은 DB 기본값) | `SprintMapper.insertSprint`, `AiMapper.insertSprint` |
 | `sp_sprint_update` | 스프린트 수정 (상태 제외) | `SprintMapper.updateSprint` |
 | `sp_start_sprint` | 스프린트 시작 (진행 중이던 다른 스프린트는 계획으로 변경) | `SprintMapper.updateSprintStart` |
 | `sp_complete_sprint` | 스프린트 완료 (미완료 작업은 백로그 맨 뒤로 이동, 완료 작업은 유지) | `SprintMapper.updateSprintComplete` |
@@ -87,10 +88,10 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_subtask_list` | 여러 작업의 하위 작업 | `TaskMapper.selectSubTaskList` |
 | `sp_task` | 작업 한 건 + 상태 이름 (컬럼은 sp_task_list와 동일) | `TaskMapper.selectTaskById` |
 | `sp_task_assignee` | 작업 한 건의 담당자 (이름·프로필 이미지 포함, 컬럼은 sp_task_assignee_list와 동일) | `TaskMapper.selectTaskAssigneeListByTaskId` |
-| `sp_task_count_by_status` | 워크스페이스에서 해당 상태인 작업 수 | `TaskMapper.selectTaskCountByStatus` |
-| `sp_task_max_number` | 워크스페이스의 최대 작업 번호 (없으면 0) | `TaskMapper.selectMaxTaskNumber` |
-| `sp_task_insert` | 작업 등록 (생성 시각은 DB 기본값) | `TaskMapper.insertTask` |
-| `sp_task_assignee_insert` | 작업 담당자 등록 | `TaskMapper.insertTaskAssignee` |
+| `sp_task_count_by_status` | 워크스페이스에서 해당 상태인 작업 수 | `TaskMapper.selectTaskCountByStatus`, `AiMapper.selectTaskCountByStatus` |
+| `sp_task_max_number` | 워크스페이스의 최대 작업 번호 (없으면 0) | `TaskMapper.selectMaxTaskNumber`, `AiMapper.selectMaxTaskNumber` |
+| `sp_task_insert` | 작업 등록 (생성 시각은 DB 기본값) | `TaskMapper.insertTask`, `AiMapper.insertTask` |
+| `sp_task_assignee_insert` | 작업 담당자 등록 | `TaskMapper.insertTaskAssignee`, `AiMapper.insertTaskAssignee` |
 | `sp_task_update` | 작업 수정 | `TaskMapper.updateTask` |
 | `sp_task_assignee_user_id_list` | 작업 담당자의 사용자 번호 목록 | `TaskMapper.selectTaskAssigneeUserIds`, `CommentMapper.selectTaskAssigneeUserIds` |
 | `sp_task_assignee_delete` | 작업 담당자 모두 삭제 | `TaskMapper.deleteTaskAssignees` |
@@ -99,11 +100,11 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_task_assignee_count` | 작업 담당자 여부 | `TaskMapper.selectTaskAssigneeCount` |
 | `sp_subtask` | 하위 작업 한 건 | `TaskMapper.selectSubTaskById` |
 | `sp_subtask_count` | 작업의 하위 작업 수 | `TaskMapper.selectSubTaskCount` |
-| `sp_subtask_insert` | 하위 작업 등록 (is_completed는 DB 기본값) | `TaskMapper.insertSubTask` |
+| `sp_subtask_insert` | 하위 작업 등록 (is_completed는 DB 기본값) | `TaskMapper.insertSubTask`, `AiMapper.insertSubTask` |
 | `sp_subtask_update` | 하위 작업 수정 | `TaskMapper.updateSubTask` |
 | `sp_subtask_position_update` | 하위 작업 순서 변경 | `TaskMapper.updateSubTaskPosition` |
 | `sp_subtask_delete` | 하위 작업 삭제 | `TaskMapper.deleteSubTask` |
-| `sp_task_status_list` | 워크스페이스 작업 상태(칸반 열) 목록 (task_statuses + workspace_task_statuses) | `TaskMapper.selectTaskStatusList` |
+| `sp_task_status_list` | 워크스페이스 작업 상태(칸반 열) 목록 (task_statuses + workspace_task_statuses) | `TaskMapper.selectTaskStatusList`, `AiMapper.selectTaskStatusList` |
 | `sp_task_status` | 워크스페이스 작업 상태 한 개 (컬럼은 sp_task_status_list와 동일, 연결되지 않은 상태면 0행) | `TaskMapper.selectTaskStatusById` |
 | `sp_task_status_count` | 워크스페이스의 작업 상태 수 | `TaskMapper.selectTaskStatusCount` |
 | `sp_task_status_insert` | 상태 등록 | `TaskMapper.insertTaskStatus` |
@@ -136,7 +137,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_workspace` | 워크스페이스 한 건 | `WorkspaceMapper.selectWorkspaceById` |
 | `sp_workspace_member_role` | 워크스페이스에서 사용자의 역할 (enum으로 매핑, 없으면 null) | `WorkspaceMapper.selectMemberRole` |
 | `sp_my_workspace_list` | 내 워크스페이스 목록 + 역할 | `WorkspaceMapper.selectMyWorkspaceList` |
-| `sp_workspace_member_list` | 워크스페이스 멤버 목록 (이름·프로필 이미지·역할 포함) | `WorkspaceMapper.selectWorkspaceMemberList` |
+| `sp_workspace_member_list` | 워크스페이스 멤버 목록 (이름·프로필 이미지·역할 포함) | `WorkspaceMapper.selectWorkspaceMemberList`, `AiMapper.selectWorkspaceMemberList` |
 | `sp_workspace_member` | 워크스페이스 멤버 한 명 (컬럼은 sp_workspace_member_list와 동일) | `WorkspaceMapper.selectWorkspaceMember` |
 | `sp_member_open_task_list` | 멤버의 미완료 담당 작업 (프로필 카드용) | `WorkspaceMapper.selectMemberOpenTaskList` |
 | `sp_member_task_count` | 멤버 담당 작업의 진행 중·완료 수 (프로필 카드용) | `WorkspaceMapper.selectMemberTaskCount` |
@@ -156,13 +157,13 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_workspace_member_delete` | 멤버 삭제 | `WorkspaceMapper.deleteWorkspaceMember` |
 | `sp_user_last_workspace_update` | 사용자의 마지막 워크스페이스 지정 (워크스페이스 생성 시 함께 변경) | `WorkspaceMapper.updateUserLastWorkspace` |
 | `sp_user_last_workspace_clear` | 마지막 워크스페이스가 이곳이면 해제 | `WorkspaceMapper.clearUserLastWorkspace` |
-| `sp_workspace_user_id_list` (공용) | 워크스페이스 멤버의 사용자 번호 | `SprintMapper.selectWorkspaceUserIds` |
+| `sp_workspace_user_id_list` (공용) | 워크스페이스 멤버의 사용자 번호 | `SprintMapper.selectWorkspaceUserIds`, `AiMapper.selectWorkspaceUserIds` |
 
 ### 사용자·로그인 (`procedures/user.sql` ↔ `User_SQL.xml`)
 
 | 프로시저 | 하는 일 | 부르는 Mapper 메서드 |
 |---|---|---|
-| `sp_user_by_email` | 이메일로 사용자 조회 (프로필 이미지 주소 포함) | `SprintMapper.selectUserByEmail`, `WorkspaceMapper.selectUserByEmail`, `UserMapper.selectUserByEmail` |
+| `sp_user_by_email` | 이메일로 사용자 조회 (프로필 이미지 주소 포함) | `SprintMapper.selectUserByEmail`, `TaskMapper.selectUserByEmail`, `WorkspaceMapper.selectUserByEmail`, `UserMapper.selectUserByEmail`, `AiMapper.selectUserByEmail` |
 | `sp_user_profile_update` | 프로필 수정 | `UserMapper.updateUserProfile` |
 | `sp_user_profile_file_update` | 프로필 이미지 수정 | `UserMapper.updateUserProfileFile` |
 | `sp_user_password_update` | 비밀번호 수정 | `UserMapper.updateUserPassword` |
@@ -170,7 +171,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_refresh_token_expired_at` | refresh token 만료 시각 | `UserMapper.selectRefreshTokenExpiredAt` |
 | `sp_refresh_token_delete` | refresh token 삭제 | `UserMapper.deleteRefreshToken` |
 | `sp_refresh_token_insert` | refresh token 저장 | `UserMapper.insertRefreshToken` |
-| `sp_user` | 번호로 사용자 조회 (프로필 이미지 주소 포함, 컬럼은 sp_user_by_email과 동일) | `WorkspaceMapper.selectUserById`, `UserMapper.selectUserById` |
+| `sp_user` | 번호로 사용자 조회 (프로필 이미지 주소 포함, 컬럼은 sp_user_by_email과 동일) | `TaskMapper.selectUserById`, `WorkspaceMapper.selectUserById`, `UserMapper.selectUserById` |
 | `sp_user_insert` | 사용자 등록 (생성 시각은 DB 기본값) | `UserMapper.insertUser` |
 | `sp_user_signup_restart_update` | 인증 전 재가입 | `UserMapper.updateUserSignupRestart` |
 | `sp_user_email_verified_update` | 이메일 인증 완료 | `UserMapper.updateUserEmailVerified` |
@@ -223,12 +224,12 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 
 | 프로시저 | 하는 일 | 부르는 Mapper 메서드 |
 |---|---|---|
-| `sp_event_insert` | 일정 등록 (생성·수정 시각은 DB 기본값) | `CalendarMapper.insertEvent` |
+| `sp_event_insert` | 일정 등록 (생성·수정 시각은 DB 기본값) | `CalendarMapper.insertEvent`, `AiMapper.insertEvent` |
 | `sp_event` | 일정 한 건 (작성자 이름 포함) | `CalendarMapper.selectEventById` |
 | `sp_event_update` | 일정 수정 (updated_at은 ON UPDATE CURRENT_TIMESTAMP) | `CalendarMapper.updateEvent` |
 | `sp_event_delete` | 일정 삭제 (블록의 event_id는 ON DELETE SET NULL) | `CalendarMapper.deleteEvent` |
 | `sp_event_search_list` | 제목으로 일정 검색 (대소문자 구분 없음) | `CalendarMapper.selectEventSearchList` |
-| `sp_sprint_workspace_id` | 스프린트가 속한 워크스페이스 | `CalendarMapper.selectSprintWorkspaceId`, `BlockMapper.selectSprintWorkspaceId` |
+| `sp_sprint_workspace_id` | 스프린트가 속한 워크스페이스 | `TaskMapper.selectSprintWorkspaceId`, `CalendarMapper.selectSprintWorkspaceId`, `BlockMapper.selectSprintWorkspaceId` |
 | `sp_default_sprint_id` | 기본 스프린트 (진행 중 → 계획 중, 시작일 순) | `CalendarMapper.selectDefaultSprintId` |
 | `sp_calendar_task_list` | 캘린더 월별 작업 목록 (시작일이 해당 월인 작업, 상태 색 포함) | `CalendarMapper.selectCalendarTaskList` |
 | `sp_calendar_event_list` | 그 달에 시작하는 일정 | `CalendarMapper.selectCalendarEventList` |
@@ -395,7 +396,7 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 |---|---|---|
 | `sp_user_update_last_active_at` | 마지막 접속 시각 갱신 | `PresenceMapper.updateLastActiveAt` |
 | `sp_co_member_id_list` | 같은 워크스페이스에 있는 다른 사용자 번호 (중복 제외) | `PresenceMapper.selectCoMemberIds` |
-| `sp_workspace_member_count` | 워크스페이스 멤버 여부 | `PresenceMapper.selectMemberCount` |
+| `sp_workspace_member_count` | 워크스페이스 멤버 여부 | `TaskMapper.selectWorkspaceMemberCount`, `PresenceMapper.selectMemberCount` |
 
 ### 만료 데이터 정리 (`procedures/cleanup.sql` ↔ `Cleanup_SQL.xml`)
 

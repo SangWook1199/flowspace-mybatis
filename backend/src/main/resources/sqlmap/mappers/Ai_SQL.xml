@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.flowspace.ai.service.impl.AiMapper">
+
+    <!-- 이메일로 사용자 (sp_user_by_email) -->
+    <select id="selectUserByEmail" statementType="CALLABLE" resultType="com.flowspace.user.service.UserVO">
+        {call sp_user_by_email(#{email})}
+    </select>
+
+    <!-- 워크스페이스 멤버 목록 (sp_workspace_member_list) -->
+    <select id="selectWorkspaceMemberList" statementType="CALLABLE"
+            resultType="com.flowspace.workspace.service.WorkspaceMemberVO">
+        {call sp_workspace_member_list(#{workspaceId})}
+    </select>
+
+    <!-- 워크스페이스 멤버의 사용자 번호 (sp_workspace_user_id_list) -->
+    <select id="selectWorkspaceUserIds" statementType="CALLABLE" resultType="long">
+        {call sp_workspace_user_id_list(#{workspaceId})}
+    </select>
+
+    <!-- 워크스페이스 작업 상태 목록 (sp_task_status_list) -->
+    <select id="selectTaskStatusList" statementType="CALLABLE"
+            resultType="com.flowspace.task.service.TaskStatusVO">
+        {call sp_task_status_list(#{workspaceId})}
+    </select>
+
+    <!-- 워크스페이스의 최대 작업 번호 (sp_task_max_number, 없으면 0) -->
+    <select id="selectMaxTaskNumber" statementType="CALLABLE" resultType="int">
+        {call sp_task_max_number(#{workspaceId})}
+    </select>
+
+    <!-- 워크스페이스에서 해당 상태인 작업 수 (sp_task_count_by_status) -->
+    <select id="selectTaskCountByStatus" statementType="CALLABLE" resultType="int">
+        {call sp_task_count_by_status(#{workspaceId}, #{statusId})}
+    </select>
+
+    <!-- 스프린트 등록 (sp_sprint_insert) -->
+    <insert id="insertSprint" statementType="CALLABLE" parameterType="com.flowspace.sprint.service.SprintVO">
+        {call sp_sprint_insert(#{workspaceId}, #{createdBy}, #{name}, #{goal}, #{description}, #{color},
+                               #{startDate}, #{endDate}, #{status}, #{sprintId, mode=OUT, jdbcType=BIGINT})}
+    </insert>
+
+    <!-- 작업 등록 (sp_task_insert) -->
+    <insert id="insertTask" statementType="CALLABLE" parameterType="com.flowspace.task.service.TaskVO">
+        {call sp_task_insert(#{workspaceId}, #{sprintId}, #{statusId}, #{taskNumber}, #{position}, #{createdBy},
+                             #{title}, #{description}, #{startDate}, #{endDate}, #{priority},
+                             #{taskId, mode=OUT, jdbcType=BIGINT})}
+    </insert>
+
+    <!-- 작업 담당자 등록 (sp_task_assignee_insert) -->
+    <insert id="insertTaskAssignee" statementType="CALLABLE">
+        {call sp_task_assignee_insert(#{taskId}, #{userId})}
+    </insert>
+
+    <!-- 하위 작업 등록 (sp_subtask_insert) -->
+    <insert id="insertSubTask" statementType="CALLABLE" parameterType="com.flowspace.task.service.SubTaskVO">
+        {call sp_subtask_insert(#{taskId}, #{assigneeId}, #{content}, #{position},
+                                #{subtaskId, mode=OUT, jdbcType=BIGINT})}
+    </insert>
+
+    <!-- 일정 등록 (sp_event_insert) -->
+    <insert id="insertEvent" statementType="CALLABLE" parameterType="com.flowspace.calendar.service.EventVO">
+        {call sp_event_insert(#{workspaceId}, #{createdBy}, #{title}, #{description}, #{color}, #{startDatetime},
+                              #{endDatetime}, #{eventId, mode=OUT, jdbcType=BIGINT})}
+    </insert>
+
+</mapper>
