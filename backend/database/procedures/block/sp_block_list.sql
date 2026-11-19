@@ -1,6 +1,6 @@
--- 페이지의 블록 목록을 이미지 주소·데이터베이스 번호·페이지 정보와 함께 조회해요.
---   인자: p_page_id  페이지 번호
---   결과: 블록 한 개당 한 행. 순서(position) 순.
+-- 페이지의 블록 목록 (이미지 주소·데이터베이스 번호·페이지 정보 포함)
+--   p_page_id  페이지 번호
+-- 결과: 블록당 한 행, position 순
 
 DROP PROCEDURE IF EXISTS sp_block_list;
 
@@ -25,7 +25,6 @@ BEGIN
            b.updated_by,
            b.created_at,
            b.updated_at,
-           -- 블록이 있는 페이지 (멤버 확인, 휴지통 확인에 써요)
            p.workspace_id,
            p.is_deleted     AS page_deleted
       FROM blocks b

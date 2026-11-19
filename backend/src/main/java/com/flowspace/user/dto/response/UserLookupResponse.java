@@ -31,7 +31,7 @@ public record UserLookupResponse(
         );
     }
 
-    // MyBatis 조회 결과(UserLookupVO)로 응답을 만들어요
+    // UserLookupVO 기반 응답 생성
     public static UserLookupResponse of(UserLookupVO user, Status status) {
         return new UserLookupResponse(
             user.getUserId(),

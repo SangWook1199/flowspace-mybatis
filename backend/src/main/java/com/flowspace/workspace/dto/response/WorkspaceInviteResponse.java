@@ -26,7 +26,7 @@ public record WorkspaceInviteResponse(
         );
     }
 
-    // MyBatis 조회 결과(InviteVO)로 응답을 만들어요
+    // InviteVO 기반 응답 생성
     public static WorkspaceInviteResponse from(InviteVO invite) {
         return new WorkspaceInviteResponse(
                 invite.getInviteId(),

@@ -9,8 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 활동 기록 한 건이에요. 등록할 때와 조회할 때(sp_activity_list) 같이 써요.
-// 조회 결과에는 대상 종류마다 다른 테이블에서 조인해 온 값이 있고, 그 종류가 아니면 null이에요.
+// 활동 기록 (등록, sp_activity_list 조회 공용)
+// 대상 종류별 조인 컬럼은 해당 종류가 아니면 null
 @Getter
 @Setter
 @NoArgsConstructor

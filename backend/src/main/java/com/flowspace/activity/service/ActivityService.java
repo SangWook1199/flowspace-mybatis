@@ -9,8 +9,8 @@ import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 
-// 활동 기록 기능의 목록이에요. 실제 동작은 service.impl의 ActivityServiceImpl에 있어요.
-// 다른 서비스는 엔티티가 아니라 번호(워크스페이스, 사람)로 기록을 남겨요.
+// 활동 기록 서비스
+// 다른 서비스는 엔티티 대신 번호(워크스페이스, 사용자)로 기록
 public interface ActivityService {
 
     // 활동 기록 남기기 (다른 서비스에서 호출)
@@ -22,8 +22,7 @@ public interface ActivityService {
     // 전체 조회 (category: PAGE | TASK | COMMENT | SPRINT, userId: 한 사람의 활동만 — 둘 다 비우면 전체)
     ActivityPageResponse getActivities(Long workspaceId, Integer page, String category, Long userId, String email);
 
-    // ---------- 아직 JPA인 기능(댓글, 페이지, AI, 회고)을 위한 임시 메서드 ----------
-    // 엔티티에서 번호만 꺼내 위 메서드를 불러요. 그 기능들을 MyBatis로 바꾸면 지워요.
+    // ---------- JPA 기능용 임시 메서드 (해당 기능 전환 후 삭제) ----------
     default void log(Workspace workspace, User user, ActivityType type, ActivityTargetType targetType,
         Long targetId) {
         log(workspace.getWorkspaceId(), user.getUserId(), type, targetType, targetId);

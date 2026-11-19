@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 댓글 한 건이에요. 등록할 때와 조회할 때(Comment_SQL.xml의 commentSelect) 같이 써요.
-// 작업 댓글이면 taskId, 페이지 블록 댓글이면 blockId가 들어 있어요.
+// 댓글 (등록, commentSelect 조회 공용)
+// 작업 댓글은 taskId, 블록 댓글은 blockId 사용
 @Getter
 @Setter
 @NoArgsConstructor

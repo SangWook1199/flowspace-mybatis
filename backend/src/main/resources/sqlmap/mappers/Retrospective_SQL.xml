@@ -4,7 +4,7 @@
 
     <!-- ==================== 회고 ==================== -->
 
-    <!-- 스프린트와 회고. 조인은 프로시저 안에서 해요(backend/database/procedures/retrospective). -->
+    <!-- 스프린트 + 회고 목록 (sp_retrospective_list) -->
     <select id="selectRetrospectiveList" statementType="CALLABLE" resultType="com.flowspace.retrospective.service.RetrospectiveVO">
         {call sp_retrospective_list(#{workspaceId})}
     </select>
@@ -21,15 +21,14 @@
         WHERE sprint_id = #{sprintId}
     </select>
 
-    <!-- 스프린트가 있는지 -->
+    <!-- 스프린트 존재 여부 -->
     <select id="selectSprintCount" resultType="int">
         SELECT COUNT(*)
         FROM sprints
         WHERE sprint_id = #{sprintId}
     </select>
 
-    <!-- 회고 만들기. mode=OUT 인자는 프로시저가 값을 채워서 돌려줘요 → 실행 후 retrospective.pageId에 들어가요.
-         결과를 읽는 게 아니라 데이터를 만드는 일이라 select가 아니라 insert로 적어요. -->
+    <!-- 회고 생성 (sp_create_retrospective, OUT 인자로 pageId 설정) -->
     <insert id="insertRetrospective" statementType="CALLABLE" parameterType="com.flowspace.retrospective.service.RetrospectiveVO">
         {call sp_create_retrospective(#{sprintId}, #{workspaceId}, #{createdBy}, #{pageTitle}, #{pageIcon},
                                       #{tableTitle}, #{pageId, mode=OUT, jdbcType=BIGINT})}
@@ -49,7 +48,7 @@
         ORDER BY position, snapshot_status_id
     </select>
 
-    <!-- 작업 스냅샷. retrospectiveId가 null일 수 있어서 jdbcType을 적어요. -->
+    <!-- 작업 스냅샷 (retrospectiveId null이면 워크스페이스 전체) -->
     <select id="selectTaskSnapshotList" statementType="CALLABLE" resultType="com.flowspace.retrospective.service.TaskSnapshotVO">
         {call sp_task_snapshot_list(#{workspaceId}, #{retrospectiveId, jdbcType=BIGINT})}
     </select>

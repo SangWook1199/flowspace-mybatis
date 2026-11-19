@@ -1,6 +1,6 @@
--- 스프린트 한 건과 진행 상황(작업 수, 완료 작업 수)을 조회해요.
---   인자: p_sprint_id  스프린트 번호
---   결과: 0행 또는 1행.
+-- 스프린트 한 건 + 진행 상황 (작업 수, 완료 작업 수)
+--   p_sprint_id  스프린트 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_sprint_progress;
 

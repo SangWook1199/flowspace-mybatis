@@ -70,10 +70,10 @@ public class TaskServiceImpl implements TaskService {
     private final NotificationService notificationService;
     private final CommentService commentService;
 
-    // 작업 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
+    // 작업 SQL
     private final TaskMapper taskMapper;
 
-    // 작업을 지울 때 올려 둔 파일 번호를 읽어요
+    // 작업 삭제 시 업로드 파일 번호 조회
     private final TaskAttachmentMapper taskAttachmentMapper;
 
     // Task 상태 생성
@@ -95,10 +95,8 @@ public class TaskServiceImpl implements TaskService {
         status.setCategory(request.category());
         status.setColor(request.color());
         status.setWipLimit(request.wipLimit());
-        // 상태 수를 순서로 써서 맨 오른쪽 열에 놓여요
         status.setPosition(taskMapper.selectTaskStatusCount(workspaceId));
 
-        // 상태를 먼저 만들어 번호를 받고, 그 번호로 워크스페이스에 연결해요
         taskMapper.insertTaskStatus(status);
         taskMapper.insertWorkspaceTaskStatus(status);
 
@@ -135,7 +133,6 @@ public class TaskServiceImpl implements TaskService {
 
         validateWorkspaceMember(workspaceId, user);
 
-        // 기본 상태(1,2,3) 수정 → 공용 기본 상태는 그대로 두고, 이 워크스페이스 전용 새 상태로 바꿔 끼운다
         if (status.getIsDefault()) {
 
             TaskStatusVO newStatus = new TaskStatusVO();
@@ -145,13 +142,11 @@ public class TaskServiceImpl implements TaskService {
 
             taskMapper.insertTaskStatus(newStatus);
 
-            // 같은 자리에 연결, 작업 이동, 기존 연결 끊기를 프로시저 한 번으로 해요
             taskMapper.updateDefaultTaskStatus(workspaceId, statusId, newStatus.getStatusId(), request.wipLimit());
 
             return TaskStatusResponse.from(findTaskStatus(workspaceId, newStatus.getStatusId()));
         }
 
-        // 커스텀 상태 수정: 상태 정보와 워크스페이스별 WIP 제한은 테이블이 달라서 UPDATE가 두 번이에요
         status.setName(request.name());
         status.setCategory(request.category());
         status.setColor(request.color());
@@ -176,7 +171,6 @@ public class TaskServiceImpl implements TaskService {
 
         for (TaskStatusReorderRequest.Item item : request.statuses()) {
 
-            // 따로 조회하지 않고, 바뀐 행 수로 그 워크스페이스의 상태인지 확인해요
             int updated = taskMapper.updateTaskStatusPosition(workspaceId, item.statusId(), item.position());
 
             if (updated == 0) {
@@ -196,10 +190,8 @@ public class TaskServiceImpl implements TaskService {
 
         findTaskStatus(workspaceId, statusId);
 
-        // 상태(컬럼) 삭제는 워크스페이스 멤버라면 누구나 할 수 있어요(삭제할 상태의 작업은 다른 상태로 옮겨져요).
         validateWorkspaceMember(workspaceId, user);
 
-        // 마지막 남은 상태는 삭제할 수 없고, 작업을 옮길 대상이 삭제하는 상태 자신일 수도 없다
         if (taskMapper.selectTaskStatusCount(workspaceId) <= 1) {
             throw new FlowSpaceException(ErrorCode.LAST_TASK_STATUS_CANNOT_DELETE);
         }
@@ -208,10 +200,8 @@ public class TaskServiceImpl implements TaskService {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
-        // 옮길 상태도 같은 워크스페이스의 상태여야 해요
         findTaskStatus(workspaceId, request.targetStatusId());
 
-        // 작업 이동, 연결 끊기, 전용 상태 삭제를 프로시저 한 번으로 해요
         taskMapper.deleteTaskStatus(workspaceId, statusId, request.targetStatusId());
     }
 
@@ -231,7 +221,7 @@ public class TaskServiceImpl implements TaskService {
         return saveNewTask(sprint.getWorkspace(), sprint, request, user);
     }
 
-    // Backlog Task 생성 (스프린트 없이 워크스페이스에 바로 만든다)
+    // 백로그 작업 생성 (스프린트 없음)
     @Override
     public TaskResponse createBacklogTask(Long workspaceId, TaskCreateRequest request, String email) {
 
@@ -252,14 +242,11 @@ public class TaskServiceImpl implements TaskService {
 
         TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
 
-        // 같은 상태인 작업 수를 순서로 써서, 새 작업이 그 상태의 맨 뒤에 놓여요
         BigDecimal position = BigDecimal
             .valueOf(taskMapper.selectTaskCountByStatus(workspace.getWorkspaceId(), status.getStatusId()));
 
-        // 작업 번호는 워크스페이스 기준으로 다음 번호를 줘요(스프린트와 상관없이 T-1, T-2 … 로 이어져요).
         int taskNumber = taskMapper.selectMaxTaskNumber(workspace.getWorkspaceId()) + 1;
 
-        // 등록할 값을 VO에 담아요. 워크스페이스·스프린트·상태·작성자는 객체가 아니라 번호로 넣어요.
         TaskVO task = new TaskVO();
         task.setWorkspaceId(workspace.getWorkspaceId());
         task.setSprintId(sprint == null ? null : sprint.getSprintId());
@@ -275,7 +262,6 @@ public class TaskServiceImpl implements TaskService {
 
         taskMapper.insertTask(task);
 
-        // INSERT가 끝나면 DB가 만든 번호가 task.getTaskId()에 들어 있어요
         activityService.log(workspace.getWorkspaceId(), user.getUserId(), ActivityType.TASK_CREATED,
             ActivityTargetType.TASK, task.getTaskId());
 
@@ -294,7 +280,6 @@ public class TaskServiceImpl implements TaskService {
             notifyAssigned(task, workspace, assignee, user);
         }
 
-        // 상태 이름과 만든 시각은 DB에만 있어서 다시 조회해서 돌려줘요
         return toTaskResponse(findTask(task.getTaskId()));
     }
 
@@ -325,7 +310,6 @@ public class TaskServiceImpl implements TaskService {
 
         TaskVO task = findTask(taskId);
 
-        // VO에는 워크스페이스 번호만 있어서, 멤버 확인에 쓸 워크스페이스를 따로 조회해요
         Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
@@ -350,7 +334,6 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 옮겨 갈 스프린트가 같은 워크스페이스인지 확인해요
         if (request.sprintId() != null) {
             Sprint sprint = sprintRepository.findById(request.sprintId())
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
@@ -366,7 +349,6 @@ public class TaskServiceImpl implements TaskService {
 
         boolean statusChanged = !task.getStatusId().equals(request.statusId());
 
-        // 스프린트나 상태가 바뀌면 새 상태의 맨 뒤로 보내요
         if (sprintChanged || statusChanged) {
             task.setPosition(BigDecimal
                 .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), status.getStatusId())));
@@ -382,19 +364,14 @@ public class TaskServiceImpl implements TaskService {
         task.setEndDate(request.endDate());
         task.setPriority(request.priority());
 
-        // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
         taskMapper.updateTask(task);
 
-        // 새로 담당자가 된 사람에게만 알리려고, 바꾸기 전 담당자를 기억해둬요.
         Set<Long> previousAssigneeIds = Set.copyOf(taskMapper.selectTaskAssigneeUserIds(taskId));
 
-        // 담당자는 모두 지우고 요청대로 다시 넣어요.
-        // JPA 때는 지운 것을 먼저 DB에 보내려고 flush()가 필요했지만, MyBatis는 호출하는 순간 실행돼서 필요 없어요.
         taskMapper.deleteTaskAssignees(taskId);
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
 
-        // 원래부터 담당자였던 사람 (상태 변경 알림을 받을 사람)
         List<User> keptAssignees = new ArrayList<>();
 
         for (Long assigneeId : assigneeIds) {
@@ -414,11 +391,8 @@ public class TaskServiceImpl implements TaskService {
             }
         }
 
-        // 하위 작업 담당자는 작업 담당자 중에서만 고를 수 있어서, 작업 담당자에서 빠진 사람은 하위 작업에서도 비워요.
-        // 하위 작업마다 반복하던 것을 UPDATE 한 번으로 해요.
         taskMapper.updateSubTaskAssigneeClear(taskId, assigneeIds);
 
-        // 상태가 바뀌었으면 (이번에 새로 담당자가 된 사람을 뺀) 담당자들에게 알려요.
         if (statusChanged) {
             notifyStatusChanged(task, workspace, status, user, keptAssignees);
         }
@@ -440,7 +414,6 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 스프린트 번호를 null로 넘기면 백로그 작업을 읽어요
         return toTaskResponses(workspaceId, null);
     }
 
@@ -461,12 +434,10 @@ public class TaskServiceImpl implements TaskService {
 
         TaskStatusVO status = validateWorkspaceStatus(workspace, request.statusId());
 
-        // 같은 Status면 변경하지 않음
         if (task.getStatusId().equals(request.statusId())) {
             return toTaskResponse(task);
         }
 
-        // 새 상태의 맨 뒤로 보내요
         task.setPosition(BigDecimal
             .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), status.getStatusId())));
         task.setStatusId(status.getStatusId());
@@ -499,10 +470,8 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 관련 문서로 올려 둔 파일은 서버에서도 같이 지워야 해서, 작업을 지우기 전에 먼저 읽어 둬요.
         List<Long> attachmentFileIds = taskAttachmentMapper.selectTaskAttachmentFileIds(taskId);
 
-        // 작업 삭제와 같은 칸에 남은 작업의 순서 정리를 프로시저 한 번으로 해요
         taskMapper.deleteTask(taskId);
 
         for (Long fileId : attachmentFileIds) {
@@ -527,12 +496,10 @@ public class TaskServiceImpl implements TaskService {
         subTask.setTaskId(taskId);
         subTask.setAssigneeId(request.assigneeId());
         subTask.setContent(request.content());
-        // 하위 작업 수를 순서로 써서 맨 뒤에 놓여요
         subTask.setPosition(taskMapper.selectSubTaskCount(taskId));
 
         taskMapper.insertSubTask(subTask);
 
-        // 완료 여부는 DB 기본값으로 들어가서 다시 조회해서 돌려줘요
         return SubTaskResponse.from(findSubTask(subTask.getSubtaskId()));
     }
 
@@ -546,7 +513,6 @@ public class TaskServiceImpl implements TaskService {
 
         validateTaskMember(findTask(taskId), user);
 
-        // 칸반 목록에서 쓰는 하위 작업 조회를 작업 하나로 불러요
         return taskMapper.selectSubTaskList(List.of(taskId)).stream().map(SubTaskResponse::from).toList();
     }
 
@@ -559,7 +525,6 @@ public class TaskServiceImpl implements TaskService {
 
         SubTaskVO subTask = findSubTask(subTaskId);
 
-        // 하위 작업에는 작업 번호만 있어서, 작업을 읽어 워크스페이스 멤버인지 확인해요
         validateTaskMember(findTask(subTask.getTaskId()), user);
 
         validateSubTaskAssignee(subTask.getTaskId(), request.assigneeId());
@@ -570,7 +535,6 @@ public class TaskServiceImpl implements TaskService {
 
         taskMapper.updateSubTask(subTask);
 
-        // DB가 채우는 값이 없어서 다시 조회하지 않고 VO로 바로 응답해요
         return SubTaskResponse.from(subTask);
     }
 
@@ -620,7 +584,6 @@ public class TaskServiceImpl implements TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 같은 곳으로 옮기면 바꾸지 않아요
         if (Objects.equals(task.getSprintId(), request.sprintId())) {
             return toTaskResponse(task);
         }
@@ -634,7 +597,6 @@ public class TaskServiceImpl implements TaskService {
             }
         }
 
-        // 옮겨 간 곳에서 같은 상태의 맨 뒤로 가요
         task.setPosition(BigDecimal
             .valueOf(taskMapper.selectTaskCountByStatus(task.getWorkspaceId(), task.getStatusId())));
         task.setSprintId(request.sprintId());
@@ -651,12 +613,10 @@ public class TaskServiceImpl implements TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        // 화면이 계산한 순서를 작업마다 그대로 저장해요. 작업마다 확인할 것이 있어서 한 건씩 처리해요.
         for (TaskReorderRequest.Item item : request.tasks()) {
 
             TaskVO task = findTask(item.taskId());
 
-            // 같은 워크스페이스는 JPA가 처음 한 번만 DB에서 읽고, 그다음부터는 기억해 둔 것을 써요
             Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
@@ -665,7 +625,6 @@ public class TaskServiceImpl implements TaskService {
 
             TaskStatusVO status = validateWorkspaceStatus(workspace, item.statusId());
 
-            // 칸반에서 다른 열로 옮긴 작업만(같은 열 안에서 순서만 바꾼 건 제외) 알려요.
             boolean statusChanged = !task.getStatusId().equals(status.getStatusId());
 
             task.setStatusId(status.getStatusId());
@@ -688,7 +647,7 @@ public class TaskServiceImpl implements TaskService {
             NotificationService.taskLink(task.getSprintId(), task.getTaskId()));
     }
 
-    // 작업 상태가 바뀌었음을 담당자들에게 알림 (바꾼 본인은 제외돼요)
+    // 작업 상태 변경 알림 (변경한 본인 제외)
     private void notifyStatusChanged(TaskVO task, Workspace workspace, TaskStatusVO status, User actor,
         List<User> targets) {
         notificationService.sendAll(targets.stream().map(User::getUserId).toList(), actor.getUserId(),
@@ -712,7 +671,7 @@ public class TaskServiceImpl implements TaskService {
         return userRepository.findAllById(taskMapper.selectTaskAssigneeUserIds(taskId));
     }
 
-    // 작업에 쓸 상태가 이 워크스페이스의 상태인지 확인해요 (아니면 INVALID_TASK_STATUS)
+    // 작업 상태가 해당 워크스페이스의 상태인지 확인 (아니면 INVALID_TASK_STATUS)
     private TaskStatusVO validateWorkspaceStatus(Workspace workspace, Long statusId) {
 
         TaskStatusVO status = taskMapper.selectTaskStatusById(workspace.getWorkspaceId(), statusId);
@@ -736,7 +695,7 @@ public class TaskServiceImpl implements TaskService {
         return status;
     }
 
-    // 워크스페이스 멤버인지 확인해요
+    // 워크스페이스 멤버 확인
     private void validateWorkspaceMember(Long workspaceId, User user) {
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
@@ -762,12 +721,10 @@ public class TaskServiceImpl implements TaskService {
 
         String search = keyword == null ? "" : keyword;
 
-        // LIKE에서 %와 _는 "아무 글자"라는 뜻이라, 입력한 글자 그대로 찾도록 앞에 \를 붙여요(JPA의 Containing이 자동으로 하던 일)
         String escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 
         List<TaskVO> tasks = taskMapper.selectTaskSearchList(workspaceId, escaped);
 
-        // 결과가 없으면 IN ()이 되어 SQL 오류가 나서 여기서 끝내요
         if (tasks.isEmpty()) {
             return List.of();
         }
@@ -782,13 +739,12 @@ public class TaskServiceImpl implements TaskService {
             .toList();
     }
 
-    // 작업 목록을 응답으로 바꿔요. sprintId가 null이면 백로그예요.
-    // 작업과 담당자는 프로시저로, 하위 작업은 XML SQL로, 댓글은 댓글 서비스로 한 번씩 읽어서 작업별로 나눠 담아요.
+    // 작업 목록 응답 변환 (sprintId가 null이면 백로그)
+    // 작업·담당자는 프로시저, 하위 작업은 XML, 댓글은 댓글 서비스에서 한 번씩 조회
     private List<TaskResponse> toTaskResponses(Long workspaceId, Long sprintId) {
 
         List<TaskVO> tasks = taskMapper.selectTaskList(workspaceId, sprintId);
 
-        // 작업이 없으면 IN ()이 되어 SQL 오류가 나서 여기서 끝내요
         if (tasks.isEmpty()) {
             return List.of();
         }
@@ -817,7 +773,6 @@ public class TaskServiceImpl implements TaskService {
     // 작업 한 건 (없으면 예외)
     private TaskVO findTask(Long taskId) {
 
-        // MyBatis는 결과가 없으면 null을 돌려줘서 직접 확인해요
         TaskVO task = taskMapper.selectTaskById(taskId);
 
         if (task == null) {
@@ -839,7 +794,7 @@ public class TaskServiceImpl implements TaskService {
         return subTask;
     }
 
-    // 작업이 속한 워크스페이스의 멤버인지 확인하고, 그 워크스페이스를 돌려줘요
+    // 작업이 속한 워크스페이스의 멤버 확인 후 워크스페이스 반환
     private Workspace validateTaskMember(TaskVO task, User user) {
 
         Workspace workspace = workspaceRepository.findById(task.getWorkspaceId())
@@ -851,7 +806,7 @@ public class TaskServiceImpl implements TaskService {
         return workspace;
     }
 
-    // 하위 작업 담당자는 작업 담당자 중에서만 고를 수 있어요 (담당자가 없으면 확인하지 않아요)
+    // 하위 작업 담당자는 작업 담당자 중에서만 지정 (담당자가 없으면 생략)
     private void validateSubTaskAssignee(Long taskId, Long assigneeId) {
 
         if (assigneeId == null) {
@@ -865,7 +820,7 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    // 작업 한 건을 응답으로 바꿔요 (목록과 같은 방식: 담당자는 프로시저, 하위 작업은 XML SQL, 댓글은 댓글 서비스)
+    // 작업 한 건 응답 변환 (목록과 같은 방식)
     private TaskResponse toTaskResponse(TaskVO task) {
 
         Long taskId = task.getTaskId();
@@ -882,7 +837,7 @@ public class TaskServiceImpl implements TaskService {
         return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
-    // 담당자 조회 결과를 작업 번호별로 나눠 담아요 (칸반 목록과 검색에서 같이 써요)
+    // 담당자 조회 결과를 작업 번호별로 묶음 (칸반 목록·검색 공용)
     private Map<Long, List<AssigneeItem>> groupAssigneeItems(List<TaskAssigneeVO> assignees) {
 
         Map<Long, List<AssigneeItem>> result = new HashMap<>();

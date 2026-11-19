@@ -35,7 +35,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class CommentServiceImpl implements CommentService {
 
-    // 댓글 SQL (같은 패키지라 import가 없어요)
+    // 댓글 SQL
     private final CommentMapper commentMapper;
     private final WorkspaceService workspaceService;
 
@@ -49,7 +49,6 @@ public class CommentServiceImpl implements CommentService {
         UserVO actor = findActor(email);
         CommentTargetVO task = findTask(taskId);
 
-        // 워크스페이스 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
         workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
         CommentVO parent = resolveParent(request.parentCommentId(), taskId, null);
@@ -71,7 +70,6 @@ public class CommentServiceImpl implements CommentService {
 
         notifyTaskComment(task, request.content(), parent, actor, mentioned, link);
 
-        // 쓴 사람 이름과 만든 시각까지 담으려고 다시 읽어요
         return CommentResponse.from(findComment(comment.getCommentId()), List.of());
     }
 
@@ -143,7 +141,6 @@ public class CommentServiceImpl implements CommentService {
             throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
         }
 
-        // 수정하면서 새로 멘션된 사람에게만 알려요(원래 멘션돼 있던 사람에게 또 보내지 않아요).
         Set<Long> alreadyMentioned = MentionParser.extractUserIds(comment.getContent());
 
         if (comment.getTaskId() != null) {
@@ -156,7 +153,6 @@ public class CommentServiceImpl implements CommentService {
         } else {
             CommentTargetVO page = findBlockPage(comment.getBlockId());
 
-            // 휴지통에 있는 페이지의 블록 댓글은 고칠 수 없어요.
             requireActivePage(page);
 
             commentMapper.updateCommentContent(commentId, request.content());
@@ -165,7 +161,6 @@ public class CommentServiceImpl implements CommentService {
                 "/pages/" + page.getTargetId());
         }
 
-        // 바뀐 내용과 수정 시각을 담으려고 다시 읽어요
         return CommentResponse.from(findComment(commentId), List.of());
     }
 
@@ -183,12 +178,11 @@ public class CommentServiceImpl implements CommentService {
         commentMapper.deleteComment(commentId);
     }
 
-    // 여러 작업의 댓글을 한 번에 읽어서 작업 번호별로 나눠 담아요 (작업 상세, 작업 목록에서 써요)
+    // 여러 작업의 댓글을 작업 번호별로 묶어 반환 (작업 상세·목록용)
     @Transactional(readOnly = true)
     @Override
     public Map<Long, List<CommentResponse>> getTaskCommentMap(List<Long> taskIds) {
 
-        // 목록이 비면 IN ()이 되어 SQL 오류가 나서 여기서 끝내요
         if (taskIds.isEmpty()) {
             return Map.of();
         }
@@ -196,7 +190,7 @@ public class CommentServiceImpl implements CommentService {
         return groupByTarget(commentMapper.selectCommentListByTaskIds(taskIds), CommentVO::getTaskId);
     }
 
-    // 여러 블록의 댓글을 한 번에 읽어서 블록 번호별로 나눠 담아요 (페이지 상세에서 써요)
+    // 여러 블록의 댓글을 블록 번호별로 묶어 반환 (페이지 상세용)
     @Transactional(readOnly = true)
     @Override
     public Map<Long, List<CommentResponse>> getBlockCommentMap(List<Long> blockIds) {
@@ -208,12 +202,10 @@ public class CommentServiceImpl implements CommentService {
         return groupByTarget(commentMapper.selectCommentListByBlockIds(blockIds), CommentVO::getBlockId);
     }
 
-    // 원 댓글과 답글이 섞인 목록을 "대상 번호 → 원 댓글(안에 답글)" 모양으로 바꿔요.
-    // SQL이 오래된 순으로 주니까 담는 순서도 오래된 순이에요.
+    // 원 댓글·답글 목록을 "대상 번호 → 원 댓글(답글 포함)" 형태로 변환 (오래된 순 유지)
     private Map<Long, List<CommentResponse>> groupByTarget(List<CommentVO> comments,
         Function<CommentVO, Long> targetId) {
 
-        // 1) 답글을 원 댓글 번호별로 모아요
         Map<Long, List<CommentResponse>> repliesByParent = new HashMap<>();
 
         for (CommentVO comment : comments) {
@@ -223,7 +215,6 @@ public class CommentServiceImpl implements CommentService {
             }
         }
 
-        // 2) 원 댓글에 답글을 붙여서 대상 번호별로 모아요
         Map<Long, List<CommentResponse>> result = new HashMap<>();
 
         for (CommentVO comment : comments) {
@@ -236,8 +227,8 @@ public class CommentServiceImpl implements CommentService {
         return result;
     }
 
-    // 작업 댓글 알림: 답글이면 원 댓글 작성자에게, 그 외엔 담당자 + 작업 만든 사람에게
-    // 이미 멘션 알림을 받은 사람(mentioned)에게는 같은 댓글의 다른 알림을 또 보내지 않아요.
+    // 작업 댓글 알림: 답글이면 원 댓글 작성자, 아니면 담당자 + 작업 작성자
+    // 멘션 알림을 받은 사용자는 제외
     private void notifyTaskComment(CommentTargetVO task, String content, CommentVO parent, UserVO actor,
         Set<Long> mentioned, String link) {
 
@@ -252,7 +243,6 @@ public class CommentServiceImpl implements CommentService {
         List<Long> recipients = new ArrayList<>(commentMapper.selectTaskAssigneeUserIds(task.getTargetId()));
         recipients.add(task.getCreatedBy());
 
-        // 답글 알림을 받은 사람, 멘션 알림을 받은 사람은 빼요 (같은 댓글로 알림이 두 번 가지 않게)
         recipients.removeIf(id -> id == null || mentioned.contains(id)
             || (parent != null && id.equals(parent.getUserId())));
 
@@ -262,7 +252,7 @@ public class CommentServiceImpl implements CommentService {
             link);
     }
 
-    // 페이지 블록 댓글 알림: 답글이면 원 댓글 작성자에게, 그 외엔 페이지 만든 사람에게
+    // 블록 댓글 알림: 답글이면 원 댓글 작성자, 아니면 페이지 작성자
     private void notifyBlockComment(CommentTargetVO page, String content, CommentVO parent, UserVO actor,
         Set<Long> mentioned, String link) {
 
@@ -287,8 +277,8 @@ public class CommentServiceImpl implements CommentService {
         }
     }
 
-    // 댓글에서 멘션된 워크스페이스 멤버에게 알림을 보내고, 멘션된 멤버의 번호를 돌려줘요.
-    // skip: 이미 멘션돼 있던 사람(수정할 때) — 알리지 않아요. 없는 사용자나 멤버가 아닌 번호는 무시해요.
+    // 멘션된 워크스페이스 멤버에게 알림 후 멘션된 멤버 번호 반환
+    // skip: 수정 전부터 멘션돼 있던 사용자 (알림 제외), 멤버가 아닌 번호는 무시
     private Set<Long> notifyMentions(String content, Long workspaceId, Set<Long> skip, UserVO actor, Long refId,
         String link) {
 
@@ -320,15 +310,14 @@ public class CommentServiceImpl implements CommentService {
             return "";
         }
 
-        // 멘션은 "@[이름](id)" 대신 "@이름"으로 풀어서 보여줘요.
         String oneLine = MentionParser.toPlain(content).replaceAll("\\s+", " ").trim();
 
         return oneLine.length() > 40 ? oneLine.substring(0, 40) + "…" : oneLine;
     }
 
-    // 답글의 부모 댓글을 확인해요.
-    //  - 같은 작업(또는 같은 블록)의 댓글이어야 해요(다른 곳의 댓글을 부모로 지정하면 그쪽에 답글이 붙고 알림이 가요).
-    //  - 답글에 단 답글은 그 위의 댓글에 이어 붙여요(댓글은 한 단계 답글까지만 보여줘서, 안 그러면 화면에서 사라져요).
+    // 답글의 부모 댓글 확인
+    // - 같은 작업(또는 블록)의 댓글만 허용
+    // - 답글의 답글은 상위 원 댓글에 연결 (답글은 한 단계까지만 표시)
     private CommentVO resolveParent(Long parentCommentId, Long taskId, Long blockId) {
 
         if (parentCommentId == null) {
@@ -392,7 +381,7 @@ public class CommentServiceImpl implements CommentService {
         return page;
     }
 
-    // 휴지통에 있는 페이지면 "페이지를 찾을 수 없음"으로 거절해요 (PageGuard와 같은 규칙)
+    // 휴지통 페이지면 PAGE_NOT_FOUND (PageGuard와 같은 규칙)
     private void requireActivePage(CommentTargetVO page) {
 
         if (Boolean.TRUE.equals(page.getPageDeleted())) {

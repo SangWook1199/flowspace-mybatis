@@ -25,8 +25,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final WorkspaceService workspaceService;
 
-    // 이메일이 정확히 같은 사용자를 찾아요(부분 일치로 사용자를 훑어볼 수 없게 한 명만, 정확히 일치할 때만).
-    // workspaceId를 주면 그 워크스페이스 기준으로 이미 멤버인지·이미 초대했는지도 알려줘요(워크스페이스 멤버만 쓸 수 있어요).
+    // 이메일이 정확히 일치하는 사용자 한 명 조회 (부분 일치 검색 방지)
+    // workspaceId가 있으면 해당 워크스페이스의 멤버·초대 여부 포함 (워크스페이스 멤버만 사용 가능)
     @Override
     public Optional<UserLookupResponse> lookupByEmail(String email, Long workspaceId, String requesterEmail) {
 
@@ -36,8 +36,6 @@ public class UserServiceImpl implements UserService {
             throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
         }
 
-        // 워크스페이스가 있는지, 찾는 사람이 그 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
-        // (없으면 WORKSPACE_NOT_FOUND, 멤버가 아니면 ACCESS_DENIED)
         if (workspaceId != null) {
             workspaceService.getWorkspace(workspaceId, requesterEmail);
         }
@@ -48,7 +46,6 @@ public class UserServiceImpl implements UserService {
             return Optional.empty();
         }
 
-        // 사용자와 멤버·초대 여부를 프로시저 한 번으로 가져와요
         UserLookupVO found = userMapper.selectUserLookup(target, workspaceId);
 
         if (found == null) {

@@ -6,7 +6,7 @@ import com.flowspace.task.service.TaskAttachmentVO;
 
 // @formatter:off
 
-// 작업 관련 문서 응답 DTO — type이 PAGE면 page* 값이, FILE이면 file* 값이 채워져요.
+// 작업 관련 문서 응답 DTO (PAGE면 page* 값, FILE이면 file* 값 사용)
 public record TaskAttachmentResponse(
 
     Long attachmentId,
@@ -24,7 +24,7 @@ public record TaskAttachmentResponse(
 
 ) {
 
-    // 프로시저 조회 결과로 만들어요. 페이지·파일 중 연결하지 않은 쪽은 LEFT JOIN이라 이미 null이에요.
+    // TaskAttachmentVO 기반 응답 생성 (연결하지 않은 쪽은 LEFT JOIN 결과 null)
     public static TaskAttachmentResponse from(TaskAttachmentVO attachment) {
         return new TaskAttachmentResponse(
             attachment.getAttachmentId(),

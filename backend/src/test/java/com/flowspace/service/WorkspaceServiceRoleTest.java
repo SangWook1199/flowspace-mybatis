@@ -34,8 +34,8 @@ import com.flowspace.workspace.service.WorkspaceVO;
 import com.flowspace.workspace.service.impl.WorkspaceMapper;
 import com.flowspace.workspace.service.impl.WorkspaceServiceImpl;
 
-// 워크스페이스 역할 규칙: 초대·추방은 관리자 이상, 역할 변경은 소유자만, 관리자는 관리자를 못 내보내는지 확인해요.
-// 역할은 MyBatis Mapper(selectMemberRole)로 읽어서, 테스트에서는 Mapper가 돌려줄 역할을 정해 둬요.
+// 워크스페이스 역할 규칙: 초대·추방은 관리자 이상, 역할 변경은 소유자, 관리자는 관리자 추방 불가
+// 역할은 Mapper(selectMemberRole) 반환 값으로 지정
 @ExtendWith(MockitoExtension.class)
 class WorkspaceServiceRoleTest {
 
@@ -77,7 +77,7 @@ class WorkspaceServiceRoleTest {
         lenient().when(workspaceMapper.selectMemberRole(5L, 1L)).thenReturn(role);
     }
 
-    // 대상(2번)의 역할. 역할 변경은 멤버 정보를 통째로 읽어서 둘 다 준비해요.
+    // 대상(2번)의 역할 (역할 변경은 멤버 정보 전체를 조회)
     private void targetRole(WorkspaceRole role) {
         lenient().when(workspaceMapper.selectMemberRole(5L, 2L)).thenReturn(role);
 
@@ -109,7 +109,6 @@ class WorkspaceServiceRoleTest {
     void adminCanInvite() {
         actorRole(WorkspaceRole.ADMIN);
         lenient().when(userRepository.findByEmail("target@a.com")).thenReturn(Optional.of(target));
-        // 대상은 아직 멤버가 아니고(역할 null), 보낸 초대도 없어요(0) — Mockito 기본값이라 따로 정하지 않아요
 
         workspaceService.inviteMember(5L, new WorkspaceInviteRequest("target@a.com"), "actor@a.com");
 

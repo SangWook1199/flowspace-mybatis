@@ -70,7 +70,7 @@ public record SprintResponse(
         );
     }
 
-    // MyBatis 조회 결과(SprintVO)로 응답을 만들어요
+    // SprintVO 기반 응답 생성
     public static SprintResponse from(
             SprintVO sprint,
             Integer progress,

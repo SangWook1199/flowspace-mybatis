@@ -7,7 +7,7 @@ import com.flowspace.retrospective.service.RetrospectiveVO;
 
 // @formatter:off
 
-// 회고 목록 한 줄. 회고가 아직 없는 스프린트도 함께 보여줘요.
+// 회고 목록 항목 (회고가 없는 스프린트 포함)
 public record RetrospectiveListItem(
 
     Long sprintId,

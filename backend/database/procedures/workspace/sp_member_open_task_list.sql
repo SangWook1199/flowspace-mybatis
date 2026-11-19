@@ -1,8 +1,8 @@
--- 멤버가 이 워크스페이스에서 맡은, 아직 끝나지 않은 작업을 조회해요(프로필 카드용).
---   인자: p_workspace_id  워크스페이스 번호
---         p_user_id       사용자 번호
---         p_limit         최대 개수
---   결과: 마감일이 빠른 순. 마감일이 없는 작업은 맨 뒤, 그 안에서는 최근에 만든 작업부터.
+-- 멤버의 미완료 담당 작업 (프로필 카드용)
+--   p_workspace_id  워크스페이스 번호
+--   p_user_id       사용자 번호
+--   p_limit         최대 개수
+-- 결과: 마감일 순 (마감일 없음은 맨 뒤, 그 안에서는 최신 생성 순)
 
 DROP PROCEDURE IF EXISTS sp_member_open_task_list;
 
@@ -23,7 +23,7 @@ BEGIN
      WHERE ta.user_id = p_user_id
        AND t.workspace_id = p_workspace_id
        AND ts.category <> 'DONE'
-     ORDER BY t.end_date IS NULL,   -- 마감일이 없으면 1이라 뒤로 가요
+     ORDER BY t.end_date IS NULL,
               t.end_date,
               t.task_id DESC
      LIMIT p_limit;

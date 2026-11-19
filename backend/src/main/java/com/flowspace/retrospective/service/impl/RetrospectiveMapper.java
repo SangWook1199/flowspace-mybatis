@@ -12,7 +12,7 @@ import com.flowspace.retrospective.service.TaskSnapshotAssigneeVO;
 import com.flowspace.retrospective.service.TaskSnapshotVO;
 import com.flowspace.retrospective.service.TodoBlockVO;
 
-// 회고 DB 접근. 메서드 이름이 Retrospective_SQL.xml의 id와 같아야 해요.
+// 회고 Mapper (Retrospective_SQL.xml)
 @Mapper
 public interface RetrospectiveMapper {
 
@@ -30,7 +30,7 @@ public interface RetrospectiveMapper {
     // 스프린트가 있는지 (0이면 없음)
     int selectSprintCount(Long sprintId);
 
-    // 회고 만들기 (프로시저 sp_create_retrospective). 실행 후 만든 회고 페이지 번호가 retrospective의 pageId에 들어가요.
+    // 회고 생성 (sp_create_retrospective, 생성된 페이지 번호는 pageId에 설정)
     void insertRetrospective(RetrospectiveVO retrospective);
 
     // ---------- 스냅샷 ----------
@@ -42,7 +42,7 @@ public interface RetrospectiveMapper {
     List<TaskSnapshotVO> selectTaskSnapshotList(@Param("workspaceId") Long workspaceId,
         @Param("retrospectiveId") Long retrospectiveId);
 
-    // 작업 스냅샷 담당자 (프로시저 sp_task_snapshot_assignee_list, 범위는 위와 같아요)
+    // 작업 스냅샷 담당자 (sp_task_snapshot_assignee_list, 범위는 위와 동일)
     List<TaskSnapshotAssigneeVO> selectTaskSnapshotAssigneeList(@Param("workspaceId") Long workspaceId,
         @Param("retrospectiveId") Long retrospectiveId);
 
@@ -51,6 +51,6 @@ public interface RetrospectiveMapper {
 
     // ---------- Action Item ----------
 
-    // 회고 페이지들의 TODO 블록 (pageIds가 비어 있으면 부르지 않아요)
+    // 회고 페이지들의 TODO 블록 (pageIds가 비어 있으면 호출하지 않음)
     List<TodoBlockVO> selectTodoBlockList(@Param("pageIds") List<Long> pageIds);
 }

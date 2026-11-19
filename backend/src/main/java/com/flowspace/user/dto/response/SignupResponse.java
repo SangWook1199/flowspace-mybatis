@@ -1,6 +1,6 @@
 package com.flowspace.user.dto.response;
 
-// 회원가입 결과: 이메일 인증을 마쳐야 로그인할 수 있어서, 토큰 대신 인증 메일을 보낸 주소만 돌려줘요.
+// 회원가입 결과 (이메일 인증 후 로그인 가능, 토큰 대신 인증 메일 주소 반환)
 // @formatter:off
 public record SignupResponse(
 

@@ -4,19 +4,19 @@ import org.apache.ibatis.annotations.Mapper;
 
 import com.flowspace.file.service.FileVO;
 
-// 파일 DB 접근. 메서드 이름이 File_SQL.xml의 id와 같아야 해요.
+// 파일 Mapper (File_SQL.xml)
 @Mapper
 public interface FileMapper {
 
-    // 이메일로 사용자 번호 (올린 사람을 남길 때 써요, 없으면 null)
+    // 이메일로 사용자 번호 조회 (없으면 null)
     Long selectUserIdByEmail(String email);
 
     // 파일 한 건 (없으면 null)
     FileVO selectFileById(Long fileId);
 
-    // 파일 등록. 실행 후 DB가 만든 번호가 file의 fileId에 들어가요.
+    // 파일 등록 (생성된 번호는 fileId에 설정)
     int insertFile(FileVO file);
 
-    // 파일 삭제. 이 파일을 쓰던 곳(프로필·커버·이미지 블록)은 DB가 NULL로 바꾸고, 관련 문서는 함께 지워요.
+    // 파일 삭제 (프로필·커버·이미지 블록은 DB에서 NULL 처리, 관련 문서는 연쇄 삭제)
     int deleteFile(Long fileId);
 }

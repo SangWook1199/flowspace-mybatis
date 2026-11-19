@@ -1,7 +1,7 @@
--- 작업 스냅샷의 담당자를 프로필 사진 주소와 함께 조회해요. 범위는 sp_task_snapshot_list와 같아요.
---   인자: p_workspace_id      워크스페이스 번호
---         p_retrospective_id  회고 번호 (NULL이면 워크스페이스의 모든 회고)
---   결과: 담당자 한 명당 한 행. 담긴 순서(snapshot_assignee_id) 순.
+-- 작업 스냅샷 담당자 (프로필 사진 주소 포함, 범위는 sp_task_snapshot_list와 동일)
+--   p_workspace_id      워크스페이스 번호
+--   p_retrospective_id  회고 번호 (NULL이면 워크스페이스 전체)
+-- 결과: 담당자당 한 행, snapshot_assignee_id 순
 
 DROP PROCEDURE IF EXISTS sp_task_snapshot_assignee_list;
 

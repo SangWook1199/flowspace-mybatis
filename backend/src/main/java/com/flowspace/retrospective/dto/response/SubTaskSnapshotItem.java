@@ -16,7 +16,7 @@ public record SubTaskSnapshotItem(
 
 ) {
 
-    // 담당자 사진 주소는 프로시저가 files와 조인해서 넣어 줘요
+    // 담당자 사진 주소는 프로시저에서 files 조인
     public static SubTaskSnapshotItem from(SubTaskSnapshotVO subtask) {
         return new SubTaskSnapshotItem(
             subtask.getSubTaskSnapshotId(),

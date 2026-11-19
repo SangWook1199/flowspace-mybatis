@@ -9,14 +9,14 @@
         WHERE email = #{email}
     </select>
 
-    <!-- 알림 등록. 읽음 여부와 만든 시각은 DB 기본값을 써요. -->
+    <!-- 알림 등록 (읽음 여부·생성 시각은 DB 기본값) -->
     <insert id="insertNotification" parameterType="com.flowspace.notification.service.NotificationVO"
             useGeneratedKeys="true" keyProperty="notificationId">
         INSERT INTO notifications (user_id, actor_id, workspace_id, type, message, ref_id, link_path)
         VALUES (#{userId}, #{actorId}, #{workspaceId}, #{type}, #{message}, #{refId}, #{linkPath})
     </insert>
 
-    <!-- 알림 한 건. 워크스페이스·보낸 사람 이름 조인은 프로시저 안에서 해요(backend/database/procedures/notification). -->
+    <!-- 알림 한 건 (sp_notification) -->
     <select id="selectNotificationById" statementType="CALLABLE"
             resultType="com.flowspace.notification.service.NotificationVO">
         {call sp_notification(#{notificationId})}
@@ -36,7 +36,7 @@
           AND is_read = FALSE
     </select>
 
-    <!-- 알림을 받은 사람 번호 -->
+    <!-- 알림 수신자 번호 -->
     <select id="selectNotificationUserId" resultType="long">
         SELECT user_id
         FROM notifications

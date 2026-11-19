@@ -23,7 +23,7 @@ public record CommentResponse(
 
 ) {
 
-    // 조회 결과(CommentVO)로 만들어요 (쓴 사람 이름·이미지가 조인으로 들어 있어요)
+    // CommentVO 기반 응답 생성
     public static CommentResponse from(
         CommentVO comment,
         List<CommentResponse> replies

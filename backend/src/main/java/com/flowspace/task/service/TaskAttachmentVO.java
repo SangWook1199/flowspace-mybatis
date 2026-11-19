@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 작업 관련 문서 한 건이에요. 등록할 때와 조회할 때(sp_task_attachment_list, sp_task_attachment) 같이 써요.
-// 페이지를 연결했으면 pageId가, 파일을 올렸으면 fileId가 들어 있어요(둘 중 하나만).
+// 작업 관련 문서 (등록, sp_task_attachment_list·sp_task_attachment 조회 공용)
+// 페이지 연결은 pageId, 파일 업로드는 fileId (둘 중 하나)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,7 +26,7 @@ public class TaskAttachmentVO {
 
     private LocalDateTime createdAt;
 
-    // ↓ 조회할 때만 채워져요
+    // ↓ 조회 전용
     private String createdByName;
 
     // 페이지를 연결했을 때

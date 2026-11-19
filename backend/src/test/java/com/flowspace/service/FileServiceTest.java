@@ -30,7 +30,7 @@ import com.flowspace.file.service.FileVO;
 import com.flowspace.file.service.impl.FileMapper;
 import com.flowspace.file.service.impl.FileServiceImpl;
 
-// 업로드 검사: 위험한 확장자 차단, 이미지는 확장자·Content-Type·첫 바이트가 모두 이미지여야 통과해요.
+// 업로드 검사: 위험한 확장자 차단, 이미지는 확장자·Content-Type·시작 바이트 모두 확인
 @ExtendWith(MockitoExtension.class)
 class FileServiceTest {
 

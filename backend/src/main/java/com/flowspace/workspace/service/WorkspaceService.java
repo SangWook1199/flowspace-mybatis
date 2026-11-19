@@ -13,7 +13,7 @@ import com.flowspace.workspace.dto.response.WorkspaceInviteResponse;
 import com.flowspace.workspace.dto.response.WorkspaceMemberResponse;
 import com.flowspace.workspace.dto.response.WorkspaceResponse;
 
-// 워크스페이스 업무 기능의 목록이에요. Controller는 이 인터페이스만 알고, 실제 동작은 service.impl의 WorkspaceServiceImpl에 있어요.
+// 워크스페이스 서비스
 public interface WorkspaceService {
 
     // 워크스페이스 생성
@@ -46,7 +46,7 @@ public interface WorkspaceService {
     // 워크스페이스 멤버 목록 조회
     List<WorkspaceMemberResponse> getMembers(Long workspaceId, String email);
 
-    // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버끼리만 볼 수 있고, 이 워크스페이스 안의 정보만 보여줘요)
+    // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버만, 해당 워크스페이스 정보만)
     MemberProfileResponse getMemberProfile(Long workspaceId, Long userId, String email);
 
     // 워크스페이스 소유권 이전
@@ -55,7 +55,7 @@ public interface WorkspaceService {
     // 워크스페이스 삭제
     void deleteWorkspace(Long workspaceId, String email);
 
-    // 워크스페이스 멤버 추방 (관리자는 일반 멤버만, 소유자는 관리자·멤버를 내보낼 수 있어요)
+    // 워크스페이스 멤버 추방 (관리자는 일반 멤버만, 소유자는 관리자·멤버 추방 가능)
     void removeMember(Long workspaceId, Long userId, String email);
 
     // 멤버 역할 변경 (소유자만 가능, ADMIN ↔ MEMBER)

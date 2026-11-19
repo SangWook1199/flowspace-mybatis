@@ -13,7 +13,7 @@ import com.flowspace.workspace.service.MemberTaskVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;
 import com.flowspace.workspace.service.WorkspaceVO;
 
-// 워크스페이스 DB 접근. 메서드 이름이 Workspace_SQL.xml의 id와 같아야 해요.
+// 워크스페이스 Mapper (Workspace_SQL.xml)
 @Mapper
 public interface WorkspaceMapper {
 
@@ -42,7 +42,7 @@ public interface WorkspaceMapper {
     // 내가 속한 워크스페이스 수
     int selectMyWorkspaceCount(Long userId);
 
-    // 워크스페이스 등록. 실행 후 DB가 만든 번호가 workspace의 workspaceId에 들어가요.
+    // 워크스페이스 등록 (생성된 번호는 workspaceId에 설정)
     int insertWorkspace(WorkspaceVO workspace);
 
     // 새 워크스페이스에 소유자와 기본 상태 연결 (프로시저 sp_init_workspace)
@@ -57,7 +57,7 @@ public interface WorkspaceMapper {
     // 이 워크스페이스에 이 이메일로 보낸, 아직 답하지 않은 초대 수
     int selectPendingInviteCount(@Param("workspaceId") Long workspaceId, @Param("email") String email);
 
-    // 초대 등록. 실행 후 DB가 만든 번호가 invite의 inviteId에 들어가요.
+    // 초대 등록 (생성된 번호는 inviteId에 설정)
     int insertInvite(InviteVO invite);
 
     // 내가 받은, 아직 답하지 않은 초대 (프로시저 sp_my_invite_list)

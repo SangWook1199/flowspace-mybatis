@@ -12,7 +12,7 @@
 
     <!-- ==================== 댓글 ==================== -->
 
-    <!-- 댓글 컬럼과 쓴 사람 조인. 아래 세 SQL이 <include>로 같이 써서, 컬럼을 바꿀 때 여기만 고쳐요. -->
+    <!-- 댓글 컬럼 + 작성자 조인 (아래 세 SQL에서 include) -->
     <sql id="commentSelect">
         SELECT c.comment_id,
                c.task_id,
@@ -36,7 +36,7 @@
          WHERE c.comment_id = #{commentId}
     </select>
 
-    <!-- 여러 작업의 댓글. 원 댓글과 답글을 한 번에 읽고, 나누는 건 자바에서 해요. -->
+    <!-- 여러 작업의 댓글 (원 댓글·답글 함께 조회) -->
     <select id="selectCommentListByTaskIds" resultType="com.flowspace.comment.service.CommentVO">
         <include refid="commentSelect"/>
          WHERE c.task_id IN
@@ -56,21 +56,21 @@
          ORDER BY c.created_at, c.comment_id
     </select>
 
-    <!-- 댓글 등록. 작업 댓글이면 blockId, 블록 댓글이면 taskId가 null이에요. -->
+    <!-- 댓글 등록 (taskId, blockId 중 하나) -->
     <insert id="insertComment" parameterType="com.flowspace.comment.service.CommentVO"
             useGeneratedKeys="true" keyProperty="commentId">
         INSERT INTO comments (task_id, block_id, user_id, parent_comment_id, content)
         VALUES (#{taskId}, #{blockId}, #{userId}, #{parentCommentId}, #{content})
     </insert>
 
-    <!-- 댓글 내용 수정. updated_at은 DB가 바꿔요. -->
+    <!-- 댓글 내용 수정 -->
     <update id="updateCommentContent">
         UPDATE comments
         SET content = #{content}
         WHERE comment_id = #{commentId}
     </update>
 
-    <!-- 댓글 삭제. 답글은 fk_comment_parent(ON DELETE CASCADE)로 DB가 함께 지워요. -->
+    <!-- 댓글 삭제 (답글은 ON DELETE CASCADE) -->
     <delete id="deleteComment">
         DELETE FROM comments
         WHERE comment_id = #{commentId}
@@ -89,7 +89,7 @@
         WHERE task_id = #{taskId}
     </select>
 
-    <!-- 블록이 있는 페이지 정보. blocks와 pages 조인은 프로시저 안에서 해요(backend/database/procedures/comment). -->
+    <!-- 블록이 속한 페이지 정보 (sp_comment_block) -->
     <select id="selectCommentBlock" statementType="CALLABLE" resultType="com.flowspace.comment.service.CommentTargetVO">
         {call sp_comment_block(#{blockId})}
     </select>
@@ -102,7 +102,7 @@
         ORDER BY task_assignee_id
     </select>
 
-    <!-- 멘션된 사람 중 워크스페이스 멤버 -->
+    <!-- 멘션된 사용자 중 워크스페이스 멤버 -->
     <select id="selectWorkspaceMemberIds" resultType="long">
         SELECT user_id
         FROM workspace_members

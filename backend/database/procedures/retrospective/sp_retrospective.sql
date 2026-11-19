@@ -1,6 +1,6 @@
--- 회고 한 건을 스프린트 정보와 함께 조회해요. 컬럼은 sp_retrospective_list와 같아요(함께 고쳐요).
---   인자: p_retrospective_id  회고 번호
---   결과: 한 행 (없으면 0행)
+-- 회고 한 건 + 스프린트 정보 (컬럼은 sp_retrospective_list와 동일)
+--   p_retrospective_id  회고 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_retrospective;
 

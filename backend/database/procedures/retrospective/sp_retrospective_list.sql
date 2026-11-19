@@ -1,6 +1,6 @@
--- 워크스페이스의 스프린트를 회고와 함께 조회해요. 회고가 아직 없는 스프린트도 나와요(LEFT JOIN).
---   인자: p_workspace_id  워크스페이스 번호
---   결과: 스프린트 한 개당 한 행. 회고가 없으면 retrospective_id, page_id가 NULL이에요. 시작일이 늦은 순.
+-- 워크스페이스 스프린트 + 회고 목록 (회고가 없는 스프린트 포함)
+--   p_workspace_id  워크스페이스 번호
+-- 결과: 스프린트당 한 행 (회고가 없으면 retrospective_id, page_id는 NULL), 시작일 역순
 
 DROP PROCEDURE IF EXISTS sp_retrospective_list;
 

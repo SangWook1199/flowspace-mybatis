@@ -11,16 +11,16 @@ import com.flowspace.calendar.service.CalendarTaskVO;
 import com.flowspace.calendar.service.EventVO;
 import com.flowspace.task.service.TaskAssigneeVO;
 
-// 캘린더·일정 DB 접근. 메서드 이름이 Calendar_SQL.xml의 id와 같아야 해요.
+// 캘린더·일정 Mapper (Calendar_SQL.xml)
 @Mapper
 public interface CalendarMapper {
 
-    // 이메일로 사용자 번호 (일정을 만든 사람을 남길 때 써요)
+    // 이메일로 사용자 번호 조회
     Long selectUserIdByEmail(String email);
 
     // ---------- 일정 ----------
 
-    // 일정 등록. 실행 후 DB가 만든 번호가 event의 eventId에 들어가요.
+    // 일정 등록 (생성된 번호는 eventId에 설정)
     int insertEvent(EventVO event);
 
     // 일정 한 건과 만든 사람 이름 (프로시저 sp_event, 없으면 null)
@@ -32,7 +32,7 @@ public interface CalendarMapper {
     // 일정 삭제
     int deleteEvent(Long eventId);
 
-    // 제목으로 일정 검색 (keyword는 %, _를 미리 이스케이프해서 넘겨요)
+    // 제목으로 일정 검색 (keyword는 %, _ 이스케이프 후 전달)
     List<EventVO> selectEventSearchList(@Param("workspaceId") Long workspaceId, @Param("keyword") String keyword);
 
     // ---------- 캘린더 ----------
@@ -48,7 +48,7 @@ public interface CalendarMapper {
         @Param("sprintId") Long sprintId, @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate);
 
-    // 여러 작업의 담당자 (taskIds가 비어 있으면 부르지 않아요)
+    // 여러 작업의 담당자 (taskIds가 비어 있으면 호출하지 않음)
     List<TaskAssigneeVO> selectCalendarAssigneeList(@Param("taskIds") List<Long> taskIds);
 
     // 그 달에 시작하는 일정

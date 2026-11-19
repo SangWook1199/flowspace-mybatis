@@ -1,8 +1,7 @@
--- 회고의 작업 스냅샷을 상태 이름과 함께 조회해요.
--- 회고 목록 화면은 워크스페이스의 모든 회고 요약이 필요해서, 회고 번호를 비우면 워크스페이스 전체를 읽어요.
---   인자: p_workspace_id      워크스페이스 번호
---         p_retrospective_id  회고 번호 (NULL이면 워크스페이스의 모든 회고)
---   결과: 스냅샷 한 건당 한 행. 상태 순서 → 칸반 순서(position) 순.
+-- 회고 작업 스냅샷 (상태 이름 포함)
+--   p_workspace_id      워크스페이스 번호
+--   p_retrospective_id  회고 번호 (NULL이면 워크스페이스 전체, 회고 목록 요약용)
+-- 결과: 스냅샷당 한 행, 상태 순서 → position 순
 
 DROP PROCEDURE IF EXISTS sp_task_snapshot_list;
 

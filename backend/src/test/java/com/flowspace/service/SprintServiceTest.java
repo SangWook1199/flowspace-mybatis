@@ -44,7 +44,7 @@ import com.flowspace.sprint.service.SprintVO;
 import com.flowspace.sprint.service.impl.SprintMapper;
 import com.flowspace.sprint.service.impl.SprintServiceImpl;
 
-// 스프린트 완료 → 회고를 먼저 만들고 완료 프로시저, 회고를 못 만들면 완료하지 않음, 삭제는 관리자 이상만 가능한지 확인해요.
+// 스프린트 완료(회고 생성 후 완료 프로시저), 회고 생성 실패 시 미완료, 삭제는 관리자 이상
 @ExtendWith(MockitoExtension.class)
 class SprintServiceTest {
 
@@ -90,7 +90,6 @@ class SprintServiceTest {
         when(sprintMapper.selectSprintById(10L)).thenReturn(row);
         when(workspaceRepository.findById(5L)).thenReturn(Optional.of(workspace));
 
-        // 상태 변경이 끝난 뒤 응답을 만들 때 쓰는 조회 결과 (실패하는 테스트에서는 쓰이지 않아요)
         SprintProgressVO progress = new SprintProgressVO();
         progress.setSprintId(10L);
         progress.setWorkspaceId(5L);
@@ -113,8 +112,6 @@ class SprintServiceTest {
 
         sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com");
 
-        // 회고(스냅샷)를 먼저 만들고, 그다음 프로시저가 끝나지 않은 작업을 옮겨요
-        // 스프린트 이름은 회고 페이지 제목("스프린트 1 회고")에 쓰여요
         InOrder order = inOrder(retrospectiveService, sprintMapper);
         order.verify(retrospectiveService).createRetrospective(10L, 5L, "스프린트 1", 1L);
         order.verify(sprintMapper).updateSprintComplete(10L);
@@ -144,7 +141,6 @@ class SprintServiceTest {
 
         sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com");
 
-        // 진행 중이던 다른 스프린트를 계획됨으로 돌리는 일은 프로시저 안에서 해요
         verify(sprintMapper).updateSprintStart(10L);
     }
 
@@ -168,7 +164,6 @@ class SprintServiceTest {
         memberWithRole(WorkspaceRole.MEMBER);
         sprintRow(SprintStatus.ACTIVE);
 
-        // 회고가 이미 있는지는 회고 서비스가 확인해요 → 여기서는 거절했다고 가정해요
         doThrow(new FlowSpaceException(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS)).when(retrospectiveService)
             .createRetrospective(10L, 5L, "스프린트 1", 1L);
 

@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 페이지 한 개예요. 등록할 때와 조회할 때(sp_page_list, sp_page, sp_page_subtree) 같이 써요.
+// 페이지 (등록, sp_page_list·sp_page·sp_page_subtree 조회 공용)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -43,7 +43,7 @@ public class PageVO {
 
     private LocalDateTime updatedAt;
 
-    // 회고 페이지인지
+    // 회고 페이지 여부
     private Boolean retrospective;
 
     // 상위 페이지가 휴지통에 있는지 (상위가 없으면 null)

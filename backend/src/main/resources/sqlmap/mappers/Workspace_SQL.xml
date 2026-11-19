@@ -9,7 +9,7 @@
         WHERE workspace_id = #{workspaceId}
     </select>
 
-    <!-- 그 워크스페이스에서 사용자의 역할. 컬럼 하나를 enum으로 바로 받아요(행이 없으면 null). -->
+    <!-- 워크스페이스에서 사용자의 역할 (enum으로 매핑, 없으면 null) -->
     <select id="selectMemberRole" resultType="com.flowspace.entity.enums.WorkspaceRole">
         SELECT role
         FROM workspace_members
@@ -17,7 +17,7 @@
           AND user_id = #{userId}
     </select>
 
-    <!-- 내가 속한 워크스페이스와 내 역할. 조인은 프로시저 안에서 해요(backend/database/procedures/workspace). -->
+    <!-- 내 워크스페이스 목록 + 역할 (sp_my_workspace_list) -->
     <select id="selectMyWorkspaceList" statementType="CALLABLE"
             resultType="com.flowspace.workspace.service.WorkspaceVO">
         {call sp_my_workspace_list(#{userId})}
@@ -35,7 +35,7 @@
         {call sp_workspace_member(#{workspaceId}, #{userId})}
     </select>
 
-    <!-- 멤버가 맡은, 끝나지 않은 작업 -->
+    <!-- 멤버의 미완료 담당 작업 -->
     <select id="selectMemberOpenTaskList" statementType="CALLABLE"
             resultType="com.flowspace.workspace.service.MemberTaskVO">
         {call sp_member_open_task_list(#{workspaceId}, #{userId}, #{limit})}
@@ -54,7 +54,7 @@
         WHERE user_id = #{userId}
     </select>
 
-    <!-- 워크스페이스 등록. 만든 시각은 DB 기본값을 써요. -->
+    <!-- 워크스페이스 등록 (생성 시각은 DB 기본값) -->
     <insert id="insertWorkspace" parameterType="com.flowspace.workspace.service.WorkspaceVO"
             useGeneratedKeys="true" keyProperty="workspaceId">
         INSERT INTO workspaces (owner_id, name, initials, color, icon)
@@ -81,7 +81,7 @@
         {call sp_delete_workspace(#{workspaceId})}
     </delete>
 
-    <!-- 아직 답하지 않은 초대 수 -->
+    <!-- 대기 중인 초대 수 -->
     <select id="selectPendingInviteCount" resultType="int">
         SELECT COUNT(*)
         FROM workspace_invites
@@ -90,14 +90,14 @@
           AND status = 'PENDING'
     </select>
 
-    <!-- 초대 등록. 보낸 시각은 DB 기본값을 써요. -->
+    <!-- 초대 등록 (생성 시각은 DB 기본값) -->
     <insert id="insertInvite" parameterType="com.flowspace.workspace.service.InviteVO"
             useGeneratedKeys="true" keyProperty="inviteId">
         INSERT INTO workspace_invites (workspace_id, inviter_id, email, status)
         VALUES (#{workspaceId}, #{inviterId}, #{email}, #{status})
     </insert>
 
-    <!-- 내가 받은 초대. 조인은 프로시저 안에서 해요. -->
+    <!-- 받은 초대 목록 (sp_my_invite_list) -->
     <select id="selectMyInviteList" statementType="CALLABLE" resultType="com.flowspace.workspace.service.InviteVO">
         {call sp_my_invite_list(#{email})}
     </select>
@@ -109,7 +109,7 @@
         WHERE invite_id = #{inviteId}
     </select>
 
-    <!-- 초대에 답하기 -->
+    <!-- 초대 응답 처리 -->
     <update id="updateInviteStatus">
         UPDATE workspace_invites
            SET status       = #{status},
@@ -117,7 +117,7 @@
          WHERE invite_id = #{inviteId}
     </update>
 
-    <!-- 멤버 추가. 들어온 시각은 DB 기본값을 써요. -->
+    <!-- 멤버 추가 (참여 시각은 DB 기본값) -->
     <insert id="insertWorkspaceMember">
         INSERT INTO workspace_members (workspace_id, user_id, role)
         VALUES (#{workspaceId}, #{userId}, #{role})
@@ -138,21 +138,21 @@
          WHERE workspace_id = #{workspaceId}
     </update>
 
-    <!-- 멤버 빼기 -->
+    <!-- 멤버 삭제 -->
     <delete id="deleteWorkspaceMember">
         DELETE FROM workspace_members
         WHERE workspace_id = #{workspaceId}
           AND user_id = #{userId}
     </delete>
 
-    <!-- 사용자가 마지막으로 본 워크스페이스 지정 (users 테이블이지만 워크스페이스를 만들 때 함께 바꿔서 여기 둬요) -->
+    <!-- 사용자의 마지막 워크스페이스 지정 (워크스페이스 생성 시 함께 변경) -->
     <update id="updateUserLastWorkspace">
         UPDATE users
            SET last_workspace_id = #{workspaceId}
          WHERE user_id = #{userId}
     </update>
 
-    <!-- 마지막으로 본 워크스페이스가 이곳이면 비우기. 조건에 맞지 않으면 아무 행도 바뀌지 않아요. -->
+    <!-- 마지막 워크스페이스가 이곳이면 해제 -->
     <update id="clearUserLastWorkspace">
         UPDATE users
            SET last_workspace_id = NULL

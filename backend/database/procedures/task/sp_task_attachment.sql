@@ -1,6 +1,6 @@
--- 관련 문서 한 건을 조회해요. 컬럼은 sp_task_attachment_list와 같아요(함께 고쳐요).
---   인자: p_attachment_id  관련 문서 번호
---   결과: 한 행 (없으면 0행)
+-- 관련 문서 한 건 (컬럼은 sp_task_attachment_list와 동일)
+--   p_attachment_id  관련 문서 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_task_attachment;
 
@@ -16,11 +16,9 @@ BEGIN
            a.created_by,
            a.created_at,
            u.nickname       AS created_by_name,
-           -- 페이지를 연결했을 때
            p.title          AS page_title,
            p.icon           AS page_icon,
            p.is_deleted     AS page_deleted,
-           -- 파일을 올렸을 때
            f.original_name  AS file_name,
            f.file_url,
            f.size           AS file_size,

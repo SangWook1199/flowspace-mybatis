@@ -13,7 +13,7 @@ import com.flowspace.user.service.UserLookupVO;
 import com.flowspace.user.service.UserVO;
 import com.flowspace.user.service.WithdrawWorkspaceVO;
 
-// 사용자 DB 접근. 메서드 이름이 User_SQL.xml의 id와 같아야 해요.
+// 사용자 Mapper (User_SQL.xml)
 @Mapper
 public interface UserMapper {
 
@@ -45,17 +45,17 @@ public interface UserMapper {
     // 번호로 사용자 한 명 (프로시저 sp_user, 없으면 null)
     UserVO selectUserById(Long userId);
 
-    // 사용자 등록. 실행 후 DB가 만든 번호가 user의 userId에 들어가요.
+    // 사용자 등록 (생성된 번호는 userId에 설정)
     int insertUser(UserVO user);
 
-    // 인증 전에 같은 이메일로 다시 가입할 때: 새로 입력한 닉네임과 비밀번호로 바꿔요
+    // 인증 전 같은 이메일로 재가입 시 닉네임·비밀번호 변경
     int updateUserSignupRestart(@Param("userId") Long userId, @Param("nickname") String nickname,
         @Param("password") String password);
 
     // 이메일 인증 완료로 표시
     int updateUserEmailVerified(Long userId);
 
-    // 인증 전 계정을 소셜 로그인으로 넘겨받을 때: 인증 완료로 바꾸고 가입 때 정한 비밀번호는 지워요
+    // 인증 전 계정을 소셜 로그인으로 전환 (인증 완료, 가입 시 비밀번호 삭제)
     int updateUserClaimBySocial(Long userId);
 
     // 저장된 리프레시 토큰 (없으면 null)

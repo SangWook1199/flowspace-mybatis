@@ -21,7 +21,7 @@ public record WorkspaceCreateRequest(
         @NotNull(message = "색상은 필수입니다.")
         WorkspaceColor color,
 
-        // 아이콘(이모지)은 선택이에요. 비우면 이니셜을 보여줘요.
+        // 아이콘(이모지) 선택, 비우면 이니셜 표시
         @Size(max = 20, message = "아이콘은 20자 이하입니다.")
         String icon
 ) {

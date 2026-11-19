@@ -26,7 +26,7 @@
         WHERE file_id = #{fileId}
     </select>
 
-    <!-- 파일 등록. 만든 시각은 DB 기본값을 써요. -->
+    <!-- 파일 등록 (생성 시각은 DB 기본값) -->
     <insert id="insertFile" parameterType="com.flowspace.file.service.FileVO"
             useGeneratedKeys="true" keyProperty="fileId">
         INSERT INTO files (workspace_id, uploaded_by, original_name, stored_name, mime_type, size, width, height,
@@ -35,7 +35,7 @@
                 #{height}, #{fileUrl})
     </insert>
 
-    <!-- 파일 삭제. 외래키 설정(ON DELETE SET NULL / CASCADE)에 따라 DB가 쓰던 곳을 정리해요. -->
+    <!-- 파일 삭제 (참조하는 곳은 ON DELETE SET NULL / CASCADE) -->
     <delete id="deleteFile">
         DELETE FROM files
         WHERE file_id = #{fileId}

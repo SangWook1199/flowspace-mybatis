@@ -37,8 +37,8 @@ import com.flowspace.user.dto.request.EmailResendRequest;
 import com.flowspace.user.dto.request.EmailVerifyRequest;
 import com.flowspace.user.service.impl.EmailVerificationServiceImpl;
 
-// 이메일 인증: 해시만 저장하는지, 너무 자주 보내지 않는지, 가입 여부를 드러내지 않는지, 토큰 확인 규칙을 시험해요.
-// 사용자와 토큰은 MyBatis Mapper로 읽고 써서, 테스트에서는 Mapper가 돌려줄 값을 정해 두고 어떤 SQL이 불렸는지 확인해요.
+// 이메일 인증: 해시 저장, 재발송 제한, 가입 여부 비노출, 토큰 확인 규칙
+// Mapper 반환 값을 지정하고 호출된 SQL 확인
 @ExtendWith(MockitoExtension.class)
 class EmailVerificationServiceTest {
 
@@ -60,7 +60,7 @@ class EmailVerificationServiceTest {
         return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8)));
     }
 
-    // 사용자 한 명 (비밀번호·인증 여부만 다르게 써요)
+    // 테스트 사용자 (비밀번호·인증 여부만 다름)
     private static UserVO user(Long id, String email, String password, boolean verified) {
         UserVO user = new UserVO();
         user.setUserId(id);

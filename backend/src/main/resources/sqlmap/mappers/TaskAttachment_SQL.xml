@@ -9,7 +9,7 @@
         WHERE email = #{email}
     </select>
 
-    <!-- 관련 문서 목록. 페이지·파일·사용자 조인은 프로시저 안에서 해요(backend/database/procedures/task). -->
+    <!-- 관련 문서 목록 (sp_task_attachment_list) -->
     <select id="selectTaskAttachmentList" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskAttachmentVO">
         {call sp_task_attachment_list(#{taskId})}
     </select>
@@ -19,14 +19,14 @@
         {call sp_task_attachment(#{attachmentId})}
     </select>
 
-    <!-- 작업에 붙은 관련 문서 수 -->
+    <!-- 작업의 관련 문서 수 -->
     <select id="selectTaskAttachmentCount" resultType="int">
         SELECT COUNT(*)
         FROM task_attachments
         WHERE task_id = #{taskId}
     </select>
 
-    <!-- 이 페이지가 이미 연결돼 있는지 -->
+    <!-- 페이지 연결 여부 -->
     <select id="selectTaskAttachmentPageCount" resultType="int">
         SELECT COUNT(*)
         FROM task_attachments
@@ -34,7 +34,7 @@
           AND page_id = #{pageId}
     </select>
 
-    <!-- 작업에 올린 파일 번호들 (페이지 연결은 file_id가 NULL이라 빼요) -->
+    <!-- 작업에 업로드한 파일 번호 -->
     <select id="selectTaskAttachmentFileIds" resultType="long">
         SELECT file_id
         FROM task_attachments
@@ -42,7 +42,7 @@
           AND file_id IS NOT NULL
     </select>
 
-    <!-- 연결할 페이지의 워크스페이스. 휴지통에 있는 페이지는 없는 것으로 봐요. -->
+    <!-- 연결할 페이지의 워크스페이스 (휴지통 페이지 제외) -->
     <select id="selectActivePageWorkspaceId" resultType="long">
         SELECT workspace_id
         FROM pages
@@ -50,7 +50,7 @@
           AND is_deleted = FALSE
     </select>
 
-    <!-- 관련 문서 등록. 페이지 연결이면 fileId, 파일이면 pageId가 null이에요. -->
+    <!-- 관련 문서 등록 (pageId, fileId 중 하나) -->
     <insert id="insertTaskAttachment" parameterType="com.flowspace.task.service.TaskAttachmentVO"
             useGeneratedKeys="true" keyProperty="attachmentId">
         INSERT INTO task_attachments (task_id, page_id, file_id, created_by)

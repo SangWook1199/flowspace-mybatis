@@ -1,6 +1,6 @@
--- 회고 한 건의 하위 작업 스냅샷을 담당자 프로필 사진 주소와 함께 조회해요.
---   인자: p_retrospective_id  회고 번호
---   결과: 하위 작업 한 건당 한 행. 순서(position) 순.
+-- 회고의 하위 작업 스냅샷 (담당자 사진 주소 포함)
+--   p_retrospective_id  회고 번호
+-- 결과: 하위 작업당 한 행, position 순
 
 DROP PROCEDURE IF EXISTS sp_subtask_snapshot_list;
 

@@ -8,8 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 사용자 한 명을 담는 객체예요(users 테이블 + 프로필 이미지 주소).
-// 프로필 이미지와 마지막으로 본 워크스페이스는 객체가 아니라 번호로 가져요.
+// 사용자 (users 테이블 + 프로필 이미지 주소)
+// 프로필 이미지·마지막 워크스페이스는 번호로 보관
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,7 +40,7 @@ public class UserVO {
 
     private Long profileFileId;
 
-    // files 테이블에서 조인해 온 값이에요
+    // files 조인 컬럼
     private String profileImageUrl;
 
     private Long lastWorkspaceId;

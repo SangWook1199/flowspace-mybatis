@@ -1,7 +1,7 @@
--- 워크스페이스 멤버 한 명을 조회해요. 결과 모양은 sp_workspace_member_list와 같아요.
---   인자: p_workspace_id  워크스페이스 번호
---         p_user_id       사용자 번호
---   결과: 0행(그 워크스페이스 멤버가 아님) 또는 1행
+-- 워크스페이스 멤버 한 명 (컬럼은 sp_workspace_member_list와 동일)
+--   p_workspace_id  워크스페이스 번호
+--   p_user_id       사용자 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_workspace_member;
 

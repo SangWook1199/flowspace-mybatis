@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 회고를 만들 때 복사해 둔 작업 상태 하나예요 (retrospective_status_snapshots 한 행).
+// 회고 생성 시점의 작업 상태 스냅샷 (retrospective_status_snapshots 한 행)
 @Getter
 @Setter
 @NoArgsConstructor

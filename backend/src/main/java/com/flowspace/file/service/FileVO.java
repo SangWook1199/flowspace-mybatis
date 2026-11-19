@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 파일 한 건이에요 (files 테이블 한 행). 실제 파일은 서버 폴더(file.upload-dir)에 있고, 여기에는 그 정보만 있어요.
+// 파일 (files 테이블 한 행, 실제 파일은 file.upload-dir)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,7 +19,7 @@ public class FileVO {
     // 올린 사람
     private Long uploadedBy;
 
-    // 사용자가 올린 이름 (화면에 보여줘요)
+    // 업로드 시 원래 파일 이름 (화면 표시용)
     private String originalName;
 
     // 서버에 저장한 이름 (UUID + 확장자, 기본 커버는 커버 파일 이름)

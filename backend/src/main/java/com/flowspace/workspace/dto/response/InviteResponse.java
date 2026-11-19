@@ -16,7 +16,7 @@ public record InviteResponse(
             invite.getWorkspace().getColor().name(), invite.getInviter().getNickname(), invite.getStatus());
     }
 
-    // MyBatis 조회 결과(InviteVO)로 응답을 만들어요 (조인으로 워크스페이스·초대한 사람 이름이 들어 있어요)
+    // InviteVO 기반 응답 생성
     public static InviteResponse from(InviteVO invite) {
         return new InviteResponse(invite.getInviteId(), invite.getWorkspaceId(), invite.getWorkspaceName(),
             invite.getWorkspaceInitials(), invite.getWorkspaceColor().name(), invite.getInviterName(),

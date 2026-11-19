@@ -11,19 +11,19 @@
 
     <!-- ==================== 일정 ==================== -->
 
-    <!-- 일정 등록. 만든 시각·수정 시각은 DB 기본값을 써요. -->
+    <!-- 일정 등록 (생성·수정 시각은 DB 기본값) -->
     <insert id="insertEvent" parameterType="com.flowspace.calendar.service.EventVO"
             useGeneratedKeys="true" keyProperty="eventId">
         INSERT INTO events (workspace_id, created_by, title, description, color, start_datetime, end_datetime)
         VALUES (#{workspaceId}, #{createdBy}, #{title}, #{description}, #{color}, #{startDatetime}, #{endDatetime})
     </insert>
 
-    <!-- 일정 한 건. 만든 사람 이름 조인은 프로시저 안에서 해요(backend/database/procedures/calendar). -->
+    <!-- 일정 한 건 (sp_event) -->
     <select id="selectEventById" statementType="CALLABLE" resultType="com.flowspace.calendar.service.EventVO">
         {call sp_event(#{eventId})}
     </select>
 
-    <!-- 일정 수정. updated_at은 DB가 바꿔요(ON UPDATE CURRENT_TIMESTAMP). -->
+    <!-- 일정 수정 (updated_at은 ON UPDATE CURRENT_TIMESTAMP) -->
     <update id="updateEvent" parameterType="com.flowspace.calendar.service.EventVO">
         UPDATE events
         SET title          = #{title},
@@ -34,13 +34,13 @@
         WHERE event_id = #{eventId}
     </update>
 
-    <!-- 일정 삭제. 이 일정을 가리키던 블록은 DB가 event_id를 NULL로 바꿔요(fk_block_event). -->
+    <!-- 일정 삭제 (블록의 event_id는 ON DELETE SET NULL) -->
     <delete id="deleteEvent">
         DELETE FROM events
         WHERE event_id = #{eventId}
     </delete>
 
-    <!-- 제목으로 일정 검색. 대소문자 구분 없이 찾아요. -->
+    <!-- 제목으로 일정 검색 (대소문자 구분 없음) -->
     <select id="selectEventSearchList" resultType="com.flowspace.calendar.service.EventVO">
         SELECT event_id,
                title,
@@ -61,7 +61,7 @@
         WHERE sprint_id = #{sprintId}
     </select>
 
-    <!-- 기본 스프린트. status = 'ACTIVE'는 참이면 1이라, DESC로 정렬하면 진행 중인 스프린트가 먼저 와요. -->
+    <!-- 기본 스프린트 (진행 중 → 계획 중, 시작일 순) -->
     <select id="selectDefaultSprintId" resultType="long">
         SELECT sprint_id
         FROM sprints
@@ -71,13 +71,12 @@
         LIMIT 1
     </select>
 
-    <!-- 그 달의 작업. 상태 색 조인은 프로시저 안에서 해요. sprintId가 null일 수 있어서 jdbcType을 적어요. -->
+    <!-- 그 달의 작업 (sp_calendar_task_list, sprintId null이면 백로그) -->
     <select id="selectCalendarTaskList" statementType="CALLABLE" resultType="com.flowspace.calendar.service.CalendarTaskVO">
         {call sp_calendar_task_list(#{workspaceId}, #{sprintId, jdbcType=BIGINT}, #{startDate}, #{endDate})}
     </select>
 
-    <!-- 여러 작업의 담당자. Task_SQL.xml의 selectTaskAssigneeListByTaskIds와 같은 SQL이에요.
-         목록을 넘겨야 해서 조인이지만 XML의 foreach로 했어요. -->
+    <!-- 여러 작업의 담당자 (Task_SQL.xml selectTaskAssigneeListByTaskIds와 동일, 목록 인자라 XML) -->
     <select id="selectCalendarAssigneeList" resultType="com.flowspace.task.service.TaskAssigneeVO">
         SELECT ta.task_id,
                u.user_id,

@@ -21,7 +21,7 @@ public record EventResponse(
 
 ) {
 
-    // sp_event 조회 결과로 만들어요 (만든 사람 이름이 조인으로 들어 있어요)
+    // sp_event 조회 결과 기반 응답 생성
     public static EventResponse from(EventVO event) {
         return new EventResponse(
             event.getEventId(),

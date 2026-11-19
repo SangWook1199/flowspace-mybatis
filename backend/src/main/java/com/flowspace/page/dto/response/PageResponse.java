@@ -22,12 +22,12 @@ public record PageResponse(
     LocalDateTime updatedAt,
     LocalDateTime deletedAt,
 
-    // 스프린트 회고에 연결된 페이지인지 (회고 페이지는 스프린트마다 자동으로 생겨서 화면이 따로 묶어 보여줘요)
+    // 스프린트 회고 페이지 여부 (화면에서 따로 묶어 표시)
     boolean retrospective
 
 ) {
 
-    // MyBatis 조회 결과(PageVO)로 만들어요 (커버 주소·회고 여부는 프로시저가 조인해 와요)
+    // PageVO 기반 응답 생성
     public static PageResponse from(PageVO page) {
         return new PageResponse(
             page.getPageId(),
@@ -45,7 +45,7 @@ public record PageResponse(
         );
     }
 
-    // 아직 JPA인 페이지 복제에서 써요 (복제를 바꾸면 지워요)
+    // JPA 페이지 복제용 (복제 전환 후 삭제)
     public static PageResponse from(Page page, boolean retrospective) {
         return new PageResponse(
             page.getPageId(),

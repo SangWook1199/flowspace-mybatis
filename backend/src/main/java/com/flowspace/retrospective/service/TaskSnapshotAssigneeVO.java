@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 작업 스냅샷의 담당자 한 명이에요 (sp_task_snapshot_assignee_list 결과). 닉네임은 회고를 만들 때의 이름이에요.
+// 작업 스냅샷 담당자 (sp_task_snapshot_assignee_list 결과, 닉네임은 회고 생성 시점 값)
 @Getter
 @Setter
 @NoArgsConstructor

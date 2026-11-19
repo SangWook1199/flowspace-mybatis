@@ -11,14 +11,14 @@ import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.notification.service.DueSoonTargetVO;
 import com.flowspace.notification.service.NotificationVO;
 
-// 알림 DB 접근. 메서드 이름이 Notification_SQL.xml의 id와 같아야 해요.
+// 알림 Mapper (Notification_SQL.xml)
 @Mapper
 public interface NotificationMapper {
 
-    // 이메일로 사용자 번호 (로그인한 사람이 누구인지만 알면 돼서 번호 하나만 읽어요)
+    // 이메일로 사용자 번호 조회
     Long selectUserIdByEmail(String email);
 
-    // 알림 등록. 실행 후 DB가 만든 번호가 notification의 notificationId에 들어가요.
+    // 알림 등록 (생성된 번호는 notificationId에 설정)
     int insertNotification(NotificationVO notification);
 
     // 알림 한 건 (프로시저 sp_notification, 없으면 null)
@@ -31,7 +31,7 @@ public interface NotificationMapper {
     // 읽지 않은 알림 수
     long selectUnreadNotificationCount(Long userId);
 
-    // 알림을 받은 사람 번호 (내 알림인지 확인할 때 써요, 없으면 null)
+    // 알림을 받은 사용자 번호 (본인 알림 확인용, 없으면 null)
     Long selectNotificationUserId(Long notificationId);
 
     // 알림 한 건 읽음
@@ -47,7 +47,7 @@ public interface NotificationMapper {
     // 알림 한 건 삭제
     int deleteNotification(Long notificationId);
 
-    // 보관 기간이 지난 알림 삭제. 지운 개수를 돌려줘요.
+    // 보관 기간이 지난 알림 삭제 (삭제 건수 반환)
     int deleteOldNotifications(LocalDateTime before);
 
     // 마감 임박 알림을 보낼 대상 (프로시저 sp_due_soon_target_list)

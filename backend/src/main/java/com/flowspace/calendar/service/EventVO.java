@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 일정 한 건이에요. 등록·수정할 때와 조회할 때(sp_event, 한 달 일정 목록, 검색) 같이 써요.
+// 일정 (등록·수정, sp_event·월별 목록·검색 조회 공용)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,7 +21,7 @@ public class EventVO {
     // 만든 사람 번호
     private Long createdBy;
 
-    // 만든 사람 이름 (sp_event로 조회할 때만 채워져요)
+    // 작성자 이름 (sp_event 조회 전용)
     private String createdByName;
 
     private String title;
@@ -32,7 +32,7 @@ public class EventVO {
 
     private LocalDateTime startDatetime;
 
-    // 끝나는 시각 (없을 수 있어요)
+    // 종료 시각 (없으면 null)
     private LocalDateTime endDatetime;
 
     private LocalDateTime createdAt;

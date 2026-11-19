@@ -9,7 +9,7 @@ public record BlockSyncResponse(
 
     List<BlockSyncResult> blocks,
 
-    // 저장 뒤 페이지 버전 (다음 저장 때 baseVersion으로 보내요)
+    // 저장 후 페이지 버전 (다음 저장의 baseVersion)
     Long version
 
 ) {

@@ -27,7 +27,7 @@ public record AssigneeItem(
         );
     }
 
-    // MyBatis 조회 결과(TaskAssigneeVO)로 만들어요 (조인으로 이름·이미지가 이미 들어 있어요)
+    // TaskAssigneeVO 기반 생성
     public static AssigneeItem from(TaskAssigneeVO assignee) {
         return new AssigneeItem(
             assignee.getUserId(),

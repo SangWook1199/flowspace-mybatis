@@ -11,7 +11,7 @@ import com.flowspace.page.dto.response.PageDetailResponse;
 import com.flowspace.page.dto.response.PageResponse;
 import org.springframework.web.multipart.MultipartFile;
 
-// PageServiceImpl가 실제 동작을 맡아요. Controller와 다른 서비스는 이 인터페이스만 알아요.
+// 페이지 서비스
 public interface PageService {
 
     // 페이지 생성

@@ -75,7 +75,7 @@ import com.flowspace.repository.FileRepository;
 @Transactional
 public class PageServiceImpl implements PageService {
 
-    // ↓ 아직 JPA인 기능(영구 삭제·휴지통 비우기·복제·상세 조회)에서 써요. 블록을 바꿀 때 함께 정리해요.
+    // ↓ JPA 기능용 (영구 삭제·휴지통 비우기·복제·상세 조회, 해당 기능 전환 후 정리)
     private final PageRepository pageRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
@@ -93,7 +93,7 @@ public class PageServiceImpl implements PageService {
     private final ActivityService activityService;
     private final WorkspaceService workspaceService;
 
-    // 페이지 SQL (같은 패키지라 import가 없어요)
+    // 페이지 SQL
     private final PageMapper pageMapper;
     private final CommentService commentService;
 
@@ -103,7 +103,6 @@ public class PageServiceImpl implements PageService {
     @Override
     public PageResponse createPage(Long workspaceId, PageCreateRequest request, String email) {
 
-        // 워크스페이스가 있는지, 만드는 사람이 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
         workspaceService.getWorkspace(workspaceId, email);
 
         Long parentId = request.parentPageId();
@@ -121,7 +120,6 @@ public class PageServiceImpl implements PageService {
         page.setParentPageId(parentId);
         page.setTitle(request.title());
         page.setIcon(request.icon());
-        // 같은 상위 페이지 안에서 맨 뒤에 둬요
         page.setPosition(pageMapper.selectSiblingCount(workspaceId, parentId));
         page.setCreatedBy(findUserId(email));
 
@@ -154,7 +152,7 @@ public class PageServiceImpl implements PageService {
         return PageResponse.from(page);
     }
 
-    // 페이지 수정 (상위 페이지를 비우면 최상위로 옮겨져요)
+    // 페이지 수정 (상위 페이지가 null이면 최상위로 이동)
     @Override
     public PageResponse updatePage(Long pageId, PageUpdateRequest request, String email) {
 
@@ -189,8 +187,6 @@ public class PageServiceImpl implements PageService {
         PageVO page = findActivePage(pageId);
         workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        // 하위 페이지도 같은 시각으로 함께 휴지통에 보내요. 이미 휴지통에 있던 하위 페이지는
-        // 삭제 시각을 덮어쓰지 않아요(복원할 때 함께 삭제된 묶음을 구분하기 위해서예요).
         List<PageVO> subtree = pageMapper.selectPageSubtree(pageId);
 
         List<Long> subtreeIds = subtree.stream().map(PageVO::getPageId).toList();
@@ -198,7 +194,6 @@ public class PageServiceImpl implements PageService {
         List<Long> targetIds = subtree.stream().filter(target -> !Boolean.TRUE.equals(target.getIsDeleted()))
             .map(PageVO::getPageId).toList();
 
-        // 다른 페이지의 데이터베이스에서 이 페이지들을 가리키는 행을 먼저 지워요(XML 주석에 이유가 있어요)
         pageMapper.deleteOutsideDatabaseRows(targetIds, subtreeIds);
 
         pageMapper.updatePagesTrashed(targetIds, LocalDateTime.now());
@@ -226,12 +221,10 @@ public class PageServiceImpl implements PageService {
 
         workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
-        // 상위 페이지가 아직 휴지통에 있으면 사이드바에서 보이지 않으니 최상위 맨 뒤로 올려요.
         if (Boolean.TRUE.equals(page.getParentDeleted())) {
             pageMapper.updatePageParent(pageId, null, pageMapper.selectSiblingCount(page.getWorkspaceId(), null));
         }
 
-        // 이 페이지와 같은 시각에 함께 삭제된 하위 페이지만 복원해요.
         LocalDateTime deletedAt = page.getDeletedAt();
 
         List<Long> targetIds = pageMapper.selectPageSubtree(pageId).stream()
@@ -254,7 +247,6 @@ public class PageServiceImpl implements PageService {
         Page page = pageRepository.findByPageIdAndIsDeletedTrue(pageId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
 
-        // 되돌릴 수 없는 작업이라 관리자 이상만 할 수 있어요. (휴지통으로 보내기·복원·조회는 멤버 모두 가능)
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
@@ -264,14 +256,12 @@ public class PageServiceImpl implements PageService {
 
         List<Page> subtree = collectSubtree(page);
 
-        // 회고 페이지가 하위에 있으면 FK 연쇄 삭제로 회고가 함께 사라지므로 막아요.
         for (Page target : subtree) {
             if (retrospectiveRepository.existsByPage(target)) {
                 throw new FlowSpaceException(ErrorCode.RETROSPECTIVE_PAGE_PROTECTED);
             }
         }
 
-        // 하위 페이지부터 지워야 DB 연쇄 삭제와 겹치지 않아요.
         List<Page> ordered = new ArrayList<>(subtree);
         Collections.reverse(ordered);
 
@@ -290,7 +280,6 @@ public class PageServiceImpl implements PageService {
         Workspace workspace = workspaceRepository.findById(workspaceId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        // 되돌릴 수 없는 작업이라 관리자 이상만 할 수 있어요.
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
@@ -314,7 +303,7 @@ public class PageServiceImpl implements PageService {
         return expired.size();
     }
 
-    // 주어진 휴지통 페이지들을 실제로 삭제해요 (회고 페이지와 그 상위 페이지는 남겨둠)
+    // 휴지통 페이지 영구 삭제 (회고 페이지와 그 상위 페이지는 유지)
     private void purgeTrashed(List<Page> trashed) {
 
         Map<Long, Page> trashedById = new HashMap<>();
@@ -322,7 +311,6 @@ public class PageServiceImpl implements PageService {
             trashedById.put(page.getPageId(), page);
         }
 
-        // 회고 페이지와 그 상위 페이지는 삭제하지 않아요.
         Set<Long> protectedIds = new HashSet<>();
         for (Page page : trashed) {
             if (!retrospectiveRepository.existsByPage(page)) {
@@ -336,7 +324,6 @@ public class PageServiceImpl implements PageService {
             }
         }
 
-        // 깊은 페이지부터 지워야 DB 연쇄 삭제와 겹치지 않아요.
         List<Page> targets = new ArrayList<>(trashed);
         targets.removeIf(page -> protectedIds.contains(page.getPageId()));
         targets.sort((a, b) -> depthOf(b) - depthOf(a));
@@ -355,8 +342,6 @@ public class PageServiceImpl implements PageService {
             files.add(page.getCoverFile());
         }
 
-        // 블록을 엔티티로 읽지 않고 이미지 파일만 읽어요. 블록을 읽어 두면 아래에서 페이지를 지울 때
-        // "삭제된 Page를 가리키는 Block"이라는 flush 오류가 나서 휴지통 비우기가 실패했어요.
         for (File imageFile : blockRepository.findImageFilesByPage(page)) {
             if (!files.contains(imageFile)) {
                 files.add(imageFile);
@@ -422,7 +407,7 @@ public class PageServiceImpl implements PageService {
         return (int) count;
     }
 
-    // 페이지 순서 변경 (같은 상위 페이지 아래의 페이지들만 한 번에 바꿀 수 있어요)
+    // 페이지 순서 변경 (같은 상위 페이지 아래의 페이지만)
     @Override
     public void reorderPages(Long workspaceId, PageReorderRequest request, String email) {
 
@@ -434,14 +419,12 @@ public class PageServiceImpl implements PageService {
             throw new FlowSpaceException(ErrorCode.INVALID_PAGE_REORDER);
         }
 
-        // 페이지마다 따로 읽지 않고 한 번에 읽어서 번호로 찾아요
         Map<Long, PageVO> pages = new HashMap<>();
 
         for (PageVO page : pageMapper.selectPageListByIds(pageIds)) {
             pages.put(page.getPageId(), page);
         }
 
-        // 먼저 모두 확인하고, 문제가 없을 때만 순서를 바꿔요
         Long parentId = null;
 
         for (int i = 0; i < pageIds.size(); i++) {
@@ -485,7 +468,6 @@ public class PageServiceImpl implements PageService {
 
         List<Page> sources = collectActiveSubtree(source);
 
-        // 복제본의 상위 페이지 (지정하지 않으면 원본과 같은 위치)
         Page newParent = source.getParentPage();
 
         if (request != null && request.parentPageId() != null) {
@@ -504,7 +486,6 @@ public class PageServiceImpl implements PageService {
             }
         }
 
-        // 1단계: 페이지 복사 (상위 페이지가 먼저 만들어지는 순서)
         Map<Long, Page> copies = new LinkedHashMap<>();
 
         for (Page target : sources) {
@@ -524,7 +505,6 @@ public class PageServiceImpl implements PageService {
             copies.put(target.getPageId(), pageRepository.save(copy));
         }
 
-        // 2단계: 블록 복사 (하위 페이지 연결과 데이터베이스 행의 페이지는 복제본으로 바꿔요)
         for (Page target : sources) {
             copyBlocks(target, copies.get(target.getPageId()), copies, user);
         }
@@ -564,7 +544,6 @@ public class PageServiceImpl implements PageService {
             }
         }
 
-        // 블록 부모 관계 복원
         for (Block block : blocks) {
             if (block.getParentBlock() != null) {
                 blockCopies.get(block.getBlockId())
@@ -600,7 +579,6 @@ public class PageServiceImpl implements PageService {
 
         for (BlockDatabaseRow row : blockDatabaseRowRepository.findByDatabaseOrderByPositionAsc(source)) {
 
-            // 행 페이지가 이번에 같이 복제된 페이지면 복제본을, 아니면 원래 페이지를 그대로 연결해요.
             Page rowPage = row.getPage() == null ? null
                 : pageCopies.getOrDefault(row.getPage().getPageId(), row.getPage());
 
@@ -665,7 +643,6 @@ public class PageServiceImpl implements PageService {
 
         List<Block> blocks = blockRepository.findWithImageAndDatabaseByPageOrderByPositionAsc(page);
 
-        // 댓글·대댓글은 블록마다 따로 읽지 않고 한 번에 읽어서 블록 id별로 나눠 담아요(댓글 서비스가 해요).
         Map<Long, List<CommentResponse>> commentsByBlock =
             commentService.getBlockCommentMap(blocks.stream().map(Block::getBlockId).toList());
 
@@ -679,7 +656,7 @@ public class PageServiceImpl implements PageService {
         return PageDetailResponse.from(page, blockItems, childPages);
     }
 
-    // 페이지 커버 업로드 (새 파일을 저장하기 전에 기존 커버를 지워요)
+    // 페이지 커버 업로드 (기존 커버 삭제 후 저장)
     @Override
     public PageResponse uploadCover(Long pageId, MultipartFile file, String email) {
 
@@ -705,7 +682,6 @@ public class PageServiceImpl implements PageService {
         workspaceService.getWorkspace(page.getWorkspaceId(), email);
 
         if (page.getCoverFileId() != null) {
-            // 파일 행을 지우면 DB가 cover_file_id를 NULL로 바꾸지만(외래키), 읽는 사람이 알기 쉽게 직접 비워요
             fileService.delete(page.getCoverFileId());
             pageMapper.updatePageCover(pageId, null);
         }
@@ -731,20 +707,20 @@ public class PageServiceImpl implements PageService {
         return toResponse(pageId);
     }
 
-    // 파일은 MyBatis(FileService)로 저장해서 번호만 있어요. 페이지·블록은 아직 JPA라 그 번호를 가리키는 엔티티로 바꿔요.
-    // getReferenceById는 DB를 바로 읽지 않고, 값을 쓸 때 읽어요. (원본이 없어 복사하지 못했으면 null)
+    // FileVO를 JPA File 엔티티 참조로 변환 (복제 전환 후 삭제)
+    // getReferenceById는 실제 사용 시점에 조회, 원본이 없으면 null
     private File fileEntity(FileVO file) {
         return file == null ? null : fileRepository.getReferenceById(file.getFileId());
     }
 
-    // 페이지 하나를 응답으로 바꿔요 (회고 페이지 여부를 함께 담아요)
+    // 페이지 엔티티 응답 변환 (회고 페이지 여부 포함)
     private PageResponse toResponse(Page page) {
         return PageResponse.from(page, retrospectiveRepository.existsByPage(page));
     }
 
     // ---------- MyBatis로 바꾼 기능의 도우미 ----------
 
-    // 페이지 한 개 (휴지통에 있어도 돼요, 없으면 예외)
+    // 페이지 한 개 (휴지통 포함, 없으면 예외)
     private PageVO findPage(Long pageId) {
 
         PageVO page = pageMapper.selectPageById(pageId);
@@ -756,7 +732,7 @@ public class PageServiceImpl implements PageService {
         return page;
     }
 
-    // 휴지통에 있지 않은 페이지 (휴지통에 있으면 없는 것으로 봐요)
+    // 휴지통에 없는 페이지 (휴지통이면 PAGE_NOT_FOUND)
     private PageVO findActivePage(Long pageId) {
 
         PageVO page = findPage(pageId);
@@ -779,7 +755,7 @@ public class PageServiceImpl implements PageService {
         return userId;
     }
 
-    // 순환 참조 검증: 새 상위 페이지에서 위로 올라가다가 자기 자신을 만나면, 자기 하위 페이지 아래로 옮기려는 거예요
+    // 순환 참조 검증 (새 상위 페이지에서 올라가며 자기 자신 확인)
     private void validateParentHierarchy(Long pageId, Long parentId) {
 
         Long current = parentId;
@@ -794,7 +770,7 @@ public class PageServiceImpl implements PageService {
         }
     }
 
-    // 바뀐 값(수정 시각, 커버 주소 등)을 담으려고 다시 읽어서 응답으로 만들어요
+    // 변경 후 다시 조회해 응답 생성 (수정 시각, 커버 주소 반영)
     private PageResponse toResponse(Long pageId) {
         return PageResponse.from(findPage(pageId));
     }

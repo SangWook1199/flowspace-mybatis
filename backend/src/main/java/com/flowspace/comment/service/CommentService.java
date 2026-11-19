@@ -7,7 +7,7 @@ import com.flowspace.comment.dto.request.CommentCreateRequest;
 import com.flowspace.comment.dto.request.CommentUpdateRequest;
 import com.flowspace.comment.dto.response.CommentResponse;
 
-// 댓글 기능의 목록이에요. 실제 동작은 service.impl의 CommentServiceImpl에 있어요.
+// 댓글 서비스
 public interface CommentService {
 
     // Task 댓글 작성
@@ -28,7 +28,7 @@ public interface CommentService {
     // 댓글 삭제
     void deleteComment(Long commentId, String email);
 
-    // ---------- 다른 서비스가 상세 화면에 댓글을 함께 보여줄 때 (권한 확인은 부르는 쪽이 해요) ----------
+    // ---------- 상세 화면용 댓글 조회 (권한 확인은 호출하는 쪽에서) ----------
 
     // 작업 번호 → 그 작업의 댓글(답글 포함)
     Map<Long, List<CommentResponse>> getTaskCommentMap(List<Long> taskIds);

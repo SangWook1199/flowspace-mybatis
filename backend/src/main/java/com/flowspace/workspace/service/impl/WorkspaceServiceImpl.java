@@ -34,7 +34,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         private final NotificationService notificationService;
         private final PresenceService presenceService;
 
-        // 워크스페이스 조회용 MyBatis Mapper (같은 패키지라 import가 없어요)
+        // 워크스페이스 SQL
         private final WorkspaceMapper workspaceMapper;
 
         // 워크스페이스 생성
@@ -55,7 +55,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
         }
 
-        // 아이콘 값 정리: 비어 있으면 null(아이콘 없음), 아니면 앞뒤 공백을 지워요.
+        // 아이콘 값 정리 (비어 있으면 null, 아니면 앞뒤 공백 제거)
         private String normalizeIcon(String icon) {
                 return icon == null || icon.isBlank() ? null : icon.trim();
         }
@@ -80,13 +80,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 workspace.setColor(request.color());
                 workspace.setIcon(normalizeIcon(request.icon()));
 
-                // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
                 workspaceMapper.updateWorkspace(workspace);
 
                 return WorkspaceResponse.from(workspace, role);
         }
 
-        // 개인 워크스페이스 생성 (회원가입 전용). 새 워크스페이스 번호를 돌려줘요.
+        // 개인 워크스페이스 생성 (회원가입 전용, 워크스페이스 번호 반환)
         @Override
         public Long createPersonalWorkspace(Long userId, String nickname) {
 
@@ -105,14 +104,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 workspace.setOwnerId(ownerId);
 
-                // INSERT가 끝나면 DB가 만든 번호가 workspace.getWorkspaceId()에 들어 있어요
                 workspaceMapper.insertWorkspace(workspace);
 
-                // 소유자 멤버와 기본 상태 3개를 프로시저 한 번으로 연결해요
                 workspaceMapper.insertWorkspaceInit(workspace.getWorkspaceId(), ownerId);
 
-                // 이제 회원가입(AuthService)이 사용자 엔티티를 들고 바꾸지 않아서 SQL로 바꿔도 덮어쓰이지 않아요.
-                // (워크스페이스 생성에서 읽는 사용자 엔티티도 값을 바꾸지 않아서 JPA가 다시 쓰지 않아요.)
                 workspaceMapper.updateUserLastWorkspace(ownerId, workspace.getWorkspaceId());
         }
 
@@ -124,7 +119,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                // 워크스페이스와 내 역할을 프로시저 한 번으로 가져와요
                 return workspaceMapper.selectMyWorkspaceList(user.getUserId()).stream()
                         .map(workspace -> WorkspaceResponse.from(workspace, workspace.getRole())).toList();
         }
@@ -139,7 +133,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                // 테이블 하나씩만 읽으면 돼서 프로시저 없이 XML SQL 두 번으로 해요
                 WorkspaceRole role = findMemberRole(workspaceId, user);
 
                 return WorkspaceResponse.from(workspace, role);
@@ -154,7 +147,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 WorkspaceVO workspace = findWorkspace(workspaceId);
 
-                // 멤버 초대는 관리자 이상만 할 수 있어요.
                 if (!findMemberRole(workspaceId, inviter).isAtLeast(WorkspaceRole.ADMIN)) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
@@ -162,7 +154,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User invitee = userRepository.findByEmail(request.email())
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                // 멤버 확인 SQL을 그대로 써요: 역할이 있으면 이미 멤버예요
                 if (workspaceMapper.selectMemberRole(workspaceId, invitee.getUserId()) != null) {
                         throw new FlowSpaceException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
                 }
@@ -179,8 +170,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 workspaceMapper.insertInvite(invite);
 
-                // 초대받은 사람에게 알림 (알림창에서 바로 수락/거절할 수 있어요)
-                // 알림 기능은 아직 JPA라서 워크스페이스를 번호만 가진 엔티티로 넘겨요
                 notificationService.send(invitee.getUserId(), inviter.getUserId(), workspaceId,
                         NotificationType.WORKSPACE_INVITE,
                         inviter.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스에 초대했어요.",
@@ -209,15 +198,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 InviteVO invite = findMyPendingInvite(inviteId, user);
 
-                // 멤버 추가와 초대 상태 변경은 각각 테이블 하나라서 XML SQL 두 번이에요.
-                // 같은 트랜잭션이라 둘 중 하나가 실패하면 둘 다 취소돼요.
                 workspaceMapper.insertWorkspaceMember(invite.getWorkspaceId(), user.getUserId(), WorkspaceRole.MEMBER);
                 workspaceMapper.updateInviteStatus(inviteId, InviteStatus.ACCEPTED);
 
-                // 읽어 둔 사용자 엔티티는 값을 바꾸지 않아서, SQL로 바꿔도 JPA가 덮어쓰지 않아요(7-3단계와 같은 이유)
                 workspaceMapper.updateUserLastWorkspace(user.getUserId(), invite.getWorkspaceId());
 
-                // 받은 초대 알림은 읽음 처리하고, 초대한 사람에게 수락했다고 알려요.
                 notificationService.markReadByRef(user.getUserId(), NotificationType.WORKSPACE_INVITE, inviteId);
                 notificationService.send(invite.getInviterId(), user.getUserId(), invite.getWorkspaceId(),
                         NotificationType.INVITE_ACCEPTED,
@@ -276,13 +261,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 findWorkspace(workspaceId);
                 findMemberRole(workspaceId, user);
 
-                // 접속 중인지는 DB가 아니라 서버 메모리(PresenceService)에 있어서 자바에서 붙여요
                 return workspaceMapper.selectWorkspaceMemberList(workspaceId).stream()
                         .map(member -> WorkspaceMemberResponse.from(member, presenceService.isOnline(member.getUserId())))
                         .toList();
         }
 
-        // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버끼리만 볼 수 있고, 이 워크스페이스 안의 정보만 보여줘요)
+        // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버만, 해당 워크스페이스 정보만)
         @Transactional(readOnly = true)
         @Override
         public MemberProfileResponse getMemberProfile(Long workspaceId, Long userId, String email) {
@@ -307,7 +291,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         .selectMemberOpenTaskList(workspaceId, userId, PROFILE_TASK_LIMIT).stream()
                         .map(MemberProfileResponse.TaskItem::from).toList();
 
-                // 진행 중·완료 수를 따로 세던 것을 프로시저 한 번으로 세요
                 MemberTaskCountVO count = workspaceMapper.selectMemberTaskCount(workspaceId, userId);
 
                 return new MemberProfileResponse(member.getUserId(), member.getNickname(), member.getEmail(),
@@ -332,12 +315,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 User targetUser = userRepository.findById(request.userId())
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-                // 넘겨받을 사람도 이 워크스페이스 멤버여야 해요
                 if (workspaceMapper.selectMemberRole(workspaceId, targetUser.getUserId()) == null) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                // 세 줄 모두 테이블 하나씩이고 값은 자바가 알고 있어서 XML SQL로 해요(같은 트랜잭션이라 함께 반영·취소돼요)
                 workspaceMapper.updateMemberRole(workspaceId, user.getUserId(), WorkspaceRole.MEMBER);
                 workspaceMapper.updateMemberRole(workspaceId, targetUser.getUserId(), WorkspaceRole.OWNER);
                 workspaceMapper.updateWorkspaceOwner(workspaceId, targetUser.getUserId());
@@ -361,16 +342,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                // 내가 속한 워크스페이스가 이것 하나뿐이면 삭제할 수 없어요(앱을 쓸 곳이 없어져요).
                 if (workspaceMapper.selectMyWorkspaceCount(user.getUserId()) <= 1) {
                         throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
 
-                // 작업을 먼저 지우고 워크스페이스를 지우는 일을 프로시저 한 번으로 해요
                 workspaceMapper.deleteWorkspace(workspaceId);
         }
 
-        // 워크스페이스 멤버 추방 (관리자는 일반 멤버만, 소유자는 관리자·멤버를 내보낼 수 있어요)
+        // 워크스페이스 멤버 추방 (관리자는 일반 멤버만, 소유자는 관리자·멤버 추방 가능)
         @Override
         public void removeMember(Long workspaceId, Long userId, String email) {
 
@@ -398,7 +377,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.OWNER_CANNOT_REMOVE);
                 }
 
-                // 관리자는 다른 관리자를 내보낼 수 없어요. (내보내기 전에 소유자가 역할을 바꿔야 해요.)
                 if (actorRole == WorkspaceRole.ADMIN && targetRole != WorkspaceRole.MEMBER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
@@ -424,7 +402,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
-                // 소유자 자리는 소유권 이전으로만 바뀌어요.
                 if (request.role() == WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.INVALID_ROLE_CHANGE);
                 }
@@ -433,7 +410,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
                 }
 
-                // 응답에 이름·사진이 필요해서 역할만이 아니라 멤버 정보를 통째로 읽어요
                 WorkspaceMemberVO member = workspaceMapper.selectWorkspaceMember(workspaceId, userId);
 
                 if (member == null) {
@@ -446,7 +422,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
                 workspaceMapper.updateMemberRole(workspaceId, userId, request.role());
 
-                // DB가 따로 채우는 값이 없어서, 바꾼 역할을 VO에 넣어 바로 응답해요
                 member.setRole(request.role());
 
                 return WorkspaceMemberResponse.from(member, presenceService.isOnline(userId));
@@ -465,26 +440,22 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.OWNER_CANNOT_LEAVE);
                 }
 
-                // 내가 속한 워크스페이스가 이것 하나뿐이면 나갈 수 없어요.
                 if (workspaceMapper.selectMyWorkspaceCount(user.getUserId()) <= 1) {
                         throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
 
                 workspaceMapper.deleteWorkspaceMember(workspaceId, user.getUserId());
 
-                // 소유자에게 멤버가 나갔다고 알려요.
                 notificationService.send(workspace.getOwnerId(), user.getUserId(), workspaceId,
                         NotificationType.MEMBER_LEFT,
                         user.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
 
-                // 나간 곳이 마지막으로 보던 워크스페이스였다면 비워요 (SQL 조건으로 확인해요)
                 workspaceMapper.clearUserLastWorkspace(user.getUserId(), workspaceId);
         }
 
         // 워크스페이스 한 건 (없으면 예외)
         private WorkspaceVO findWorkspace(Long workspaceId) {
 
-                // MyBatis는 결과가 없으면 null을 돌려줘서 직접 확인해요
                 WorkspaceVO workspace = workspaceMapper.selectWorkspaceById(workspaceId);
 
                 if (workspace == null) {

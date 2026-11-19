@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 탈퇴 전 확인에서 쓰는, 내가 속한 워크스페이스 한 곳이에요(프로시저 sp_withdraw_check의 결과).
+// 탈퇴 전 확인용 소속 워크스페이스 (sp_withdraw_check 결과)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,7 +16,7 @@ public class WithdrawWorkspaceVO {
 
     private String name;
 
-    // 소유자에게 "멤버가 탈퇴했다"고 알릴 때 써요
+    // 소유자에게 멤버 탈퇴 알림용
     private Long ownerId;
 
     // 이 워크스페이스에서 내 역할

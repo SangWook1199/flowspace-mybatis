@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 알림 한 건이에요. 등록할 때와 조회할 때(sp_notification_list, sp_notification) 같이 써요.
+// 알림 (등록, sp_notification_list·sp_notification 조회 공용)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,7 +38,7 @@ public class NotificationVO {
 
     private LocalDateTime createdAt;
 
-    // ↓ 조회할 때만 채워져요 (조인해 온 값)
+    // ↓ 조회 전용 (조인 컬럼)
     private String workspaceName;
 
     private String actorName;

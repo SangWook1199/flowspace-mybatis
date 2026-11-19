@@ -1,6 +1,6 @@
--- 작업 한 건과 상태 이름을 조회해요. 결과 모양은 sp_task_list와 같아요.
---   인자: p_task_id  작업 번호
---   결과: 0행(없음) 또는 1행
+-- 작업 한 건 + 상태 이름 (컬럼은 sp_task_list와 동일)
+--   p_task_id  작업 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_task;
 

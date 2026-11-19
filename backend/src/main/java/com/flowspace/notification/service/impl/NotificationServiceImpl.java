@@ -37,7 +37,7 @@ public class NotificationServiceImpl implements NotificationService {
     // WebSocket으로 보내는 메시지의 type 값
     private static final String SOCKET_TYPE_NOTIFICATION = "NOTIFICATION";
 
-    // 알림 SQL (같은 패키지라 import가 없어요)
+    // 알림 SQL
     private final NotificationMapper notificationMapper;
     private final NotificationWebSocketHandler socketHandler;
 
@@ -52,7 +52,6 @@ public class NotificationServiceImpl implements NotificationService {
             return;
         }
 
-        // 내가 일으킨 일은 나에게 알리지 않아요
         if (Objects.equals(actorId, recipientId)) {
             return;
         }
@@ -68,7 +67,6 @@ public class NotificationServiceImpl implements NotificationService {
 
         notificationMapper.insertNotification(notification);
 
-        // 화면에 보낼 모양(워크스페이스·보낸 사람 이름, 만든 시각)은 DB에 있어서 다시 조회해요
         publish(recipientId, NotificationResponse.from(notificationMapper.selectNotificationById(
             notification.getNotificationId())));
     }
@@ -78,7 +76,6 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendAll(Collection<Long> recipientIds, Long actorId, Long workspaceId, NotificationType type,
         String message, Long refId, String linkPath) {
 
-        // 같은 사람은 한 번만 (순서는 그대로)
         Set<Long> unique = new LinkedHashSet<>();
 
         for (Long recipientId : recipientIds) {
@@ -108,7 +105,6 @@ public class NotificationServiceImpl implements NotificationService {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
 
-        // 다음 페이지가 있는지 알려고 한 개 더 가져와요 (전체 개수를 세는 쿼리를 따로 보내지 않아요)
         List<NotificationVO> rows = notificationMapper.selectNotificationList(userId, safePage * safeSize,
             safeSize + 1);
 
@@ -159,7 +155,6 @@ public class NotificationServiceImpl implements NotificationService {
 
             String when = plusDays == 0 ? "오늘" : "내일";
 
-            // 마감이 그날인 작업의 담당자를 한 번에 읽어요. 오늘 이미 받은 사람은 프로시저가 빼 줘요.
             for (DueSoonTargetVO target : notificationMapper.selectDueSoonTargetList(today.plusDays(plusDays),
                 startOfToday)) {
 
@@ -181,7 +176,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     // ---------- 공통 ----------
 
-    // 커밋된 뒤에 보내요(롤백된 알림이 화면에 뜨지 않게). 트랜잭션 밖이면 바로 보내요.
+    // 커밋 후 전송 (롤백된 알림 표시 방지), 트랜잭션 밖이면 즉시 전송
     private void publish(Long userId, NotificationResponse payload) {
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -211,7 +206,7 @@ public class NotificationServiceImpl implements NotificationService {
         return userId;
     }
 
-    // 내 알림만 다룰 수 있어요
+    // 본인 알림만 처리 가능
     private void checkOwnNotification(Long notificationId, String email) {
 
         Long ownerId = notificationMapper.selectNotificationUserId(notificationId);

@@ -10,7 +10,7 @@ public record ProfileUpdateRequest(
     @Size(max = 30)
     String nickname,
 
-    // 한 줄 소개 (비우면 지워져요)
+    // 한 줄 소개 (비우면 삭제)
     @Size(max = 100)
     String bio
 

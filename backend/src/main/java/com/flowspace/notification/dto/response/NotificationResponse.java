@@ -6,7 +6,7 @@ import com.flowspace.notification.service.NotificationVO;
 
 // @formatter:off
 
-// 알림 응답 DTO (WebSocket으로 보내는 알림도 같은 모양이에요. createdAt은 ISO 문자열이에요.)
+// 알림 응답 DTO (WebSocket 알림도 같은 형식, createdAt은 ISO 문자열)
 public record NotificationResponse(
 
     Long notificationId,
@@ -47,7 +47,7 @@ public record NotificationResponse(
         );
     }
 
-    // MyBatis 조회 결과(NotificationVO)로 응답을 만들어요 (조인으로 워크스페이스·보낸 사람 이름이 들어 있어요)
+    // NotificationVO 기반 응답 생성
     public static NotificationResponse from(NotificationVO notification) {
         return new NotificationResponse(
             notification.getNotificationId(),

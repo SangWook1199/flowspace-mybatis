@@ -11,7 +11,7 @@
 
     <!-- ==================== 조회 ==================== -->
 
-    <!-- 페이지 목록. 커버·회고·상위 페이지 조인은 프로시저 안에서 해요(backend/database/procedures/page). -->
+    <!-- 페이지 목록 (sp_page_list) -->
     <select id="selectPageList" statementType="CALLABLE" resultType="com.flowspace.page.service.PageVO">
         {call sp_page_list(#{workspaceId}, #{deleted})}
     </select>
@@ -46,8 +46,7 @@
         WHERE page_id = #{pageId}
     </select>
 
-    <!-- 같은 상위 페이지 아래의 페이지 수. <=> 는 NULL끼리도 같다고 봐요 (NULL이면 최상위).
-         XML에서는 < 가 태그의 시작으로 읽혀서 CDATA로 감싸요. -->
+    <!-- 같은 상위 페이지 아래의 페이지 수 (<=>: NULL끼리 같음, XML에서는 CDATA 처리) -->
     <select id="selectSiblingCount" resultType="int">
         SELECT COUNT(*)
         FROM pages
@@ -58,14 +57,14 @@
 
     <!-- ==================== 등록·수정 ==================== -->
 
-    <!-- 페이지 등록. 휴지통 여부(FALSE)·버전(0)·만든 시각은 DB 기본값을 써요. -->
+    <!-- 페이지 등록 (휴지통 여부·버전·생성 시각은 DB 기본값) -->
     <insert id="insertPage" parameterType="com.flowspace.page.service.PageVO"
             useGeneratedKeys="true" keyProperty="pageId">
         INSERT INTO pages (workspace_id, parent_page_id, title, icon, position, created_by)
         VALUES (#{workspaceId}, #{parentPageId}, #{title}, #{icon}, #{position}, #{createdBy})
     </insert>
 
-    <!-- 제목·아이콘·상위 페이지 수정. 상위 페이지를 비우면(null) 최상위로 옮겨져요. -->
+    <!-- 제목·아이콘·상위 페이지 수정 (상위 페이지 null이면 최상위) -->
     <update id="updatePage" parameterType="com.flowspace.page.service.PageVO">
         UPDATE pages
         SET title          = #{title},
@@ -98,7 +97,7 @@
 
     <!-- ==================== 휴지통 ==================== -->
 
-    <!-- 여러 페이지를 같은 시각으로 휴지통에 보내요 (같은 시각 = 함께 지운 묶음이라 복원할 때 같이 돌아와요) -->
+    <!-- 여러 페이지 휴지통 이동 (같은 삭제 시각 = 함께 복원되는 묶음) -->
     <update id="updatePagesTrashed">
         UPDATE pages
         SET is_deleted = TRUE,
@@ -120,9 +119,7 @@
         </foreach>
     </update>
 
-    <!-- 데이터베이스 행 = 페이지라서, 휴지통에 가는 페이지를 가리키는 다른 페이지의 데이터베이스 행을 지워요(셀은 DB가 함께 지워요).
-         단, 같이 휴지통에 가는 페이지들 안의 데이터베이스는 그대로 둬요 — 복원했을 때 표가 온전히 돌아와야 해서요.
-         행 → 데이터베이스 → 블록으로 이어 그 데이터베이스가 어느 페이지에 있는지 찾아요. -->
+    <!-- 휴지통으로 가는 페이지를 가리키는 데이터베이스 행 삭제 (함께 이동하는 페이지 안의 데이터베이스는 제외, 셀은 연쇄 삭제) -->
     <delete id="deleteOutsideDatabaseRows">
         DELETE r
           FROM block_database_rows r

@@ -1,7 +1,6 @@
--- 워크스페이스의 작업 상태(칸반 열) 목록을 조회해요.
--- 상태 정보(task_statuses)와 워크스페이스별 순서·WIP 제한(workspace_task_statuses)을 조인해요.
---   인자: p_workspace_id  워크스페이스 번호
---   결과: 상태 한 개당 한 행. 칸반 열 순서(position) 순.
+-- 워크스페이스 작업 상태(칸반 열) 목록 (task_statuses + workspace_task_statuses)
+--   p_workspace_id  워크스페이스 번호
+-- 결과: 상태당 한 행, position 순
 
 DROP PROCEDURE IF EXISTS sp_task_status_list;
 

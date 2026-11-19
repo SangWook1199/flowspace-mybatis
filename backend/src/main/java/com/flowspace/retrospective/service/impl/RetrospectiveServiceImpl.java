@@ -43,12 +43,12 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    // 회고 SQL (같은 패키지라 import가 없어요)
+    // 회고 SQL
     private final RetrospectiveMapper retrospectiveMapper;
     private final WorkspaceService workspaceService;
     private final ActivityService activityService;
 
-    // 회고 페이지 내용(블록)은 아직 JPA인 페이지 서비스가 보여줘요
+    // 회고 페이지 내용 조회용 (JPA 페이지 서비스)
     private final PageService pageService;
 
     // 회고 단건 조회
@@ -63,12 +63,10 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
 
         Long workspaceId = retrospective.getWorkspaceId();
 
-        // 워크스페이스 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
         workspaceService.getWorkspace(workspaceId, email);
 
         List<TaskSnapshotVO> snapshots = retrospectiveMapper.selectTaskSnapshotList(workspaceId, retrospectiveId);
 
-        // 담당자·하위 작업은 스냅샷마다 따로 읽지 않고 한 번에 읽어서 스냅샷 번호별로 나눠 담아요.
         Map<Long, List<TaskSnapshotAssigneeVO>> assigneesBySnapshot = retrospectiveMapper
             .selectTaskSnapshotAssigneeList(workspaceId, retrospectiveId).stream()
             .collect(Collectors.groupingBy(TaskSnapshotAssigneeVO::getSnapshotId));
@@ -99,14 +97,12 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
 
         workspaceService.getWorkspace(workspaceId, email);
 
-        // 스프린트마다 한 행이에요. 회고가 없는 스프린트는 회고 칸이 비어 있어요.
         List<RetrospectiveVO> rows = retrospectiveMapper.selectRetrospectiveList(workspaceId);
 
         if (rows.isEmpty()) {
             return List.of();
         }
 
-        // 스프린트마다 따로 읽지 않고, 워크스페이스의 스냅샷·담당자를 한 번에 읽어요(회고 번호 자리에 null).
         Map<Long, List<TaskSnapshotVO>> snapshotsByRetrospective = retrospectiveMapper
             .selectTaskSnapshotList(workspaceId, null).stream()
             .collect(Collectors.groupingBy(TaskSnapshotVO::getRetrospectiveId));
@@ -139,7 +135,6 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
         Long retrospectiveId = retrospectiveMapper.selectRetrospectiveIdBySprint(sprintId);
 
         if (retrospectiveId == null) {
-            // 스프린트가 없는 것과, 스프린트는 있지만 회고가 아직 없는 것을 나눠서 알려줘요
             if (retrospectiveMapper.selectSprintCount(sprintId) == 0) {
                 throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
             }
@@ -150,7 +145,7 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
         return getRetrospective(retrospectiveId, email);
     }
 
-    // 회고 만들기: 페이지·KPT 표·스냅샷은 프로시저 한 번으로 만들고, 활동 기록은 자바에서 남겨요
+    // 회고 생성: 페이지·KPT 표·스냅샷은 프로시저, 활동 기록은 Java
     @Transactional
     @Override
     public void createRetrospective(Long sprintId, Long workspaceId, String sprintName, Long userId) {
@@ -169,7 +164,6 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
 
         retrospectiveMapper.insertRetrospective(retrospective);
 
-        // 프로시저가 OUT 인자로 돌려준 회고 페이지 번호가 pageId에 들어 있어요
         activityService.log(workspaceId, userId, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE,
             retrospective.getPageId());
     }
@@ -179,7 +173,6 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
 
         Map<Long, Integer> result = new HashMap<>();
 
-        // 목록이 비면 IN ()이 되어 SQL 오류가 나서 여기서 끝내요
         if (pageIds.isEmpty()) {
             return result;
         }
@@ -194,7 +187,7 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
         return result;
     }
 
-    // TODO 블록이 체크됐는지 (형식이 올바르지 않은 content는 미완료로 계산해요)
+    // TODO 블록 체크 여부 (형식 오류는 미완료)
     private boolean isChecked(String content) {
 
         try {
@@ -205,8 +198,7 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
         }
     }
 
-    // 회고 스냅샷에는 상태의 이름만 남아 있어서 이름으로 "완료"를 알아봐요.
-    // 기본 상태 이름이 DONE에서 "완료"로 바뀌었고, 예전에 만든 회고에는 DONE이 그대로 남아 있어서 둘 다 봐요.
+    // 완료 상태 이름 확인 (스냅샷에는 상태 이름만 저장, 예전 회고의 DONE과 현재 "완료" 모두 인정)
     private static boolean isDoneStatusName(String name) {
         return "DONE".equals(name) || "완료".equals(name);
     }
@@ -223,7 +215,6 @@ public class RetrospectiveServiceImpl implements RetrospectiveService {
 
         int completionRate = total == 0 ? 0 : Math.round((completed * 100f) / total);
 
-        // 참여자: 담당자를 한 번씩만 (처음 나온 순서대로)
         Map<Long, ParticipantItem> participantMap = new LinkedHashMap<>();
 
         for (TaskSnapshotVO snapshot : snapshots) {

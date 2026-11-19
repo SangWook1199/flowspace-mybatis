@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 // @formatter:off
 
 // 회원 탈퇴 요청 DTO
-// 이메일로 가입한 계정은 password, 구글·마이크로소프트 계정은 confirmEmail(계정 이메일을 그대로 입력)로 본인임을 확인해요.
+// 이메일 가입 계정은 password, 소셜 계정은 confirmEmail(계정 이메일)로 본인 확인
 public record WithdrawRequest(
 
     @Size(max = 100, message = "비밀번호가 너무 깁니다.")

@@ -24,16 +24,16 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class TaskAttachmentServiceImpl implements TaskAttachmentService {
 
-    // 한 작업에 붙일 수 있는 관련 문서 수예요.
+    // 작업당 관련 문서 최대 수
     static final int MAX_ATTACHMENTS_PER_TASK = 30;
 
-    // 관련 문서 SQL, 작업 SQL (같은 패키지라 import가 없어요)
+    // 관련 문서 SQL, 작업 SQL
     private final TaskAttachmentMapper taskAttachmentMapper;
     private final TaskMapper taskMapper;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
 
-    // 관련 문서 목록 (휴지통에 있는 페이지는 프로시저에서 빼고 읽어요)
+    // 관련 문서 목록 (휴지통 페이지는 프로시저에서 제외)
     @Transactional(readOnly = true)
     @Override
     public List<TaskAttachmentResponse> getAttachments(Long taskId, String email) {
@@ -57,7 +57,6 @@ public class TaskAttachmentServiceImpl implements TaskAttachmentService {
             throw new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND);
         }
 
-        // 다른 워크스페이스의 페이지는 연결할 수 없어요.
         if (!pageWorkspaceId.equals(task.getWorkspaceId())) {
             throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
         }
@@ -75,7 +74,6 @@ public class TaskAttachmentServiceImpl implements TaskAttachmentService {
 
         taskAttachmentMapper.insertTaskAttachment(attachment);
 
-        // 페이지 제목·올린 사람 이름까지 담으려고 다시 읽어요
         return TaskAttachmentResponse.from(taskAttachmentMapper.selectTaskAttachmentById(attachment.getAttachmentId()));
     }
 
@@ -99,7 +97,7 @@ public class TaskAttachmentServiceImpl implements TaskAttachmentService {
         return TaskAttachmentResponse.from(taskAttachmentMapper.selectTaskAttachmentById(attachment.getAttachmentId()));
     }
 
-    // 관련 문서 삭제 (올린 파일이면 서버의 파일도 같이 지워요)
+    // 관련 문서 삭제 (업로드 파일이면 서버 파일도 삭제)
     @Override
     public void deleteAttachment(Long taskId, Long attachmentId, String email) {
 
@@ -107,7 +105,6 @@ public class TaskAttachmentServiceImpl implements TaskAttachmentService {
 
         TaskAttachmentVO attachment = taskAttachmentMapper.selectTaskAttachmentById(attachmentId);
 
-        // 다른 작업의 관련 문서 번호로는 지울 수 없어요.
         if (attachment == null || !attachment.getTaskId().equals(taskId)) {
             throw new FlowSpaceException(ErrorCode.TASK_ATTACHMENT_NOT_FOUND);
         }
@@ -126,7 +123,7 @@ public class TaskAttachmentServiceImpl implements TaskAttachmentService {
         }
     }
 
-    // 작업을 찾고, 요청한 사람이 그 워크스페이스 멤버인지 확인해요.
+    // 작업 조회 + 요청자 워크스페이스 멤버 확인
     private TaskAndUser loadTaskForMember(Long taskId, String email) {
 
         Long userId = taskAttachmentMapper.selectUserIdByEmail(email);
@@ -141,7 +138,6 @@ public class TaskAttachmentServiceImpl implements TaskAttachmentService {
             throw new FlowSpaceException(ErrorCode.TASK_NOT_FOUND);
         }
 
-        // 워크스페이스 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
         workspaceService.getWorkspace(task.getWorkspaceId(), email);
 
         return new TaskAndUser(task, userId);

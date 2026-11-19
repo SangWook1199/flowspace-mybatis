@@ -11,7 +11,7 @@ import java.util.List;
 
 // @formatter:off
 
-// 캘린더 한 칸. 작업(TASK)과 일정(EVENT)을 같은 모양으로 내려줘요.
+// 캘린더 항목 (작업 TASK, 일정 EVENT 공통 형식)
 public record CalendarItemResponse(
 
     Long id,
@@ -27,7 +27,7 @@ public record CalendarItemResponse(
 
 ) {
 
-    // 작업: 날짜만 있어서 시작은 0시, 끝은 23시 59분으로 바꿔요. 색은 작업 상태의 색이에요.
+    // 작업 항목: 시작 0시, 종료 23시 59분, 색은 작업 상태 색
     public static CalendarItemResponse from(
         CalendarTaskVO task,
         List<TaskAssigneeVO> assignees

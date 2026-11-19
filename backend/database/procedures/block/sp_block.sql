@@ -1,6 +1,6 @@
--- 블록 한 개를 조회해요. 컬럼은 sp_block_list와 같아요(함께 고쳐요).
---   인자: p_block_id  블록 번호
---   결과: 한 행 (없으면 0행)
+-- 블록 한 개 (컬럼은 sp_block_list와 동일)
+--   p_block_id  블록 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_block;
 
@@ -25,7 +25,6 @@ BEGIN
            b.updated_by,
            b.created_at,
            b.updated_at,
-           -- 블록이 있는 페이지 (멤버 확인, 휴지통 확인에 써요)
            p.workspace_id,
            p.is_deleted     AS page_deleted
       FROM blocks b

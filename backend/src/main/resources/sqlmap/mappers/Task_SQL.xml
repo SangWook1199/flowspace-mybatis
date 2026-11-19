@@ -2,8 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.flowspace.task.service.impl.TaskMapper">
 
-    <!-- 칸반 작업 목록과 상태 이름. 조인은 프로시저 안에서 해요(backend/database/procedures/task).
-         sprintId가 null일 수 있어서 jdbcType을 적어 줘요(값이 없으면 어떤 타입의 NULL인지 알려 줘야 해요). -->
+    <!-- 칸반 작업 목록 (sp_task_list, sprintId null이면 백로그) -->
     <select id="selectTaskList" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskVO">
         {call sp_task_list(#{workspaceId}, #{sprintId, jdbcType=BIGINT})}
     </select>
@@ -14,7 +13,7 @@
         {call sp_task_assignee_list(#{workspaceId}, #{sprintId, jdbcType=BIGINT})}
     </select>
 
-    <!-- 여러 작업의 하위 작업. foreach가 taskIds를 (1, 2, 3) 모양으로 펼쳐 줘요. -->
+    <!-- 여러 작업의 하위 작업 -->
     <select id="selectSubTaskList" resultType="com.flowspace.task.service.SubTaskVO">
         SELECT subtask_id, task_id, assignee_id, content, is_completed, position
         FROM subtasks
@@ -44,15 +43,14 @@
           AND status_id = #{statusId}
     </select>
 
-    <!-- 워크스페이스에서 지금까지 쓴 가장 큰 작업 번호 (작업이 없으면 0) -->
+    <!-- 워크스페이스의 최대 작업 번호 (없으면 0) -->
     <select id="selectMaxTaskNumber" resultType="int">
         SELECT COALESCE(MAX(task_number), 0)
         FROM tasks
         WHERE workspace_id = #{workspaceId}
     </select>
 
-    <!-- 작업 등록. DB가 만든 task_id를 VO의 taskId에 넣어 줘요.
-         완료 시각은 비워 두고, 만든 시각은 DB 기본값을 써요. -->
+    <!-- 작업 등록 (생성된 task_id는 taskId에 설정, 생성 시각은 DB 기본값) -->
     <insert id="insertTask" parameterType="com.flowspace.task.service.TaskVO"
             useGeneratedKeys="true" keyProperty="taskId">
         INSERT INTO tasks (workspace_id, sprint_id, status_id, task_number, position, created_by,
@@ -95,8 +93,7 @@
         WHERE task_id = #{taskId}
     </delete>
 
-    <!-- 작업 담당자에서 빠진 사람이 맡은 하위 작업의 담당자를 비워요.
-         if: 남은 담당자가 있을 때만 NOT IN 조건을 붙여요(없으면 하위 작업 담당자를 모두 비워요). -->
+    <!-- 작업 담당자가 아닌 하위 작업 담당자 해제 (남은 담당자가 없으면 전체 해제) -->
     <update id="updateSubTaskAssigneeClear">
         UPDATE subtasks
            SET assignee_id = NULL
@@ -110,12 +107,12 @@
         </if>
     </update>
 
-    <!-- 작업 삭제. 남은 작업의 순서를 다시 매기는 것까지 프로시저 안에서 해요. -->
+    <!-- 작업 삭제 (sp_delete_task) -->
     <delete id="deleteTask" statementType="CALLABLE">
         {call sp_delete_task(#{taskId})}
     </delete>
 
-    <!-- 작업 담당자인지 확인 -->
+    <!-- 작업 담당자 여부 -->
     <select id="selectTaskAssigneeCount" resultType="int">
         SELECT COUNT(*)
         FROM task_assignees
@@ -137,7 +134,7 @@
         WHERE task_id = #{taskId}
     </select>
 
-    <!-- 하위 작업 등록. 완료 여부는 넣지 않아서 DB 기본값(FALSE)이 들어가요. -->
+    <!-- 하위 작업 등록 (is_completed는 DB 기본값) -->
     <insert id="insertSubTask" parameterType="com.flowspace.task.service.SubTaskVO"
             useGeneratedKeys="true" keyProperty="subtaskId">
         INSERT INTO subtasks (task_id, assignee_id, content, position)
@@ -166,7 +163,7 @@
         WHERE subtask_id = #{subtaskId}
     </delete>
 
-    <!-- 워크스페이스의 작업 상태 목록. 조인은 프로시저 안에서 해요. -->
+    <!-- 워크스페이스 작업 상태 목록 (sp_task_status_list) -->
     <select id="selectTaskStatusList" statementType="CALLABLE"
             resultType="com.flowspace.task.service.TaskStatusVO">
         {call sp_task_status_list(#{workspaceId})}
@@ -192,7 +189,7 @@
         VALUES (#{name}, #{category}, #{color})
     </insert>
 
-    <!-- 워크스페이스에 상태 연결. is_default는 넣지 않아서 DB 기본값(FALSE)이 들어가요. -->
+    <!-- 워크스페이스에 상태 연결 (is_default는 DB 기본값) -->
     <insert id="insertWorkspaceTaskStatus" parameterType="com.flowspace.task.service.TaskStatusVO">
         INSERT INTO workspace_task_statuses (workspace_id, status_id, position, wip_limit)
         VALUES (#{workspaceId}, #{statusId}, #{position}, #{wipLimit})
@@ -223,24 +220,23 @@
            AND status_id = #{statusId}
     </update>
 
-    <!-- 기본 상태를 새 상태로 바꿔 끼우기. wipLimit이 null일 수 있어서 jdbcType을 적어요. -->
+    <!-- 기본 상태를 새 상태로 교체 (sp_replace_default_task_status) -->
     <update id="updateDefaultTaskStatus" statementType="CALLABLE">
         {call sp_replace_default_task_status(#{workspaceId}, #{oldStatusId}, #{newStatusId},
                                              #{wipLimit, jdbcType=INTEGER})}
     </update>
 
-    <!-- 상태 삭제와 작업 이동 -->
+    <!-- 상태 삭제 + 작업 이동 (sp_delete_task_status) -->
     <delete id="deleteTaskStatus" statementType="CALLABLE">
         {call sp_delete_task_status(#{workspaceId}, #{statusId}, #{targetStatusId})}
     </delete>
 
-    <!-- 제목으로 작업 검색. 조인은 프로시저 안에서 해요. -->
+    <!-- 제목으로 작업 검색 (sp_task_search) -->
     <select id="selectTaskSearchList" statementType="CALLABLE" resultType="com.flowspace.task.service.TaskVO">
         {call sp_task_search(#{workspaceId}, #{keyword})}
     </select>
 
-    <!-- 여러 작업의 담당자. 검색 결과는 여러 스프린트에 흩어져 있어서 작업 번호 목록으로 읽어요.
-         프로시저는 목록을 인자로 받기 어려워서, 조인이지만 XML의 foreach로 했어요(sp_task_assignee_list와 같은 컬럼). -->
+    <!-- 여러 작업의 담당자 (목록 인자라 XML, sp_task_assignee_list와 같은 컬럼) -->
     <select id="selectTaskAssigneeListByTaskIds" resultType="com.flowspace.task.service.TaskAssigneeVO">
         SELECT ta.task_id,
                u.user_id,

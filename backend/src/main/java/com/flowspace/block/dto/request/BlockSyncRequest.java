@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Size;
 // 블록 일괄 동기화 요청 DTO (목록 순서가 곧 블록 순서)
 public record BlockSyncRequest(
 
-    // 내가 마지막으로 받아온 페이지 버전 (비우면 충돌 검사를 하지 않아요)
+    // 마지막으로 받은 페이지 버전 (null이면 충돌 검사 생략)
     Long baseVersion,
 
     @Valid

@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 작업 스냅샷의 하위 작업 하나예요 (sp_subtask_snapshot_list 결과).
+// 작업 스냅샷의 하위 작업 (sp_subtask_snapshot_list 결과)
 @Getter
 @Setter
 @NoArgsConstructor

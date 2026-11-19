@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class EventServiceImpl implements EventService {
 
-    // 캘린더·일정 SQL (같은 패키지라 import가 없어요)
+    // 캘린더·일정 SQL
     private final CalendarMapper calendarMapper;
     private final WorkspaceService workspaceService;
 
@@ -31,7 +31,6 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventResponse createEvent(Long workspaceId, EventCreateRequest request, String email) {
 
-        // 워크스페이스가 있는지, 만드는 사람이 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
         workspaceService.getWorkspace(workspaceId, email);
         validateEventTime(request.startDatetime(), request.endDatetime());
 
@@ -46,7 +45,6 @@ public class EventServiceImpl implements EventService {
 
         calendarMapper.insertEvent(event);
 
-        // 만든 사람 이름과 만든 시각까지 담으려고 다시 읽어요
         return EventResponse.from(findEvent(event.getEventId()));
     }
 
@@ -99,7 +97,6 @@ public class EventServiceImpl implements EventService {
 
         String search = keyword == null ? "" : keyword;
 
-        // LIKE에서 %와 _는 "아무 글자"라는 뜻이라, 입력한 글자 그대로 찾도록 앞에 \를 붙여요(작업 검색과 같아요)
         String escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 
         return calendarMapper.selectEventSearchList(workspaceId, escaped).stream()

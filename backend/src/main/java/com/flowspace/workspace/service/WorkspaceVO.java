@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// workspaces 테이블의 한 행을 담는 객체예요. 소유자는 객체가 아니라 번호로 가져요.
+// 워크스페이스 (workspaces 테이블 한 행, 소유자는 번호로 보관)
 @Getter
 @Setter
 @NoArgsConstructor

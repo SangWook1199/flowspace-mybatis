@@ -10,7 +10,7 @@ import com.flowspace.entity.enums.SprintStatus;
 import com.flowspace.sprint.service.SprintProgressVO;
 import com.flowspace.sprint.service.SprintVO;
 
-// 스프린트 DB 접근. 메서드 이름이 Sprint_SQL.xml의 id와 같아야 해요.
+// 스프린트 Mapper (Sprint_SQL.xml)
 @Mapper
 public interface SprintMapper {
 
@@ -23,22 +23,22 @@ public interface SprintMapper {
     // 스프린트 한 건과 진행 상황 (프로시저 sp_sprint_progress, 없으면 null)
     SprintProgressVO selectSprintProgressById(Long sprintId);
 
-    // 워크스페이스에서 해당 상태인 스프린트 수
-    // 인자가 두 개 이상이면 @Param 이름으로 XML의 #{workspaceId}, #{status}와 연결해요.
+    // 워크스페이스의 해당 상태 스프린트 수
+    // 인자가 둘 이상이면 @Param 이름으로 XML 파라미터와 연결
     int selectSprintCountByStatus(@Param("workspaceId") Long workspaceId, @Param("status") SprintStatus status);
 
-    // 스프린트 등록. 실행 후 DB가 만든 번호가 sprint의 sprintId에 들어가요.
+    // 스프린트 등록 (생성된 번호는 sprintId에 설정)
     int insertSprint(SprintVO sprint);
 
-    // 스프린트 수정. 바뀐 행 수를 돌려줘요.
+    // 스프린트 수정 (변경 행 수 반환)
     int updateSprint(SprintVO sprint);
 
-    // 스프린트 시작. 진행 중이던 다른 스프린트를 계획됨으로 돌리는 것까지 프로시저 sp_start_sprint가 해요.
+    // 스프린트 시작 (sp_start_sprint, 진행 중이던 스프린트는 계획으로 변경)
     void updateSprintStart(Long sprintId);
 
-    // 스프린트 완료. 끝나지 않은 작업을 백로그로 옮기는 것까지 프로시저 sp_complete_sprint가 해요.
+    // 스프린트 완료 (sp_complete_sprint, 미완료 작업은 백로그로 이동)
     void updateSprintComplete(Long sprintId);
 
-    // 스프린트 삭제. 작업을 백로그로 옮기는 것까지 프로시저 sp_delete_sprint가 해요.
+    // 스프린트 삭제 (sp_delete_sprint, 작업은 백로그로 이동)
     void deleteSprint(Long sprintId);
 }

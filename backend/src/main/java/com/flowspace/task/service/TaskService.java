@@ -19,7 +19,7 @@ import com.flowspace.task.dto.response.TaskResponse;
 import com.flowspace.task.dto.response.TaskSearchResponse;
 import com.flowspace.task.dto.response.TaskStatusResponse;
 
-// 작업(칸반) 업무 기능의 목록이에요. Controller는 이 인터페이스만 알고, 실제 동작은 service.impl의 TaskServiceImpl에 있어요.
+// 작업(칸반) 서비스
 public interface TaskService {
 
     // Task 상태 생성
@@ -40,7 +40,7 @@ public interface TaskService {
     // Task 생성
     TaskResponse createTask(Long sprintId, TaskCreateRequest request, String email);
 
-    // Backlog Task 생성 (스프린트 없이 워크스페이스에 바로 만든다)
+    // 백로그 작업 생성 (스프린트 없음)
     TaskResponse createBacklogTask(Long workspaceId, TaskCreateRequest request, String email);
 
     // 스프린트 Task 목록 조회

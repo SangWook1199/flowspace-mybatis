@@ -28,7 +28,7 @@ public class ActivityServiceImpl implements ActivityService {
 
     private static final int RECENT_SIZE = 7;
 
-    // 활동 기록 SQL (같은 패키지라 import가 없어요)
+    // 활동 기록 SQL
     private final ActivityMapper activityMapper;
     private final WorkspaceService workspaceService;
 
@@ -58,7 +58,6 @@ public class ActivityServiceImpl implements ActivityService {
     @Override
     public List<ActivityResponse> getRecentActivities(Long workspaceId, String email) {
 
-        // 워크스페이스가 있는지, 보는 사람이 멤버인지는 워크스페이스 서비스의 규칙을 그대로 써요
         workspaceService.getWorkspace(workspaceId, email);
 
         return toResponses(activityMapper.selectActivityList(workspaceId, null, null, 0, RECENT_SIZE));
@@ -73,14 +72,12 @@ public class ActivityServiceImpl implements ActivityService {
 
         int safePage = Math.max(page == null ? 0 : page, 0);
 
-        // 모르는 종류가 오면 걸러내지 않고 전체를 보여줘요.
         List<ActivityType> types = category == null ? null : CATEGORY_TYPES.get(category);
 
         if (userId != null && activityMapper.selectUserCount(userId) == 0) {
             throw new FlowSpaceException(ErrorCode.USER_NOT_FOUND);
         }
 
-        // 프로시저에는 종류 목록을 쉼표로 이은 문자열로 넘겨요 (예: "TASK_CREATED,TASK_COMPLETED")
         String typeText = types == null ? null : String.join(",", types.stream().map(Enum::name).toList());
 
         List<ActivityResponse> items = toResponses(
@@ -92,7 +89,7 @@ public class ActivityServiceImpl implements ActivityService {
         return new ActivityPageResponse(items, safePage, PAGE_SIZE, total, totalPages, safePage + 1 < totalPages);
     }
 
-    // 조회 결과에 대상의 지금 이름과 이동 경로를 붙여요. 이름은 프로시저가 조인해 와서 여기서는 고르기만 해요.
+    // 대상의 현재 이름과 이동 경로 설정 (이름은 프로시저 조인 결과 사용)
     private List<ActivityResponse> toResponses(List<ActivityVO> activities) {
 
         return activities.stream().map(activity -> {
@@ -119,7 +116,6 @@ public class ActivityServiceImpl implements ActivityService {
                     }
                 }
                 case COMMENT -> {
-                    // 댓글은 달린 작업(또는 페이지)의 이름과 경로를 보여줘요.
                     if (activity.getCommentTaskId() != null) {
                         name = activity.getCommentTaskTitle();
                         link = NotificationService.taskLink(activity.getCommentTaskSprintId(),
@@ -137,7 +133,7 @@ public class ActivityServiceImpl implements ActivityService {
         }).toList();
     }
 
-    // 휴지통에 있는 페이지는 이동할 곳이 없어요
+    // 휴지통 페이지는 이동 경로 없음
     private String pageLink(Long pageId, Boolean deleted) {
         return Boolean.TRUE.equals(deleted) ? null : "/pages/" + pageId;
     }

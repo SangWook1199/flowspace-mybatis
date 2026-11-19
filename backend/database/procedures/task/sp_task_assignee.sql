@@ -1,6 +1,6 @@
--- 작업 한 건의 담당자를 이름, 프로필 이미지와 함께 조회해요. 결과 모양은 sp_task_assignee_list와 같아요.
---   인자: p_task_id  작업 번호
---   결과: 담당자 한 명당 한 행. 지정된 순서대로.
+-- 작업 한 건의 담당자 (이름·프로필 이미지 포함, 컬럼은 sp_task_assignee_list와 동일)
+--   p_task_id  작업 번호
+-- 결과: 담당자당 한 행, 지정 순서
 
 DROP PROCEDURE IF EXISTS sp_task_assignee;
 

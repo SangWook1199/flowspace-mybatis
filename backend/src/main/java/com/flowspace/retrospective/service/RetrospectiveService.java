@@ -5,7 +5,7 @@ import java.util.List;
 import com.flowspace.retrospective.dto.response.RetrospectiveListItem;
 import com.flowspace.retrospective.dto.response.RetrospectiveResponse;
 
-// 회고 기능의 목록이에요. 실제 동작은 service.impl의 RetrospectiveServiceImpl에 있어요.
+// 회고 서비스
 public interface RetrospectiveService {
 
     // 회고 단건 조회
@@ -17,6 +17,6 @@ public interface RetrospectiveService {
     // 스프린트 회고 조회
     RetrospectiveResponse getBySprint(Long sprintId, String email);
 
-    // 회고 만들기 (스프린트를 완료할 때 스프린트 서비스가 불러요). 이미 회고가 있으면 거절해요.
+    // 회고 생성 (스프린트 완료 시 호출, 이미 있으면 RETROSPECTIVE_ALREADY_EXISTS)
     void createRetrospective(Long sprintId, Long workspaceId, String sprintName, Long userId);
 }

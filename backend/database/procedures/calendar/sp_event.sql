@@ -1,6 +1,6 @@
--- 일정 한 건을 만든 사람 이름과 함께 조회해요.
---   인자: p_event_id  일정 번호
---   결과: 한 행 (없으면 0행)
+-- 일정 한 건 (작성자 이름 포함)
+--   p_event_id  일정 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_event;
 

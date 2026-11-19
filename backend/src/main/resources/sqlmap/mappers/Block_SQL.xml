@@ -21,8 +21,7 @@
         WHERE page_id = #{pageId}
     </select>
 
-    <!-- 페이지 정보 + 행 잠금. FOR UPDATE로 읽으면 이 트랜잭션이 끝날 때까지 다른 요청이 같은 페이지를
-         잠그려 할 때 기다려요. 그래서 같은 페이지의 일괄 저장이 한 줄로 차례대로 처리돼요. -->
+    <!-- 페이지 정보 + 행 잠금 (FOR UPDATE, 같은 페이지 일괄 저장 순차 처리) -->
     <select id="selectBlockPageForUpdate" resultType="com.flowspace.page.service.PageVO">
         SELECT page_id,
                workspace_id,
@@ -43,7 +42,7 @@
 
     <!-- ==================== 블록 조회 ==================== -->
 
-    <!-- 블록 목록. 이미지·데이터베이스·페이지 조인은 프로시저 안에서 해요(backend/database/procedures/block). -->
+    <!-- 블록 목록 (sp_block_list) -->
     <select id="selectBlockList" statementType="CALLABLE" resultType="com.flowspace.block.service.BlockVO">
         {call sp_block_list(#{pageId})}
     </select>
@@ -100,7 +99,7 @@
 
     <!-- ==================== 등록·수정·삭제 ==================== -->
 
-    <!-- 블록 등록. content는 JSON 칸이라 DB가 JSON 형식인지 한 번 더 확인해요. -->
+    <!-- 블록 등록 (content는 JSON 컬럼) -->
     <insert id="insertBlock" parameterType="com.flowspace.block.service.BlockVO"
             useGeneratedKeys="true" keyProperty="blockId">
         INSERT INTO blocks (page_id, parent_block_id, task_id, event_id, sprint_id, type, position, content,
@@ -164,7 +163,7 @@
         </foreach>
     </update>
 
-    <!-- 블록 삭제. 하위 블록(fk_block_parent)·댓글·데이터베이스는 ON DELETE CASCADE로 DB가 함께 지워요. -->
+    <!-- 블록 삭제 (하위 블록·댓글·데이터베이스는 ON DELETE CASCADE) -->
     <delete id="deleteBlock">
         DELETE FROM blocks
         WHERE block_id = #{blockId}

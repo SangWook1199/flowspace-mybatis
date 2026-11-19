@@ -30,7 +30,7 @@ public class BlockController {
 
     private final BlockService blockService;
 
-    // 저장이 끝나면 같은 페이지를 보는 다른 멤버 화면이 새로 받아가게 알려요.
+    // 저장 후 같은 페이지를 보는 멤버에게 변경 알림
     private final PagePresenceService pagePresenceService;
 
     @Operation(summary = "블록 생성")

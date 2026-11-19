@@ -58,7 +58,7 @@ public record ActivityResponse(
         );
     }
 
-    // MyBatis 조회 결과(ActivityVO)로 응답을 만들어요 (대상 이름·경로는 서비스가 정해서 넘겨요)
+    // ActivityVO 기반 응답 생성 (대상 이름·경로는 서비스에서 전달)
     public static ActivityResponse from(ActivityVO activity, String targetName, String targetLink) {
         return new ActivityResponse(
             activity.getActivityId(),

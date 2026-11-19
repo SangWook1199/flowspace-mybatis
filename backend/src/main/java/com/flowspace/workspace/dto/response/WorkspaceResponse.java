@@ -34,7 +34,7 @@ public record WorkspaceResponse(
         );
     }
 
-    // MyBatis 조회 결과(WorkspaceVO)로 응답을 만들어요
+    // WorkspaceVO 기반 응답 생성
     public static WorkspaceResponse from(
             WorkspaceVO workspace,
             WorkspaceRole role

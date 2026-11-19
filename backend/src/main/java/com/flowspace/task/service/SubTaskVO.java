@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// subtasks 테이블의 한 행을 담는 객체예요.
+// 하위 작업 (subtasks 테이블 한 행)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,7 +18,7 @@ public class SubTaskVO {
 
     private String content;
 
-    // boolean이 아니라 Boolean이어야 MyBatis가 is_completed를 setIsCompleted로 채워요
+    // Boolean 타입 사용 (is_completed → setIsCompleted 매핑)
     private Boolean isCompleted;
 
     private Integer position;

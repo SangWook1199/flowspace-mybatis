@@ -11,7 +11,7 @@ import com.flowspace.block.dto.response.BlockResponse;
 import com.flowspace.block.dto.response.BlockSyncResponse;
 import org.springframework.web.multipart.MultipartFile;
 
-// BlockServiceImpl가 실제 동작을 맡아요. Controller와 다른 서비스는 이 인터페이스만 알아요.
+// 블록 서비스
 public interface BlockService {
 
     // 블록 생성

@@ -12,7 +12,7 @@ public record LoginRequest(
     @NotBlank
     String password,
 
-    // 로그인 상태 유지 (보내지 않으면 유지하는 것으로 봐요)
+    // 로그인 상태 유지 (null이면 유지)
     Boolean rememberMe
 
 ) {

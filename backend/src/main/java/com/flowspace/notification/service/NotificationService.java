@@ -10,14 +10,14 @@ import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.notification.dto.response.NotificationPageResponse;
 import com.flowspace.notification.dto.response.UnreadCountResponse;
 
-// 알림 기능의 목록이에요. 실제 동작은 service.impl의 NotificationServiceImpl에 있어요.
-// 다른 서비스는 엔티티가 아니라 번호(받는 사람, 보낸 사람, 워크스페이스)로 알림을 보내요.
+// 알림 서비스
+// 다른 서비스는 엔티티 대신 번호(받는 사람, 보낸 사람, 워크스페이스)로 알림 전송
 public interface NotificationService {
 
     // ---------- 알림 만들기 (다른 서비스에서 호출) ----------
 
-    // 알림 한 건 저장 후 실시간 전달. 받는 사람이 없거나(null) 내가 일으킨 일이면 보내지 않아요.
-    // 호출한 쪽의 트랜잭션에 같이 묶여서, 그쪽이 롤백되면 알림도 저장되지 않아요.
+    // 알림 저장 후 실시간 전달 (받는 사람이 없거나 본인이면 생략)
+    // 호출한 쪽 트랜잭션에 포함 (롤백 시 저장되지 않음)
     void send(Long recipientId, Long actorId, Long workspaceId, NotificationType type, String message, Long refId,
         String linkPath);
 
@@ -53,16 +53,15 @@ public interface NotificationService {
     // 오래된 알림 정리 (보관 기간이 지난 알림 삭제)
     int deleteOldNotifications(int retentionDays);
 
-    // ---------- 작업 화면 링크 (여러 기능이 같이 써요) ----------
+    // ---------- 작업 화면 링크 ----------
 
-    // 작업 알림을 누르면 가는 화면: 그 작업이 있는 스프린트(없으면 백로그)의 작업 화면이고, ?task=로 그 작업 상세를 열어줘요.
+    // 작업 알림 링크: 작업이 속한 스프린트(없으면 백로그)의 작업 화면, ?task=로 상세 열기
     static String taskLink(Long sprintId, Long taskId) {
         String owner = sprintId == null ? "backlog" : String.valueOf(sprintId);
         return "/sprints/" + owner + "/tasks?task=" + taskId;
     }
 
-    // ---------- 아직 JPA인 기능(댓글, 회고 등)을 위한 임시 메서드 ----------
-    // 엔티티에서 번호만 꺼내 위 메서드를 불러요. 그 기능들을 MyBatis로 바꾸면 지워요.
+    // ---------- JPA 기능용 임시 메서드 (해당 기능 전환 후 삭제) ----------
 
     static String taskLink(Task task) {
         return taskLink(task.getSprint() == null ? null : task.getSprint().getSprintId(), task.getTaskId());

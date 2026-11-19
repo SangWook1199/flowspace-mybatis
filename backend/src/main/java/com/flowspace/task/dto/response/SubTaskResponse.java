@@ -32,7 +32,7 @@ public record SubTaskResponse(
         );
     }
 
-    // MyBatis 조회 결과(SubTaskVO)로 만들어요
+    // SubTaskVO 기반 응답 생성
     public static SubTaskResponse from(SubTaskVO subTask) {
         return new SubTaskResponse(
             subTask.getSubtaskId(),

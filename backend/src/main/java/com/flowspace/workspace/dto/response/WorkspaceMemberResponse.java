@@ -39,7 +39,7 @@ public record WorkspaceMemberResponse(
         );
     }
 
-    // MyBatis 조회 결과(WorkspaceMemberVO)로 응답을 만들어요 (조인으로 이름·이미지가 이미 들어 있어요)
+    // WorkspaceMemberVO 기반 응답 생성
     public static WorkspaceMemberResponse from(WorkspaceMemberVO member, boolean online) {
         return new WorkspaceMemberResponse(
             member.getUserId(),

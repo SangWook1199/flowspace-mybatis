@@ -1,6 +1,6 @@
--- 페이지 한 개를 조회해요(휴지통에 있어도 나와요). 컬럼은 sp_page_list와 같아요(함께 고쳐요).
---   인자: p_page_id  페이지 번호
---   결과: 한 행 (없으면 0행)
+-- 페이지 한 개 (휴지통 포함, 컬럼은 sp_page_list와 동일)
+--   p_page_id  페이지 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_page;
 
@@ -23,9 +23,7 @@ BEGIN
            p.version,
            p.created_at,
            p.updated_at,
-           -- 회고 페이지인지 (회고 페이지는 화면이 따로 묶어 보여줘요)
            EXISTS (SELECT 1 FROM retrospectives r WHERE r.page_id = p.page_id) AS retrospective,
-           -- 상위 페이지가 휴지통에 있는지 (복원할 때 써요, 상위가 없으면 NULL)
            parent.is_deleted AS parent_deleted
       FROM pages p
       LEFT JOIN files f      ON f.file_id = p.cover_file_id

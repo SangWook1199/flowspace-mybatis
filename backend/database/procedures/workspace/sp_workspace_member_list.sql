@@ -1,6 +1,6 @@
--- 워크스페이스 멤버 목록을 이름, 프로필 이미지, 역할과 함께 조회해요.
---   인자: p_workspace_id  워크스페이스 번호
---   결과: 멤버 한 명당 한 행. 가입한 순서대로.
+-- 워크스페이스 멤버 목록 (이름·프로필 이미지·역할 포함)
+--   p_workspace_id  워크스페이스 번호
+-- 결과: 멤버당 한 행, 참여 순
 
 DROP PROCEDURE IF EXISTS sp_workspace_member_list;
 

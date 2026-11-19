@@ -8,7 +8,7 @@ import com.flowspace.entity.Notification;
 
 // @formatter:off
 
-// 알림 목록 응답 DTO (읽지 않은 알림 수를 같이 내려줘요)
+// 알림 목록 응답 DTO (읽지 않은 알림 수 포함)
 public record NotificationPageResponse(
 
     List<NotificationResponse> items,

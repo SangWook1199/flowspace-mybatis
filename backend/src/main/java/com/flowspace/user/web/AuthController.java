@@ -52,7 +52,6 @@ public class AuthController {
     @Operation(summary = "회원가입", description = "계정을 만들고 인증 메일을 보냅니다. 메일의 링크로 인증해야 로그인할 수 있습니다.")
     @PostMapping("/signup")
     public SignupResponse signup(@Valid @RequestBody SignupRequest request, HttpServletRequest http) {
-        // 인증 메일이 나가는 요청이라 같은 주소·이메일로 너무 자주 못 보내게 해요.
         authRateLimiter.checkMailAllowed(http.getRemoteAddr(), request.email());
 
         return authService.signup(request);
@@ -63,7 +62,6 @@ public class AuthController {
     public LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         String ip = http.getRemoteAddr();
 
-        // 이미 너무 많이 틀렸으면 비밀번호를 확인하지 않고 바로 막아요.
         authRateLimiter.checkLoginAllowed(ip, request.email());
 
         try {
@@ -72,7 +70,6 @@ public class AuthController {
 
             return response;
         } catch (FlowSpaceException e) {
-            // 이메일·비밀번호가 틀린 경우만 센다(메일 미인증 같은 다른 이유는 세지 않아요).
             if (e.getErrorCode() == ErrorCode.INVALID_LOGIN) {
                 authRateLimiter.recordLoginFailure(ip, request.email());
             }

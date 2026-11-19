@@ -28,7 +28,7 @@ import com.flowspace.retrospective.service.impl.RetrospectiveMapper;
 import com.flowspace.retrospective.service.impl.RetrospectiveServiceImpl;
 import com.flowspace.workspace.service.WorkspaceService;
 
-// 회고 만들기: 프로시저에 넘기는 값, OUT 인자로 받은 페이지 번호로 활동 기록, 이미 있으면 거절하는지 확인해요.
+// 회고 생성: 프로시저 인자, OUT 페이지 번호로 활동 기록, 중복 생성 거절
 @ExtendWith(MockitoExtension.class)
 class RetrospectiveServiceTest {
 
@@ -47,7 +47,6 @@ class RetrospectiveServiceTest {
     @Test
     @DisplayName("회고를 만들면 프로시저에 제목을 넘기고, 돌려받은 페이지 번호로 활동 기록을 남긴다")
     void createRetrospective() {
-        // 진짜 프로시저 대신, OUT 인자처럼 pageId를 채워 주는 가짜 동작이에요
         doAnswer(invocation -> {
             RetrospectiveVO vo = invocation.getArgument(0);
             vo.setPageId(77L);

@@ -7,7 +7,7 @@ import com.flowspace.entity.enums.WorkspaceColor;
 
 // @formatter:off
 
-// 워크스페이스 수정 요청 DTO (소유자 전용, 이름·이니셜·색·아이콘을 한 번에 바꿔요)
+// 워크스페이스 수정 요청 DTO (소유자 전용, 이름·이니셜·색·아이콘)
 public record WorkspaceUpdateRequest(
 
         @NotBlank(message = "워크스페이스 이름은 필수입니다.")
@@ -21,7 +21,7 @@ public record WorkspaceUpdateRequest(
         @NotNull(message = "색상은 필수입니다.")
         WorkspaceColor color,
 
-        // 비우면(null 또는 공백) 아이콘을 지우고 이니셜을 보여줘요.
+        // null 또는 공백이면 아이콘 삭제 (이니셜 표시)
         @Size(max = 20, message = "아이콘은 20자 이하입니다.")
         String icon
 ) {

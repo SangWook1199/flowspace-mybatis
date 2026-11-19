@@ -29,7 +29,7 @@ public record LoginResponse(
         );
     }
 
-    // MyBatis 조회 결과(UserVO)로 응답을 만들어요
+    // UserVO 기반 응답 생성
     public static LoginResponse from(
         UserVO user,
         String accessToken,

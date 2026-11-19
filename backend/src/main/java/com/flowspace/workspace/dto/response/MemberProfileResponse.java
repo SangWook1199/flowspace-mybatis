@@ -12,7 +12,7 @@ import com.flowspace.workspace.service.MemberTaskVO;
 
 // @formatter:off
 
-// 멤버 프로필 카드 응답 DTO (이 워크스페이스 안에서의 정보만 담아요)
+// 멤버 프로필 카드 응답 DTO (해당 워크스페이스 안의 정보만)
 public record MemberProfileResponse(
 
     Long userId,
@@ -53,7 +53,7 @@ public record MemberProfileResponse(
             );
         }
 
-        // MyBatis 조회 결과(MemberTaskVO)로 만들어요
+        // MemberTaskVO 기반 생성
         public static TaskItem from(MemberTaskVO task) {
             return new TaskItem(
                 task.getTaskId(),

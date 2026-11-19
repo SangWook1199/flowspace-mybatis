@@ -1,8 +1,7 @@
--- 작업의 관련 문서 목록을 페이지·파일 정보, 올린 사람 이름과 함께 조회해요.
--- 관련 문서는 페이지 연결(page_id)과 파일(file_id) 중 하나라서 둘 다 LEFT JOIN 해요.
--- 휴지통에 있는 페이지는 빼요.
---   인자: p_task_id  작업 번호
---   결과: 문서 한 건당 한 행. 붙인 순서(attachment_id) 순.
+-- 작업 관련 문서 목록 (페이지·파일 정보, 등록자 이름 포함, 휴지통 페이지 제외)
+-- 페이지 연결(page_id)과 파일(file_id) 중 하나라서 둘 다 LEFT JOIN
+--   p_task_id  작업 번호
+-- 결과: 문서당 한 행, attachment_id 순
 
 DROP PROCEDURE IF EXISTS sp_task_attachment_list;
 
@@ -18,11 +17,9 @@ BEGIN
            a.created_by,
            a.created_at,
            u.nickname       AS created_by_name,
-           -- 페이지를 연결했을 때
            p.title          AS page_title,
            p.icon           AS page_icon,
            p.is_deleted     AS page_deleted,
-           -- 파일을 올렸을 때
            f.original_name  AS file_name,
            f.file_url,
            f.size           AS file_size,

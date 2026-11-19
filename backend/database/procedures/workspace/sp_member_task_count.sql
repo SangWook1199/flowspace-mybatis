@@ -1,7 +1,7 @@
--- 멤버가 이 워크스페이스에서 맡은 작업 중 진행 중인 수와 완료한 수를 한 번에 세요(프로필 카드용).
---   인자: p_workspace_id  워크스페이스 번호
---         p_user_id       사용자 번호
---   결과: 항상 1행 (맡은 작업이 없으면 0, 0)
+-- 멤버 담당 작업의 진행 중·완료 수 (프로필 카드용)
+--   p_workspace_id  워크스페이스 번호
+--   p_user_id       사용자 번호
+-- 결과: 항상 1행
 
 DROP PROCEDURE IF EXISTS sp_member_task_count;
 

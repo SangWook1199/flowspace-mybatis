@@ -1,12 +1,10 @@
--- 워크스페이스 활동 기록을, 한 사람과 대상의 지금 이름까지 함께 최신순으로 조회해요.
--- 대상(작업·스프린트·페이지·댓글)은 종류마다 다른 테이블에 있어서 종류별로 LEFT JOIN 해요.
--- 대상이 지워졌으면 그 컬럼들이 NULL로 나와요(자바에서 이름 없이 보여줘요).
---   인자: p_workspace_id  워크스페이스 번호
---         p_user_id       한 사람의 활동만 볼 때 그 사람 번호 (NULL이면 모두)
---         p_types         보고 싶은 활동 종류를 쉼표로 이은 문자열, 예: 'TASK_CREATED,TASK_COMPLETED' (NULL이면 모두)
---                         프로시저는 목록을 인자로 받기 어려워서 문자열로 받고 FIND_IN_SET으로 찾아요.
---         p_offset        건너뛸 개수
---         p_limit         가져올 개수
+-- 워크스페이스 활동 기록 목록 (최신순, 사용자·대상 현재 이름 포함)
+-- 대상 종류(작업·스프린트·페이지·댓글)별 LEFT JOIN, 삭제된 대상은 NULL
+--   p_workspace_id  워크스페이스 번호
+--   p_user_id       사용자 번호 (NULL이면 전체)
+--   p_types         활동 종류 쉼표 구분 문자열 (예: 'TASK_CREATED,TASK_COMPLETED', NULL이면 전체, FIND_IN_SET 사용)
+--   p_offset        건너뛸 개수
+--   p_limit         가져올 개수
 
 DROP PROCEDURE IF EXISTS sp_activity_list;
 
@@ -26,15 +24,11 @@ BEGIN
            a.target_type,
            a.target_id,
            a.created_at,
-           -- 대상이 작업일 때
            t.title           AS task_title,
            t.sprint_id       AS task_sprint_id,
-           -- 대상이 스프린트일 때
            s.name            AS sprint_name,
-           -- 대상이 페이지일 때
            p.title           AS page_title,
            p.is_deleted      AS page_deleted,
-           -- 대상이 댓글일 때: 댓글이 달린 작업 또는 페이지
            ct.task_id        AS comment_task_id,
            ct.title          AS comment_task_title,
            ct.sprint_id      AS comment_task_sprint_id,

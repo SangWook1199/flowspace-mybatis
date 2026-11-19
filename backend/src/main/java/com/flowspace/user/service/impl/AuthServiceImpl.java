@@ -66,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
     private final FileService fileService;
     private final EmailVerificationService emailVerificationService;
 
-    // 사용자 조회·수정용 MyBatis Mapper (같은 패키지라 import가 없어요)
+    // 사용자 SQL
     private final UserMapper userMapper;
 
     // 로그인 상태를 유지하지 않을 때 리프레시 토큰이 살아 있는 시간
@@ -82,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
 
     private volatile JwtDecoder microsoftJwtDecoder;
 
-    // 회원가입: 계정을 만들고 인증 메일을 보내요. 메일의 링크로 인증해야 로그인할 수 있어서 토큰은 아직 주지 않아요.
+    // 회원가입 (계정 생성 + 인증 메일 발송, 인증 전에는 토큰 미발급)
     @Transactional
     @Override
     public SignupResponse signup(SignupRequest request) {
@@ -91,13 +91,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (existing != null) {
 
-            // 이미 인증을 마친 계정이 있으면 가입할 수 없어요.
             if (Boolean.TRUE.equals(existing.getEmailVerified())) {
                 throw new FlowSpaceException(ErrorCode.EMAIL_ALREADY_EXISTS);
             }
 
-            // 인증하지 않은 채 남은 계정이면 같은 이메일로 다시 가입하는 걸로 보고, 새로 입력한 정보로 바꿔서 인증 메일을 다시 보내요.
-            // (인증 전에는 로그인할 수 없어서, 남의 이메일로 먼저 가입해 두어도 그 주소의 주인이 다시 가입하면 되돌릴 수 있어요.)
             userMapper.updateUserSignupRestart(existing.getUserId(), request.nickname(),
                 passwordEncoder.encode(request.password()));
             emailVerificationService.sendVerification(existing.getUserId(), existing.getEmail());
@@ -112,10 +109,8 @@ public class AuthServiceImpl implements AuthService {
         user.setProvider(Provider.LOCAL);
         user.setEmailVerified(false);
 
-        // INSERT가 끝나면 DB가 만든 번호가 user.getUserId()에 들어 있어요
         userMapper.insertUser(user);
 
-        // 개인 워크스페이스 자동 생성
         workspaceService.createPersonalWorkspace(user.getUserId(), user.getNickname());
 
         emailVerificationService.sendVerification(user.getUserId(), user.getEmail());
@@ -135,13 +130,12 @@ public class AuthServiceImpl implements AuthService {
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspaceId());
     }
 
-    // 토큰 재발급 (로그인 때 저장해 둔 refresh token이 맞고 만료 전이면 새 access token을 발급해요)
+    // 토큰 재발급 (저장된 refresh token이 일치하고 만료 전이면 새 access token 발급)
     @Override
     public LoginResponse refresh(RefreshRequest request) {
 
         String token = request.refreshToken();
 
-        // 서명이 맞는 refresh token만 받아요(access token을 넣어도 재발급되지 않아요).
         if (!jwtProvider.isRefreshToken(token)) {
             throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
@@ -154,12 +148,10 @@ public class AuthServiceImpl implements AuthService {
 
         UserVO user = userMapper.selectUserById(saved.getUserId());
 
-        // 탈퇴한 계정은 재발급하지 않아요.
         if (user == null || user.getDeletedAt() != null) {
             throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        // 동시에 여러 탭이 재발급을 요청해도 서로 끊기지 않도록 refresh token은 그대로 돌려줘요.
         return LoginResponse.from(user, createAccessToken(user), token, user.getLastWorkspaceId());
     }
 
@@ -172,7 +164,7 @@ public class AuthServiceImpl implements AuthService {
         return TokenResponse.of(createAccessToken(user), issueRefreshToken(user, true));
     }
 
-    // 이메일·비밀번호로 로그인할 사용자 (틀리면 어느 쪽이 틀렸는지 알려주지 않아요)
+    // 이메일·비밀번호 로그인 사용자 확인 (어느 쪽이 틀렸는지 구분하지 않음)
     private UserVO findLoginUser(String email, String password) {
 
         UserVO user = userMapper.selectUserByEmail(email);
@@ -181,7 +173,6 @@ public class AuthServiceImpl implements AuthService {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
 
-        // 비밀번호까지 맞은 뒤에 알려요(인증 여부로 가입된 이메일인지 알아내지 못하게요).
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new FlowSpaceException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
@@ -189,7 +180,7 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
-    // access token 발급 (토큰에는 번호·이메일·가입 방식만 들어가요)
+    // access token 발급 (번호·이메일·가입 방식 포함)
     private String createAccessToken(UserVO user) {
         return jwtProvider.createAccessToken(user.getUserId(), user.getEmail(), user.getProvider());
     }
@@ -212,7 +203,6 @@ public class AuthServiceImpl implements AuthService {
 
         userMapper.updateUserProfileFile(user.getUserId(), file.getFileId());
 
-        // 새 이미지 주소는 파일 테이블에 있어서 다시 조회해요
         return UserResponse.from(findUser(email));
     }
 
@@ -226,26 +216,23 @@ public class AuthServiceImpl implements AuthService {
             user.setProfileFileId(fileService.uploadImage(image, profileWorkspaceId(user), email).getFileId());
         }
 
-        // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.
         String bio = request.bio() == null ? null : request.bio().trim();
 
         user.setNickname(request.nickname().trim());
         user.setBio(bio == null || bio.isEmpty() ? null : bio);
 
-        // JPA는 값만 바꾸면 끝날 때 알아서 UPDATE 했지만, MyBatis는 직접 호출해야 DB에 반영돼요
         userMapper.updateUserProfile(user);
 
         return UserResponse.from(findUser(email));
     }
 
     // 비밀번호 변경
-    // 다른 기기의 로그인은 풀리고(리프레시 토큰을 새로 발급), 지금 쓰는 기기는 새 토큰을 받아 그대로 이어가요.
+    // 다른 기기 로그인 해제 (refresh token 재발급), 현재 기기는 새 토큰으로 유지
     @Override
     public LoginResponse changePassword(PasswordChangeRequest request, String email) {
 
         UserVO user = findUser(email);
 
-        // 구글·마이크로소프트 계정은 비밀번호가 없어요.
         if (user.getPassword() == null) {
             throw new FlowSpaceException(ErrorCode.PASSWORD_NOT_SET);
         }
@@ -260,7 +247,6 @@ public class AuthServiceImpl implements AuthService {
 
         userMapper.updateUserPassword(user.getUserId(), passwordEncoder.encode(request.newPassword()));
 
-        // 로그인 상태 유지 여부는 지금 로그인의 남은 기간을 그대로 이어받아요.
         LocalDateTime expiredAt = userMapper.selectRefreshTokenExpiredAt(user.getUserId());
 
         Duration remaining = expiredAt == null ? SESSION_REFRESH_TTL : Duration.between(LocalDateTime.now(), expiredAt);
@@ -275,7 +261,7 @@ public class AuthServiceImpl implements AuthService {
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspaceId());
     }
 
-    // 프로필 이미지를 저장할 워크스페이스: 마지막으로 보던 곳, 없으면 참여 중인 첫 워크스페이스예요(파일은 워크스페이스에 속해야 해요).
+    // 프로필 이미지 저장 워크스페이스: 마지막 워크스페이스, 없으면 첫 참여 워크스페이스
     private Long profileWorkspaceId(UserVO user) {
 
         return user.getLastWorkspaceId() != null ? user.getLastWorkspaceId()
@@ -294,7 +280,7 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
-    // 리프레시 토큰 발급 (MyBatis로 읽은 사용자용): 기존 토큰은 지우고 새로 저장해요(계정당 하나).
+    // refresh token 발급 (기존 토큰 삭제 후 저장, 계정당 하나)
     private String issueRefreshToken(UserVO user, Duration ttl) {
 
         String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), ttl.toMillis());
@@ -305,7 +291,7 @@ public class AuthServiceImpl implements AuthService {
         return refreshToken;
     }
 
-    // 리프레시 토큰 발급: 로그인 상태 유지면 설정된 기간, 아니면 하루 동안 쓸 수 있어요.
+    // refresh token 발급 (로그인 유지면 설정 기간, 아니면 하루)
     private String issueRefreshToken(UserVO user, boolean remember) {
 
         Duration ttl = remember ? Duration.ofMillis(jwtProvider.getRefreshTokenExpiration()) : SESSION_REFRESH_TTL;
@@ -320,7 +306,6 @@ public class AuthServiceImpl implements AuthService {
         UserVO user = findUser(email);
 
         if (user.getProfileFileId() != null) {
-            // 사용자 쪽 연결을 먼저 끊고, 파일(서버의 실제 파일과 files 행)을 지워요
             userMapper.updateUserProfileFile(user.getUserId(), null);
             fileService.delete(user.getProfileFileId());
         }
@@ -328,8 +313,7 @@ public class AuthServiceImpl implements AuthService {
         return UserResponse.from(findUser(email));
     }
 
-
-    // 소셜 계정으로 로그인할 사용자를 찾아요. 연결된 소셜 계정을 먼저 보고, 없으면 예전 방식(users.provider)으로 가입한 계정을 봐요.
+    // 소셜 로그인 사용자 조회 (연결된 소셜 계정 우선, 없으면 users.provider 기준)
     private UserVO findSocialUser(Provider provider, String providerId) {
 
         Long userId = userMapper.selectSocialUserId(provider, providerId);
@@ -341,8 +325,8 @@ public class AuthServiceImpl implements AuthService {
         return userId == null ? null : userMapper.selectUserById(userId);
     }
 
-    // 이메일로 가입했지만 인증을 마치지 않은 계정이 있으면, 소셜 계정을 연결하고 인증을 마친 계정으로 바꿔요.
-    // 가입 때 정한 비밀번호는 지워요 — 이메일 주인이 아닌 사람이 먼저 가입해 두었을 수 있어서, 주인은 소셜 로그인이나 비밀번호 찾기로 들어와요.
+    // 미인증 이메일 가입 계정을 소셜 계정 연결 + 인증 완료로 전환
+    // 가입 시 비밀번호는 삭제 (이메일 주인이 아닌 사람이 먼저 가입했을 가능성)
     private UserVO claimUnverifiedAccount(String email, Provider provider, String providerId) {
 
         UserVO pending = userMapper.selectUserByEmail(email);
@@ -357,10 +341,10 @@ public class AuthServiceImpl implements AuthService {
         return userMapper.selectUserById(pending.getUserId());
     }
 
-    // 같은 이메일의 계정이 이미 있을 때 새 계정을 만들지 못하게 막아요.
-    //  - 비밀번호가 있는 계정(이메일 가입): 그 비밀번호로 본인임을 확인하면 연결할 수 있다고 알려요(SOCIAL_LINK_REQUIRED).
-    //    이메일만 보고 합치면 남의 계정을 가로챌 수 있어서, 꼭 비밀번호로 확인해요.
-    //  - 그 밖(다른 소셜로 가입한 계정 등): 처음 가입한 방식으로 로그인하게 안내해요(SOCIAL_EMAIL_CONFLICT).
+    // 같은 이메일 계정이 있을 때 새 계정 생성 차단
+    // - 비밀번호가 있는 계정: 비밀번호 확인 후 연결 안내 (SOCIAL_LINK_REQUIRED)
+    // 이메일만으로 합치면 계정 탈취 위험이 있어 비밀번호 확인 필수
+    // - 그 외: 처음 가입한 방식으로 로그인 안내 (SOCIAL_EMAIL_CONFLICT)
     private void rejectExistingEmail(String email, Provider provider) {
 
         UserVO existing = userMapper.selectUserByEmail(email);
@@ -377,8 +361,8 @@ public class AuthServiceImpl implements AuthService {
         throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
     }
 
-    // 소셜 계정 연결: 같은 이메일의 기존 계정(비밀번호가 있는 계정)에 소셜 계정을 연결하고 로그인해요.
-    // 소셜 토큰이 그 이메일의 주인임을, 비밀번호가 기존 계정의 주인임을 각각 증명해요.
+    // 소셜 계정 연결 (비밀번호가 있는 기존 계정에 연결 후 로그인)
+    // 소셜 토큰으로 이메일 소유, 비밀번호로 기존 계정 소유 확인
     @Override
     public LoginResponse linkSocialAccount(SocialLinkRequest request) {
 
@@ -400,7 +384,6 @@ public class AuthServiceImpl implements AuthService {
 
         UserVO user = findSocialUser(provider, providerId);
 
-        // 이미 연결된 소셜 계정이면 그대로 로그인해요.
         if (user == null) {
 
             UserVO existing = userMapper.selectUserByEmail(email);
@@ -419,7 +402,6 @@ public class AuthServiceImpl implements AuthService {
             }
 
             userMapper.insertSocialAccount(existing.getUserId(), provider, providerId);
-            // 소셜 계정이 이 이메일의 주인임을 보여주니, 아직 인증 전이던 계정이면 인증으로 봐요.
             userMapper.updateUserEmailVerified(existing.getUserId());
 
             user = userMapper.selectUserById(existing.getUserId());
@@ -428,16 +410,15 @@ public class AuthServiceImpl implements AuthService {
         return socialLoginResponse(user);
     }
 
-    // 소셜 로그인 응답: 토큰 두 개를 발급해요(소셜 로그인은 항상 로그인 상태 유지)
+    // 소셜 로그인 응답 (토큰 두 개 발급, 항상 로그인 유지)
     private LoginResponse socialLoginResponse(UserVO user) {
         return LoginResponse.from(user, createAccessToken(user), issueRefreshToken(user, true),
             user.getLastWorkspaceId());
     }
 
-    // 소셜 회원 생성 공통 처리: 사용자 INSERT → 소셜 계정 연결 → 개인 워크스페이스. 새 워크스페이스 번호를 돌려줘요.
+    // 소셜 회원 생성: 사용자 등록 → 소셜 계정 연결 → 개인 워크스페이스 (워크스페이스 번호 반환)
     private Long createSocialUser(UserVO user) {
 
-        // 소셜 계정은 소셜 서비스가 이메일을 확인해 줘서 인증된 것으로 만들어요(비밀번호는 없어요)
         user.setPassword(null);
         user.setEmailVerified(true);
 
@@ -447,7 +428,7 @@ public class AuthServiceImpl implements AuthService {
         return workspaceService.createPersonalWorkspace(user.getUserId(), user.getNickname());
     }
 
-    // 소셜 프로필 사진 저장 공통 처리: 파일로 저장하고 사용자 프로필로 지정해요
+    // 소셜 프로필 사진 저장 후 사용자 프로필로 지정
     private void saveSocialProfileImage(UserVO user, Long workspaceId, byte[] imageBytes) {
 
         FileVO profile = fileService.uploadProfileImage(imageBytes, workspaceId, user.getUserId());
@@ -473,14 +454,12 @@ public class AuthServiceImpl implements AuthService {
     // Google 회원 생성
     private UserVO createGoogleUser(GoogleUserInfo googleUser) {
 
-        // 이메일 인증 전인 가입 계정이 있으면 소셜 계정이 이메일 주인임을 보여주니, 그 계정을 넘겨받아요.
         UserVO pending = claimUnverifiedAccount(googleUser.email(), Provider.GOOGLE, googleUser.providerId());
 
         if (pending != null) {
             return pending;
         }
 
-        // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
         rejectExistingEmail(googleUser.email(), Provider.GOOGLE);
 
         UserVO user = new UserVO();
@@ -495,7 +474,6 @@ public class AuthServiceImpl implements AuthService {
             uploadGoogleProfile(user, workspaceId, googleUser.pictureUrl());
         }
 
-        // 프로필 이미지 주소와 마지막으로 본 워크스페이스는 DB에 있어서 다시 조회해요
         return userMapper.selectUserById(user.getUserId());
     }
 
@@ -534,7 +512,6 @@ public class AuthServiceImpl implements AuthService {
 
             GoogleIdToken.Payload payload = token.getPayload();
 
-            // Google이 이메일을 확인한 계정만 받아요(확인되지 않은 이메일을 믿으면 남의 이메일로 계정을 만들 수 있어요).
             if (!Boolean.TRUE.equals(payload.getEmailVerified())) {
                 throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_NOT_VERIFIED);
             }
@@ -567,14 +544,12 @@ public class AuthServiceImpl implements AuthService {
     // Microsoft 회원 생성
     private UserVO createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
 
-        // 이메일 인증 전인 가입 계정이 있으면 소셜 계정이 이메일 주인임을 보여주니, 그 계정을 넘겨받아요.
         UserVO pending = claimUnverifiedAccount(microsoftUser.email(), Provider.MICROSOFT, microsoftUser.providerId());
 
         if (pending != null) {
             return pending;
         }
 
-        // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
         rejectExistingEmail(microsoftUser.email(), Provider.MICROSOFT);
 
         UserVO user = new UserVO();
@@ -616,8 +591,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // Microsoft ID Token 검증
-    //  - Google용 검증기로는 Microsoft 토큰을 확인할 수 없어서(발급처·서명 키가 달라요), Microsoft가 공개한 서명 키로 직접 확인해요.
-    //  - 서명·만료는 디코더가 확인하고, 이 앱(client-id)용으로 발급됐는지와 Microsoft가 발급했는지는 아래에서 확인해요.
+    // - 발급처·서명 키가 달라 Microsoft 공개 서명 키로 직접 확인
+    // - 서명·만료는 디코더, client-id(aud)·발급처(iss)는 아래에서 확인
     private MicrosoftUserInfo verifyMicrosoftToken(String idToken) {
 
         try {
@@ -632,7 +607,6 @@ public class AuthServiceImpl implements AuthService {
                 throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
             }
 
-            // 개인 계정은 email 클레임이 없을 수 있어서 preferred_username(로그인 이름)으로 대신해요.
             String email = jwt.getClaimAsString("email");
 
             if (email == null || email.isBlank()) {
@@ -658,7 +632,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    // Microsoft이 공개한 서명 키(JWKS)로 ID Token을 확인하는 디코더 — 처음 쓸 때 한 번만 만들어요(키는 알아서 캐시돼요).
+    // Microsoft 공개 서명 키(JWKS) 기반 ID Token 디코더 (최초 사용 시 생성, 키는 자동 캐시)
     private JwtDecoder microsoftDecoder() {
 
         JwtDecoder decoder = microsoftJwtDecoder;

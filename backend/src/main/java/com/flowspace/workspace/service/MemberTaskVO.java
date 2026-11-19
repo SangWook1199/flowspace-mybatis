@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 프로필 카드에 보여 줄, 멤버가 맡은 작업 한 줄이에요(프로시저 sp_member_open_task_list의 결과).
+// 프로필 카드의 멤버 담당 작업 (sp_member_open_task_list 결과)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,7 +16,7 @@ public class MemberTaskVO {
 
     private Long taskId;
 
-    // 작업 화면 링크를 만들 때 써요 (null이면 백로그)
+    // 작업 화면 링크용 스프린트 번호 (null이면 백로그)
     private Long sprintId;
 
     private String title;

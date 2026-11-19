@@ -32,7 +32,7 @@ public record TaskStatusResponse(
         );
     }
 
-    // MyBatis 조회 결과(TaskStatusVO)로 응답을 만들어요
+    // TaskStatusVO 기반 응답 생성
     public static TaskStatusResponse from(TaskStatusVO status) {
         return new TaskStatusResponse(
             status.getStatusId(),

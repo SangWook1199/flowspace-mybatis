@@ -1,8 +1,7 @@
--- 워크스페이스의 작업 상태 한 개를 조회해요. 결과 모양은 sp_task_status_list와 같아요.
--- 그 워크스페이스에 연결된 상태가 아니면 결과가 없어요(다른 워크스페이스의 상태를 쓰지 못하게 확인할 때 써요).
---   인자: p_workspace_id  워크스페이스 번호
---         p_status_id     상태 번호
---   결과: 0행(없음) 또는 1행
+-- 워크스페이스 작업 상태 한 개 (컬럼은 sp_task_status_list와 동일, 연결되지 않은 상태면 0행)
+--   p_workspace_id  워크스페이스 번호
+--   p_status_id     상태 번호
+-- 결과: 0행 또는 1행
 
 DROP PROCEDURE IF EXISTS sp_task_status;
 

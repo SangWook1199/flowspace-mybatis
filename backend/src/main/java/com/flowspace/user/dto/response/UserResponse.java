@@ -22,7 +22,7 @@ public record UserResponse(
                 user.getProfileFile() == null ? null : user.getProfileFile().getFileUrl());
     }
 
-    // MyBatis 조회 결과(UserVO)로 응답을 만들어요 (비밀번호는 넣지 않아요)
+    // UserVO 기반 응답 생성 (비밀번호 제외)
     public static UserResponse from(UserVO user) {
         return new UserResponse(
                 user.getUserId(),

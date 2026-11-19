@@ -28,7 +28,7 @@ public record BlockResponse(
 
 ) {
 
-    // 프로시저 조회 결과로 만들어요 (이미지 주소·데이터베이스 번호가 조인으로 들어 있어요)
+    // BlockVO 기반 응답 생성
     public static BlockResponse from(BlockVO block) {
         return new BlockResponse(
             block.getBlockId(),

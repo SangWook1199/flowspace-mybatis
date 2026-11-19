@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// 워크스페이스 초대 한 건을 담는 객체예요. 초대를 등록할 때와 조회할 때 같이 써요.
+// 워크스페이스 초대 (등록·조회 공용)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,7 +30,7 @@ public class InviteVO {
 
     private LocalDateTime createdAt;
 
-    // ↓ 받은 초대 목록(sp_my_invite_list)에서만 채워져요 (조인해 온 값)
+    // ↓ 받은 초대 목록(sp_my_invite_list) 전용 (조인 컬럼)
     private String workspaceName;
 
     private String workspaceInitials;
