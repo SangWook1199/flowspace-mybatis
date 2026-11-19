@@ -1,7 +1,7 @@
 package com.flowspace.workspace.service.impl;
 
 import com.flowspace.notification.service.NotificationService;
-import com.flowspace.service.PresenceService;
+import com.flowspace.presence.service.PresenceService;
 import com.flowspace.workspace.service.InviteVO;
 import com.flowspace.workspace.service.MemberTaskCountVO;
 import com.flowspace.workspace.service.WorkspaceMemberVO;

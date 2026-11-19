@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.presence.service.PresenceService;
+
 import com.flowspace.notification.service.NotificationService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

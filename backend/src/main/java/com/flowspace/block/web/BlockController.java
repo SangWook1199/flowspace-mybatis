@@ -15,7 +15,7 @@ import com.flowspace.block.dto.request.BlockSyncRequest;
 import com.flowspace.block.dto.response.BlockSyncResponse;
 import com.flowspace.block.dto.request.BlockUpdateRequest;
 import com.flowspace.block.service.BlockService;
-import com.flowspace.service.PagePresenceService;
+import com.flowspace.presence.service.PagePresenceService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

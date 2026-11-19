@@ -1,4 +1,4 @@
-package com.flowspace.service;
+package com.flowspace.presence.service.impl;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,11 +11,8 @@ import java.util.Set;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import com.flowspace.entity.Page;
-import com.flowspace.entity.User;
-import com.flowspace.repository.PageRepository;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
+import com.flowspace.page.service.PageVO;
+import com.flowspace.presence.service.PagePresenceService;
 import com.flowspace.websocket.NotificationWebSocketHandler;
 import com.flowspace.websocket.PageViewEvent;
 import com.flowspace.websocket.SocketClosedEvent;
@@ -23,41 +20,42 @@ import com.flowspace.websocket.SocketClosedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// "지금 이 페이지를 누가 보고 있고, 어느 블록을 편집 중인지"를 메모리로만 들고 있다가 같은 페이지를 보는 사람들에게 알려줘요.
-// 내용은 저장하지 않고(서버가 꺼지면 사라져요), 탭(WebSocket 세션) 단위로 기억해요.
-// 보내는 메시지: { type: "PAGE_PRESENCE", data: { pageId, viewers: [{ userId, blockId }] } }
+// 메시지: { type: "PAGE_PRESENCE", data: { pageId, viewers: [{ userId, blockId }] } }
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PagePresenceService {
+public class PagePresenceServiceImpl implements PagePresenceService {
 
+    // 보는 사람 목록 소켓 메시지 종류
     private static final String SOCKET_TYPE_PAGE_PRESENCE = "PAGE_PRESENCE";
+
+    // 내용 변경 소켓 메시지 종류
     private static final String SOCKET_TYPE_PAGE_CONTENT = "PAGE_CONTENT";
 
+    // 접속 상태 SQL
+    private final PresenceMapper presenceMapper;
     private final NotificationWebSocketHandler socketHandler;
-    private final PageRepository pageRepository;
-    private final UserRepository userRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
 
-    // 탭(세션) 하나가 보고 있는 곳
+    // 탭(세션) 하나가 보고 있는 페이지·블록
     private record View(Long userId, Long pageId, Long blockId) {}
 
+    // 세션 ID별 보고 있는 곳
     private final Map<String, View> views = new HashMap<>();
 
+    // 페이지 입장·이동·편집 블록 변경 처리 (새 페이지 입장 시에만 열람 권한 확인)
     @EventListener
+    @Override
     public synchronized void onPageView(PageViewEvent event) {
 
         View before = views.get(event.sessionId());
         Long beforePageId = before == null ? null : before.pageId();
 
-        // 페이지를 떠났어요.
         if (event.pageId() == null) {
             views.remove(event.sessionId());
             broadcast(beforePageId);
             return;
         }
 
-        // 새 페이지로 들어올 때만 "이 페이지가 속한 워크스페이스의 멤버인지" 확인해요(편집 블록만 바뀔 땐 생략).
         if (!event.pageId().equals(beforePageId) && !canView(event.userId(), event.pageId())) {
             return;
         }
@@ -71,7 +69,9 @@ public class PagePresenceService {
         }
     }
 
+    // 소켓 종료 처리 (보던 페이지에 목록 다시 전송)
     @EventListener
+    @Override
     public synchronized void onClosed(SocketClosedEvent event) {
 
         View removed = views.remove(event.sessionId());
@@ -81,12 +81,12 @@ public class PagePresenceService {
         }
     }
 
-    // 누가 페이지 내용을 저장했다고, 그 페이지를 보고 있는 다른 사람들에게 알려요.
-    // 받은 쪽이 페이지를 다시 받아서 자기 화면에 합쳐요(메시지에는 내용이 들어 있지 않아요).
+    // 페이지 내용 변경 알림 (작성자 제외, 받은 쪽이 페이지를 다시 조회)
+    @Override
     public synchronized void notifyContentChanged(Long pageId, String authorEmail) {
 
         try {
-            Long authorId = userRepository.findByEmail(authorEmail).map(User::getUserId).orElse(null);
+            Long authorId = presenceMapper.selectUserIdByEmail(authorEmail);
 
             Set<Long> targets = new HashSet<>();
 
@@ -112,31 +112,30 @@ public class PagePresenceService {
         }
     }
 
+    // 페이지 열람 가능 여부 (휴지통 아님 + 워크스페이스 멤버)
     private boolean canView(Long userId, Long pageId) {
 
         try {
-            Page page = pageRepository.findById(pageId).orElse(null);
+            PageVO page = presenceMapper.selectPage(pageId);
 
             if (page == null || Boolean.TRUE.equals(page.getIsDeleted())) {
                 return false;
             }
 
-            return workspaceMemberRepository.existsByWorkspaceAndUser(
-                page.getWorkspace(), userRepository.getReferenceById(userId));
+            return presenceMapper.selectMemberCount(page.getWorkspaceId(), userId) > 0;
         } catch (Exception e) {
             log.debug("페이지 접근 확인에 실패했어요. pageId={}, userId={}", pageId, userId, e);
             return false;
         }
     }
 
-    // 그 페이지를 보는 모든 사람에게 "지금 보는 사람 목록"을 통째로 보내요(받은 쪽은 그대로 바꿔 끼우면 돼요).
+    // 페이지를 보는 모든 사람에게 보는 사람 목록 전송 (사람당 한 줄, 탭이 여러 개면 편집 블록이 있는 쪽 우선)
     private void broadcast(Long pageId) {
 
         if (pageId == null) {
             return;
         }
 
-        // 사람(userId)당 한 줄 — 같은 사람이 탭을 여러 개 열었으면 블록이 있는 쪽을 우선해요.
         Map<Long, Long> byUser = new LinkedHashMap<>();
 
         for (View view : views.values()) {

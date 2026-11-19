@@ -93,3 +93,4 @@ logging:
     com.flowspace.block.service.impl.BlockMapper: debug
     com.flowspace.database.service.impl.BlockDatabaseMapper: debug
     com.flowspace.search.service.impl.SearchMapper: debug
+    com.flowspace.presence.service.impl.PresenceMapper: debug
