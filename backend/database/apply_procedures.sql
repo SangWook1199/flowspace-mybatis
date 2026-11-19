@@ -77,3 +77,8 @@ source /database/procedures/block/sp_block.sql
 source /database/procedures/database/sp_block_database.sql
 source /database/procedures/database/sp_block_database_option_list.sql
 source /database/procedures/database/sp_block_database_cell_list.sql
+
+-- 통합 검색
+source /database/procedures/search/sp_search_block_list.sql
+source /database/procedures/search/sp_search_task_list.sql
+source /database/procedures/search/sp_search_comment_list.sql

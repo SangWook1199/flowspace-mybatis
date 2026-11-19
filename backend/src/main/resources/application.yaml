@@ -92,3 +92,4 @@ logging:
     com.flowspace.page.service.impl.PageCopyMapper: debug
     com.flowspace.block.service.impl.BlockMapper: debug
     com.flowspace.database.service.impl.BlockDatabaseMapper: debug
+    com.flowspace.search.service.impl.SearchMapper: debug

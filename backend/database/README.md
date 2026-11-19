@@ -25,7 +25,8 @@ database/
     ├── retrospective/      회고
     ├── page/               페이지
     ├── block/              블록
-    └── database/           데이터베이스 블록
+    ├── database/           데이터베이스 블록
+    └── search/             통합 검색
 ```
 
 ## 규칙
@@ -177,6 +178,17 @@ docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS W
 | `sp_block_database_cell_list` | 조인 | 데이터베이스 | 모든 셀, 컬럼 순서대로 (전체 조회용) | `BlockDatabaseMapper.selectDatabaseCellList` |
 
 컬럼·옵션·행·셀 등록·수정·삭제와 순서 바꾸기는 테이블 하나라서 `BlockDatabase_SQL.xml`에 있어요. 행을 지울 때 연결된 페이지는 `PageService.deletePage`로 휴지통에 보내요.
+
+### 통합 검색 (`procedures/search`)
+
+| 프로시저 | 종류 | 인자 | 하는 일 | 부르는 Mapper 메서드 |
+|---|---|---|---|---|
+| `sp_search_block_list` | 조인 | 워크스페이스, LIKE 패턴 | 본문 검색 후보 블록과 페이지 제목·아이콘 (최대 100개) | `SearchMapper.selectBlockList` |
+| `sp_search_task_list` | 조인 | 워크스페이스, LIKE 패턴, 개수 | 작업과 상태 이름 | `SearchMapper.selectTaskList` |
+| `sp_search_comment_list` | 조인 | 워크스페이스, LIKE 패턴, 개수 | 댓글과 작업·페이지 이름, 작성자 닉네임 | `SearchMapper.selectCommentList` |
+
+페이지 제목·스프린트·일정 검색은 테이블 하나라서 `Search_SQL.xml`에 있어요.
+결과는 모두 `SearchResultVO` 하나로 받기 때문에 컬럼 이름을 `id`, `title`, `body`, `meta`로 맞췄어요.
 
 ## 함께 고쳐야 하는 쌍
 

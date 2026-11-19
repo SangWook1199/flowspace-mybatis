@@ -1,4 +1,4 @@
-package com.flowspace.controller;
+package com.flowspace.search.web;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.flowspace.dto.search.SearchResponse;
-import com.flowspace.service.SearchService;
+import com.flowspace.search.dto.response.SearchResponse;
+import com.flowspace.search.service.SearchService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

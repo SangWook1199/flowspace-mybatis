@@ -1,10 +1,10 @@
-package com.flowspace.dto.search;
+package com.flowspace.search.dto.response;
 
 import java.util.List;
 
 // @formatter:off
 
-// 통합 검색 응답 DTO (종류별로 최대 몇 개씩만 담아요)
+// 통합 검색 응답 DTO (종류별 최대 6개)
 public record SearchResponse(
 
     String keyword,

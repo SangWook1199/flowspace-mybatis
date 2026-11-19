@@ -3,7 +3,6 @@ package com.flowspace.notification.service;
 import java.util.Collection;
 import java.util.Objects;
 
-import com.flowspace.entity.Task;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.NotificationType;
@@ -62,10 +61,6 @@ public interface NotificationService {
     }
 
     // ---------- JPA 기능용 임시 메서드 (해당 기능 전환 후 삭제) ----------
-
-    static String taskLink(Task task) {
-        return taskLink(task.getSprint() == null ? null : task.getSprint().getSprintId(), task.getTaskId());
-    }
 
     default void send(User recipient, User actor, Workspace workspace, NotificationType type, String message,
         Long refId, String linkPath) {
