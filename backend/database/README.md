@@ -1,19 +1,20 @@
 # DB 프로시저
 
-모든 SQL을 프로시저로 만들어요. Mapper XML(`src/main/resources/sqlmap/mappers/*.xml`)에는 `{call ...}`만 있어서, SQL을 고칠 때 백엔드를 다시 빌드하지 않아도 돼요.
+FlowSpace 백엔드의 모든 SQL은 MySQL 프로시저로 관리한다.
+Mapper XML(`src/main/resources/sqlmap/mappers/*_SQL.xml`)에는 프로시저 호출문만 있으므로, SQL을 수정해도 백엔드 빌드가 필요 없다.
 
-| 쓰는 곳 | 기준 |
+| 위치 | 역할 |
 |---|---|
-| 프로시저 | 조회·등록·수정·삭제 등 모든 SQL |
+| 프로시저 | 조회·등록·수정·삭제 SQL |
 | Mapper XML | 프로시저 호출 (`{call sp_x(...)}`) |
-| 자바 ServiceImpl | 권한 확인, 업무 규칙, 알림 (프로시저는 확인이 끝난 뒤의 데이터 처리만 해요) |
+| ServiceImpl | 권한 확인, 업무 규칙, 알림 (프로시저는 검증 이후의 데이터 처리만 담당) |
 
 ## 폴더 구조
 
 ```
 database/
-├── apply_procedures.sql    모든 프로시저를 DB에 적용하는 목록
-├── grants.sql              백엔드 계정 권한 (프로시저 실행만)
+├── apply_procedures.sql      전체 프로시저 적용 목록
+├── grants.sql                백엔드 계정 권한 (프로시저 실행만)
 └── procedures/
     ├── sprint.sql            스프린트 (Sprint_SQL.xml)
     ├── task.sql              작업(칸반) (Task_SQL.xml)
@@ -37,38 +38,76 @@ database/
 
 ## 규칙
 
-- 모든 SQL은 프로시저로 만들고, Mapper XML에는 `{call 프로시저(...)}`만 적어요. SQL을 고칠 때는 프로시저만 다시 적용하면 되고 백엔드를 다시 빌드하지 않아도 돼요.
-- Mapper XML 하나에 프로시저 파일 하나 (`Page_SQL.xml` ↔ `procedures/page.sql`), 파일 안의 순서는 Mapper 메서드 순서
-- 여러 Mapper가 부르는 프로시저는 테이블이 속한 도메인 파일에 하나만 둬요. 그 파일의 Mapper가 부르지 않으면 파일 끝 "다른 Mapper 공용" 구역에 둬요 (예: `sp_user_id_by_email`, `sp_page_lock`).
-- 이름은 `sp_` + 대상 + 동작. 여러 건이면 `_list`, 개수는 `_count`, 단순 등록·수정·삭제는 `_insert`·`_update`·`_delete`로 끝나요.
-- 새로 만든 번호는 `OUT` 인자로 돌려줘요 (`SET p_x_id = LAST_INSERT_ID()`, XML은 `#{xId, mode=OUT, jdbcType=BIGINT}`).
-- 번호 목록은 JSON 배열 문자열로 넘겨요. XML은 `#{ids, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler}`, 프로시저는 `JSON` 인자로 받아 `IN (SELECT id FROM JSON_TABLE(p_ids, '$[*]' COLUMNS (id BIGINT PATH '$')) AS ids)`로 써요. 번호 쌍(원본 → 새 번호)은 `IdMapTypeHandler`예요.
-- 종류(enum) 목록은 쉼표 문자열로 넘기고 `FIND_IN_SET`으로 받아요 (`sp_activity_list`, `sp_activity_count`).
-- 인자에 null을 넘길 수 있게 `application.yaml`에 `jdbc-type-for-null: "NULL"`을 설정했어요.
-- 프로시저마다 `DROP PROCEDURE IF EXISTS`로 시작해요. 그래서 파일을 몇 번 적용해도 최신 내용으로 다시 만들어져요.
-- 데이터를 읽기만 하면 `READS SQL DATA`, 바꾸면 `MODIFIES SQL DATA`를 적어요.
-- 백엔드 계정(`flowspace`)은 `EXECUTE` 권한만 가져요(`grants.sql`). 테이블을 직접 읽거나 바꾸지 못하고 프로시저로만 DB를 다뤄요. 프로시저 안의 SQL은 프로시저를 만든 계정(root) 권한으로 실행돼요(`SQL SECURITY DEFINER`, MySQL 기본값).
-- 새 프로시저는 Mapper에 맞는 파일에 추가하고, 아래 표에도 추가해요. 새 Mapper를 만들면 `apply_procedures.sql`에 파일 한 줄을 추가해요.
+### 파일
+
+- Mapper XML 하나당 프로시저 파일 하나 (`Page_SQL.xml` ↔ `procedures/page.sql`)
+- 파일 안의 순서는 Mapper 메서드 순서
+- 여러 Mapper가 호출하는 프로시저는 테이블이 속한 도메인 파일에 하나만 둔다. 그 파일의 Mapper가 호출하지 않으면 파일 끝 "다른 Mapper 공용" 구역에 둔다 (예: `sp_user_id_by_email`, `sp_page_lock`).
+- 새 Mapper를 추가하면 `apply_procedures.sql`에 파일 한 줄을 추가한다.
+
+### 이름
+
+- `sp_` + 대상 + 동작
+- 여러 건 `_list`, 개수 `_count`, 단순 등록·수정·삭제 `_insert`·`_update`·`_delete`
+
+### 작성
+
+- 프로시저마다 `DROP PROCEDURE IF EXISTS`로 시작한다. 파일을 여러 번 적용해도 최신 내용으로 다시 만들어진다.
+- 읽기 전용은 `READS SQL DATA`, 데이터 변경은 `MODIFIES SQL DATA`
+- 머리 주석은 하는 일, 인자 설명, 결과 순서
+
+```sql
+-- 칸반 작업 목록 + 상태 이름 (스프린트·백로그 공용)
+--   p_workspace_id  워크스페이스 번호
+--   p_sprint_id     스프린트 번호 (NULL이면 백로그, <=> 비교)
+-- 결과: 작업당 한 행, position 순
+```
+
+### 인자
+
+- 새로 생성된 번호는 `OUT` 인자로 반환한다 (`SET p_x_id = LAST_INSERT_ID()`, XML은 `#{xId, mode=OUT, jdbcType=BIGINT}`).
+- 번호 목록은 JSON 배열 문자열로 넘긴다. XML은 `#{ids, typeHandler=com.flowspace.common.mybatis.IdListTypeHandler}`, 프로시저는 `JSON` 인자로 받는다.
+
+  ```sql
+  WHERE t.task_id IN (SELECT id FROM JSON_TABLE(p_ids, '$[*]' COLUMNS (id BIGINT PATH '$')) AS ids)
+  ```
+
+- 번호 쌍(원본 → 새 번호)은 `IdMapTypeHandler`로 넘긴다 (`[[원본, 새 번호], ...]`).
+- enum 목록은 쉼표 문자열로 넘기고 `FIND_IN_SET`으로 비교한다 (`sp_activity_list`, `sp_activity_count`).
+- null 인자를 넘기기 위해 `application.yaml`에 `jdbc-type-for-null: "NULL"`을 설정했다.
+
+### 권한
+
+- 백엔드 계정(`flowspace`)은 `EXECUTE` 권한만 가진다 (`grants.sql`). 테이블에는 프로시저를 통해서만 접근한다.
+- 프로시저 안의 SQL은 프로시저를 만든 계정(root) 권한으로 실행된다 (`SQL SECURITY DEFINER`, MySQL 기본값).
+- 테이블과 프로시저의 생성·수정은 root로 한다.
 
 ## 적용
 
+빈 DB로 처음 실행하면 `docker-compose.yml`의 `docker-entrypoint-initdb.d`로 `ddl.sql`, 프로시저, 권한이 자동 적용된다.
+이미 만들어진 DB에는 아래 명령으로 적용한다.
+
 ```
 docker compose up -d mysql
+
+# 전체 프로시저
 docker compose exec mysql mysql -uroot -p flow_space -e "source /database/apply_procedures.sql"
+
+# 파일 하나
 docker compose exec mysql mysql -uroot -p flow_space -e "source /database/procedures/page.sql"
+
+# 프로시저 확인
 docker compose exec mysql mysql -uroot -p flow_space -e "SHOW PROCEDURE STATUS WHERE Db = 'flow_space'"
+
+# 백엔드 계정 권한
 docker compose exec mysql mysql -uroot -p -e "source /database/grants.sql"
 docker compose exec mysql mysql -uroot -p -e "SHOW GRANTS FOR 'flowspace'@'%'"
 ```
 
-프로시저와 테이블을 만들고 고치는 일은 root로 해요. 백엔드 계정은 실행만 할 수 있어요.
-
-빈 DB로 처음 켤 때는 `ddl.sql` 다음에 자동으로 적용돼요(`docker-compose.yml`의 `docker-entrypoint-initdb.d`).
-
 ## 프로시저 목록
 
-파일마다 Mapper 메서드 순서예요. "하는 일"은 프로시저 머리 주석 첫 줄이에요.
-`Ai_SQL.xml`(AI 초안 반영)은 다른 파일의 프로시저만 불러서 자기 프로시저 파일이 없어요.
+파일별 Mapper 메서드 순서. "하는 일"은 프로시저 머리 주석 첫 줄.
+`Ai_SQL.xml`(AI 초안 반영)은 다른 파일의 프로시저만 호출하므로 별도 프로시저 파일이 없다.
 
 ### 스프린트 (`procedures/sprint.sql` ↔ `Sprint_SQL.xml`)
 
@@ -415,7 +454,7 @@ docker compose exec mysql mysql -uroot -p -e "SHOW GRANTS FOR 'flowspace'@'%'"
 
 ## 함께 고쳐야 하는 묶음
 
-아래 프로시저들은 결과 컬럼(또는 조건)이 같고 찾는 기준만 달라요. 하나를 바꾸면 **묶음 전체를 함께** 고쳐야 해요.
+결과 컬럼(또는 조건)이 같고 조회 기준만 다른 프로시저. 하나를 수정하면 묶음 전체를 함께 수정한다.
 
 | 프로시저 | 맞춰야 하는 것 | 결과를 받는 VO |
 |---|---|---|
